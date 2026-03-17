@@ -1,0 +1,11 @@
+fastapi
+numpy
+openai-whisper
+opencv-python
+pandas
+python-multipart
+requests
+scikit-learn
+ultralytics
+uvicorn
+gTTS
