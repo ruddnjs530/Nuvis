@@ -1,0 +1,7 @@
+﻿Entry Point,Description,Done,Method,생성 일시,생성자,우선순위
+api/event/ai-suggestions,AI가 사용자 패턴/환경을 분석해 제안하는 이벤트 수치 추천,No,GET,2026년 3월 9일 오전 10:58,nowgnoeyk,고도화
+api/event,등록된 자동화 이벤트 목록 조회,No,GET,2026년 3월 9일 오전 11:01,nowgnoeyk,MVP
+api/event,새 이벤트 규칙 생성 (예: 미세먼지 > 100 이면 공기청정 실행),No,POST,2026년 3월 9일 오전 11:03,nowgnoeyk,MVP
+api/event/{event_id},기존 이벤트 조건 및 실행 명령 수정,No,PUT,2026년 3월 9일 오전 11:03,nowgnoeyk,MVP
+api/event/{event_id},이벤트 규칙 삭제,No,DELETE,2026년 3월 9일 오전 11:03,nowgnoeyk,MVP
+api/event/ai-suggestions/{events_id},,No,GET,2026년 3월 9일 오후 1:12,nowgnoeyk,고도화

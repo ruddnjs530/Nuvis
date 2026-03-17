@@ -1,0 +1,55 @@
+# Version control metadata
+.git/
+
+# Local Python environments
+.env
+.env.*
+.python-version
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Python caches and tooling
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+pip-wheel-metadata/
+
+# Frontend and editor noise
+node_modules/
+dist/
+build/
+.nuxt/
+.output/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime outputs and test artifacts
+temp_*
+test_command.wav
+*.log
+*.pid
+
+# AI/ML large artifacts
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.index
+*.onnx
+*.engine
+weights/
+models/
+logs/
+assets/
+dataset/

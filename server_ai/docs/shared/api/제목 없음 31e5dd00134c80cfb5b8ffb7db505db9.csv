@@ -1,0 +1,3 @@
+﻿Done,Method,Entry Point,Description,우선순위
+No,GET,api/room/data,"모든 방의 온도, 습도, 미세먼지 정보 조회",MVP
+No,GET,api/room/map,실내 지도 데이터 조회,MVP
