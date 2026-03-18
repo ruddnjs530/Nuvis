@@ -1,0 +1,10 @@
+// This is a marker file to ensure the directory structure is maintained.
+
+/**
+ * The 'domain' folder contains the core business logic, entities, and value objects.
+ * It is completely independent of external frameworks, databases, or UI.
+ * 
+ * Example:
+ * - models/Robot.ts, Room.ts, User.ts
+ * - services/RobotDomainService.ts
+ */
