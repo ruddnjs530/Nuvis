@@ -4,6 +4,7 @@ from typing import List, Optional
 import asyncio
 import logging
 import pandas as pd
+from sklearn.ensemble import IsolationForest
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -202,6 +203,58 @@ def analyze_schedule_for_device(df: pd.DataFrame, config: dict) -> dict:
 
 
 # ─────────────────────────────────────────
+# 위기 감지형(Isolation Forest) AI 이상 탐지 함수
+# ─────────────────────────────────────────
+def analyze_environmental_anomalies(df: pd.DataFrame) -> dict:
+    """
+    [위기 감지형 알림]
+    Isolation Forest 모델을 사용하여 최근 센서(온도, 습도, 미세먼지) 데이터의 
+    유의미한 이상치(Anomaly)를 감지하고, 해당 시점의 평균 데이터를 바탕으로 
+    선제적 위기 대응 알림을 위한 임계값을 추천합니다.
+    """
+    features = ['temperature', 'humidity', 'pm25']
+    
+    # 필요한 컬럼이 없으면 조기 반환
+    missing_features = [f for f in features if f not in df.columns]
+    if missing_features:
+        return {"status": "skipped", "message": "필수 환경 센서 데이터가 부족하여 위기 감지를 건너뜁니다."}
+        
+    # 센서 측정값이 있는 깔끔한 데이터만 확보
+    df_clean = df[features].dropna().copy()
+    if len(df_clean) < 20: 
+        return {"status": "skipped", "message": "위기 감지 모델을 분석하기에 유효한 데이터가 부족합니다."}
+        
+    try:
+        # 상위 5%의 극단적/비정상적인 환경 데이터를 찾도록 모델 학습
+        model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+        df_clean['anomaly_score'] = model.fit_predict(df_clean[features])
+        
+        # -1 로 분류된 데이터가 시스템이 판단한 이상치(Anomaly)
+        anomalies = df_clean[df_clean['anomaly_score'] == -1]
+        
+        if len(anomalies) == 0:
+            return {"status": "normal", "message": "최근 환경 상태에서 특이사항이 감지되지 않았습니다."}
+            
+        # 주로 미세먼지 기준으로 비정상 상황 임계값을 추천
+        ml_recommended_pm25 = anomalies['pm25'].mean()
+        safe_margin_pm25 = round(ml_recommended_pm25 * 0.95, 1)
+        
+        return {
+            "status": "warning",
+            "device": "air_purifier",
+            "ml_pm25_alert_threshold": safe_margin_pm25,
+            "anomaly_data_points_analyzed": int(len(anomalies)),
+            "reason": (
+                f"최근 데이터의 이상치 분석 결과, 비정상적일 때의 평균 미세먼지가 약 {round(ml_recommended_pm25, 1)}㎍/m³ 입니다. "
+                f"급격한 미세먼지 증가로 인한 위기 상황을 사전에 알릴 수 있도록, {safe_margin_pm25}㎍/m³ 도달 시 스마트 알림 전송을 추천합니다."
+            )
+        }
+    except Exception as e:
+        logger.error(f"[anomaly] 이상 탐지 오류: {e}")
+        return {"status": "error", "message": "위기 감지 분석 중 오류가 발생했습니다."}
+
+
+# ─────────────────────────────────────────
 # API 엔드포인트
 # ─────────────────────────────────────────
 
@@ -248,6 +301,26 @@ async def get_event_suggestions(request: AnalysisRequest):
                     "status": "error",
                     "message": f"{config['label']} 분석 중 오류가 발생했습니다."
                 }
+
+        # ③ 위기 감지 분석 (Isolation Forest) 적용
+        try:
+            anomaly_result = await asyncio.wait_for(
+                asyncio.to_thread(analyze_environmental_anomalies, df),
+                timeout=ANALYSIS_TIMEOUT,
+            )
+            suggestions["anomaly_warnings"] = anomaly_result
+        except asyncio.TimeoutError:
+            logger.error(f"[event] 이상 탐지 분석 타임아웃 ({ANALYSIS_TIMEOUT}초 초과)")
+            suggestions["anomaly_warnings"] = {
+                "status": "timeout",
+                "message": "위기 감지 분석이 지연되고 있습니다."
+            }
+        except Exception as e:
+            logger.error(f"[event] 이상 탐지 분석 오류: {e}")
+            suggestions["anomaly_warnings"] = {
+                "status": "error",
+                "message": "위기 감지 분석 중 오류가 발생했습니다."
+            }
 
         return {"status": "success", "user_id": request.user_id, "data": suggestions}
 
