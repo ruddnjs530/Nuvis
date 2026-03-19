@@ -2,74 +2,54 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-def generate_mock_json_payload(filename="mock_payload.json", days=14):
-    print(f"Generating {days} days of mock sensor payload...")
+def generate_mock_data(filename="mock_sensor_data.csv", days=14):
+    print(f"Generating {days} days of mock sensor data...")
     
     start_time = datetime.now() - timedelta(days=days)
     end_time = datetime.now()
     
-    # 30분 단위 시계열 데이터
-    timestamps = pd.date_range(start=start_time, end=end_time, freq='30min')
+    # 10분 단위의 시계열 데이터 생성
+    timestamps = pd.date_range(start=start_time, end=end_time, freq='10min')
     num_records = len(timestamps)
     
-    records = []
+    # 기본 환경 데이터 생성 (온도, 습도)
+    # 온도: 20도 ~ 30도 사이 변동
+    temperature = 25.0 + np.sin(np.linspace(0, 14 * np.pi, num_records)) * 5 + np.random.normal(0, 0.5, num_records)
     
-    for ts in timestamps:
-        hour = ts.hour
-        is_weekend = ts.weekday() >= 5
-        
-        # 1. 기본 환경 데이터 시뮬레이션
-        temp = 22.0 + np.sin(hour / 24.0 * 2 * np.pi - np.pi/2) * 5 + np.random.normal(0, 0.5)
-        hum = 45.0 + np.cos(hour / 24.0 * 2 * np.pi) * 10 + np.random.normal(0, 2)
-        pm25 = np.clip(np.random.normal(25, 10), 0, None)
-        
-        # 간헐적 미세먼지 스파이크
-        if np.random.random() < 0.05:
-            pm25 += np.random.uniform(50, 100)
-            
-        # 2. 기기 작동 로직 (생활 패턴 반영)
-        air_on = 0
-        hum_on = 0
-        dehum_on = 0
-        
-        # [패턴 A: 퇴근 후 공기청정기] 평일 18시~20시 사이에 공기 청정기를 자주 켬
-        if not is_weekend and 18 <= hour <= 20 and np.random.random() < 0.8:
-            air_on = 1
-            
-        # [패턴 B: 수면 중 가습기] 매일 23시~06시 건조하면(습도<50) 가습기 켬
-        if (hour >= 23 or hour <= 6) and hum < 50.0 and np.random.random() < 0.9:
-            hum_on = 1
-            
-        # [패턴 C: 주말 대청소 제습기] 주말 오후 13시~15시, 습도 높으면 제습기 켬
-        if is_weekend and 13 <= hour <= 15 and hum > 50.0 and np.random.random() < 0.85:
-            dehum_on = 1
-            
-        # 환경적 의존성 (단순 스파이크 대비)
-        if pm25 > 80: air_on = 1
-        if hum < 30: hum_on = 1
-        if hum > 70: dehum_on = 1
-            
-        records.append({
-            "timestamp": ts.isoformat(),
-            "temperature": round(temp, 1),
-            "humidity": round(hum, 1),
-            "pm25": round(pm25, 1),
-            "air_purifier_on": air_on,
-            "humidifier_on": hum_on,
-            "dehumidifier_on": dehum_on
-        })
-        
-    # JSON 파일 저장 (API 통신용 포맷 시뮬레이션)
-    payload = {
-        "user_id": "user_12345",
-        "sensor_data": records
-    }
+    # 습도: 40% ~ 70% 사이 변동
+    humidity = 55.0 + np.cos(np.linspace(0, 14 * np.pi, num_records)) * 15 + np.random.normal(0, 2, num_records)
     
-    import json
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2)
-        
+    # 미세먼지 (PM2.5): 기본 10~30, 가끔씩 외부 요인으로 80 이상 치솟음
+    pm25 = np.clip(np.random.normal(20, 10, num_records), 0, None)
+    
+    # 임의의 시점에 미세먼지 스파이크 추가 (요리, 환기 등)
+    spike_indices = np.random.choice(num_records, size=int(num_records * 0.05), replace=False)
+    pm25[spike_indices] += np.random.uniform(50, 120, size=len(spike_indices))
+    
+    # 유저 행동 패턴 시뮬레이션:
+    # 1. 환경 기반 패턴: 미세먼지가 75 이상일 때 수동으로 켜는 경향 (기존)
+    air_purifier_manual_on = np.where(pm25 + np.random.normal(0, 10, num_records) > 75, 1, 0)
+    
+    # 2. 스케줄 기반 패턴: 미세먼지와 무관하게, 매일 저녁 18:00 ~ 19:30 사이에 기기를 켜는 습관 추가
+    for i, ts in enumerate(timestamps):
+        # 18시 ~ 19시 30분 사이일 때 (80% 확률로 켜짐)
+        if 18 <= ts.hour <= 19 and ts.minute <= 30:
+            if np.random.random() < 0.8:
+                air_purifier_manual_on[i] = 1
+                
+    # 데이터프레임 생성
+    df = pd.DataFrame({
+        'timestamp': timestamps,
+        'room': 'living_room',
+        'temperature': temperature.round(1),
+        'humidity': humidity.round(1),
+        'pm25': pm25.round(1),
+        'user_air_purifier_on': air_purifier_manual_on
+    })
+    
+    # CSV 저장
+    df.to_csv(filename, index=False)
     print(f"✅ Generated {num_records} records to '{filename}'.")
-
+    
 if __name__ == "__main__":
-    generate_mock_json_payload()
+    generate_mock_data()

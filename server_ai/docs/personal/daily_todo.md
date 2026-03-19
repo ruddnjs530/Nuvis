@@ -29,15 +29,10 @@
 
 ### 🔴 다음 할 일 (Next)
 
-#### 🤖 AI 서버 (진행 중인 핵심 마일스톤)
-- [x] **[작업 완료]** 추천(Recommendation) 시스템 생활 패턴 기반 알고리즘 고도화
-- [x] **[작업 완료]** STT 모델 고유명사 프롬프트 튜닝 및 명령어 파서 예외 처리 고도화
-- [ ] **[작업 예정]** 프론트엔드/메인서버(Spring Boot) 연동 라우팅 뚫기 및 REST 통신 테스트
-- [x] `recommendation/` mock 데이터 컬럼명과 실제 API 계약(`air_purifier_on`) 일치시키기
-- [x] `test_client.py`를 현재 `POST /api/event/ai-suggestions` 계약에 맞게 수정
-- [x] GPU 서버에서 `git_sparse_guide.md` 기준으로 `server_ai/` 부분 복제 및 실행 검증
-- [ ] **[내일 작업 예정]** 로컬 머신에서 수정한 STT 공백 예외 처리("내 방" vs "내방") 및 문서 업데이트를 Git에 커밋 및 푸시
-- [ ] **[내일 작업 예정]** 추천 시스템 고도화: `ml_model.py`의 Isolation Forest (이상 탐지 머신러닝) 모델을 `main.py` API에 통합하여 '위기 감지형 알림(예: 급격한 미세먼지 증가)' 추천 로직 추가
+#### 🤖 AI 서버
+- [ ] `recommendation/` mock 데이터 컬럼명과 실제 API 계약(`air_purifier_on`) 일치시키기
+- [ ] `test_client.py`를 현재 `POST /api/event/ai-suggestions` 계약에 맞게 수정
+- [ ] GPU 서버에서 `git_sparse_guide.md` 기준으로 `server_ai/` 부분 복제 및 실행 검증
 
 #### 🔵 백엔드 / 인프라 협업
 - [ ] `backend_integration_proposal.md`와 `deployment_strategy_for_backend_and_infra.md` 전달

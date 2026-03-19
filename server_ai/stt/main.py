@@ -28,9 +28,8 @@ async def transcribe_audio_api(audio: UploadFile = File(...)):
             
         print(f"📡 [STT API] 오디오 수신 변환 시작: {temp_file_path}")
             
-        # 2. Whisper 모델로 텍스트 변환 (한국어 강제 지정 및 힌트 주입)
-        prompt_words = "거실, 안방, 침실, 주방, 공기청정기, 가습기, 제습기, 작동, 꺼줄래, 켜지마, 말고, 아니"
-        result = model.transcribe(temp_file_path, language="ko", initial_prompt=prompt_words)
+        # 2. Whisper 모델로 텍스트 변환 (한국어 강제 지정)
+        result = model.transcribe(temp_file_path, language="ko")
         recognized_text = result["text"].strip()
         
         # 3. 로봇 파싱 로직 태우기!

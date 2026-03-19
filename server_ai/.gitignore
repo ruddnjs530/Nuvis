@@ -61,7 +61,3 @@ test_command.wav
 # ROS2 build outputs
 install/
 log/
-
-
-stt/test_audio/
-*.mp3

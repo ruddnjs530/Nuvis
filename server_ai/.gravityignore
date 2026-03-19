@@ -53,27 +53,3 @@ models/
 logs/
 assets/
 dataset/
-
-
-# 1. 버전 관리 (AI가 굳이 모든 히스토리를 알 필요 없음)
-.git/
-
-# 2. Node.js / Vue.js 관련 (절대 AI가 읽게 둬선 안 되는 블랙홀)
-node_modules/
-dist/
-build/
-.npm/
-
-# 3. Python 관련 (가상환경과 캐시 파일 차단)
-venv/
-.venv/
-env/
-__pycache__/
-*.pyc
-
-# 4. 기타 무거운 미디어/로그 파일 (코드가 아닌 데이터들)
-*.mp4
-*.wav
-*.zip
-*.tar.gz
-*.log

@@ -93,8 +93,8 @@ def analyze_event_for_device(df: pd.DataFrame, config: dict) -> dict:
     if len(on_events) < 5:
         return {"message": f"Not enough data for {label} recommendation."}
 
-    avg_sensor_val = float(on_events[sensor_col].mean())
-    std_sensor_val = float(on_events[sensor_col].std())
+    avg_sensor_val = on_events[sensor_col].mean()
+    std_sensor_val = on_events[sensor_col].std()
 
     # trigger_when에 따라 임계값 방향이 달라짐
     # high(공청기/제습기): 평균보다 살짝 낮게 설정 (선제적 대응)
@@ -125,17 +125,10 @@ def analyze_event_for_device(df: pd.DataFrame, config: dict) -> dict:
     }
 
 
-def get_lifestyle_period(hour: int) -> str:
-    """시간대별 생활 패턴 분리"""
-    if 6 <= hour < 9: return "아침 기상/출근 (06~09시)"
-    elif 9 <= hour < 18: return "일과 (09~18시)"
-    elif 18 <= hour < 23: return "저녁 귀가/휴식 (18~23시)"
-    else: return "수면 (23~06시)"
-
 def analyze_schedule_for_device(df: pd.DataFrame, config: dict) -> dict:
     """
-    [라이프스타일 기반 스케줄 추천]
-    기기를 가장 자주 켜는 생활 패턴(평일/주말, 특정 시간대)을 분석하여 반복 스케줄을 추천합니다.
+    [스케줄 추천 - 범용]
+    특정 기기를 가장 자주 켜는 시간대를 분석하여 반복 스케줄을 추천합니다.
     """
     device_col = config["device_col"]
     label = config["label"]
@@ -145,58 +138,36 @@ def analyze_schedule_for_device(df: pd.DataFrame, config: dict) -> dict:
 
     df_copy = df.copy()
     df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'])
-    
-    # 1. 켜진 이벤트만 추출
     on_events = df_copy[df_copy[device_col] == 1].copy()
 
     if len(on_events) < 5:
         return {"message": f"Not enough data for {label} schedule recommendation."}
 
-    # 2. 특징 추출 (시간대, 주말 여부, 라이프스타일 기간)
     on_events.loc[:, 'hour'] = on_events['timestamp'].dt.hour
-    on_events.loc[:, 'is_weekend'] = on_events['timestamp'].dt.weekday >= 5
-    on_events.loc[:, 'period'] = on_events['hour'].apply(get_lifestyle_period)
-    
-    # 주말/평일 + 시간대 조합 패턴 찾기
-    on_events.loc[:, 'pattern'] = on_events.apply(
-        lambda row: ("주말 " if row['is_weekend'] else "평일 ") + row['period'], axis=1
-    )
-    
-    # 가장 빈번한 패턴 찾기
-    pattern_counts = on_events['pattern'].value_counts()
-    most_frequent_pattern = str(pattern_counts.index[0])
-    frequency_count = int(pattern_counts.iloc[0])
-    total_on = int(len(on_events))
-    pattern_ratio = float(frequency_count / total_on)
+    most_frequent_hour = on_events['hour'].mode()[0]
+    frequency_count = len(on_events[on_events['hour'] == most_frequent_hour])
+    total_on = len(on_events)
+    pattern_ratio = frequency_count / total_on
 
-    # 신뢰도 검증 (전체 켜진 횟수의 30% 이상이 해당 패턴에 집중될 경우 유의미하다고 판단)
-    if pattern_ratio < 0.3:
-        return {"message": f"No strong lifestyle patterns found for {label} yet."}
-        
-    # 추천 시간 도출 (해당 패턴 그룹 중 가장 잦은 시간)
-    pattern_data = on_events[on_events['pattern'] == most_frequent_pattern]
-    most_frequent_hour = int(pattern_data['hour'].mode()[0])
-    is_weekend = "주말" in most_frequent_pattern
-    
-    repeat_days = ["Sat", "Sun"] if is_weekend else ["Mon", "Tue", "Wed", "Thu", "Fri"]
+    if pattern_ratio < 0.15:
+        return {"message": f"No strong scheduling patterns found for {label} yet."}
 
     return {
         "recommended_schedule": {
             "time": f"{most_frequent_hour:02d}:00",
             "device": config["device_col"].replace("_on", ""),
             "action": "ON",
-            "repeat_days": repeat_days
+            "repeat": "daily"
         },
         "analysis_details": {
             "total_on_events_analyzed": total_on,
-            "top_lifestyle_pattern": most_frequent_pattern,
-            "pattern_hits": frequency_count,
+            "frequent_hour_hits": frequency_count,
             "pattern_ratio": f"{pattern_ratio:.1%}"
         },
         "reason": (
-            f"유저님의 생활 패턴을 분석한 결과, 주로 {most_frequent_pattern}에 {label}을(를) 가장 많이 사용하셨습니다. "
-            f"이 패턴이 전체 작동 횟수의 {pattern_ratio:.1%}를 차지합니다. "
-            f"해당 패턴의 핵심 시간인 {most_frequent_hour}시에 자동 실행되도록 스케줄을 추가할까요?"
+            f"사용자님은 분석 기간 동안 매일 {most_frequent_hour}시 경에 가장 자주 "
+            f"(총 {frequency_count}회) {label}을(를) 가동하셨습니다. "
+            f"매일 {most_frequent_hour}시에 자동 실행되도록 스케줄을 추가할까요?"
         )
     }
 
