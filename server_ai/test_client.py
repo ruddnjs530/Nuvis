@@ -12,45 +12,50 @@ import os
 
 def test_recommendation_api():
     """
-    추천 시스템(recommendation/main.py)의 동작 상태를 확인하는 테스트 함수
-    메인 서버나 로봇 내부에서 이런 형태로 GPU 서버에 데이터를 요청합니다.
+    추천 시스템(recommendation/main.py) 동작 확인:
+    생성된 mock_payload.json을 읽어서 POST 요청을 보냅니다.
     """
-    url = f"http://{SERVER_IP}:{REC_SERVER_PORT}/api/event/ai-suggestions"
-    
-    print(f"📡 [추천 시스템] GPU 서버로 데이터 요청 중... ({url})")
-    start_time = time.time()
+    mock_file = "recommendation/mock_payload.json"
+    if not os.path.exists(mock_file):
+        print(f"❌ '{mock_file}' 파일이 없습니다. 먼저 generate_mock_data.py를 실행하세요.")
+        return
+        
+    with open(mock_file, 'r', encoding='utf-8') as f:
+        payload = json.load(f)
+
+    # 1. 이벤트 추천 테스트
+    event_url = f"http://{SERVER_IP}:{REC_SERVER_PORT}/api/event/ai-suggestions"
+    print(f"\n📡 [추천 시스템] 이벤트 기반 센서 임계값 추천 요청... ({event_url})")
     
     try:
-        # GPU 서버로 최대 5초간 응답 대기 (timeout)
-        response = requests.get(url, timeout=5)
-        
-        # HTTP 응답 코드가 200번대(성공)인지 확인
+        start_time = time.time()
+        response = requests.post(event_url, json=payload, timeout=10)
         response.raise_for_status() 
+        print(f"✅ 서버 응답 완료! ({round(time.time() - start_time, 2)}초 소요)")
         
-        # 응답 시간을 계산
-        elapsed_time = round(time.time() - start_time, 2)
-        print(f"✅ 서버 응답 완료! ({elapsed_time}초 소요)\n")
-        
-        # JSON 결과 파싱
         result = response.json()
-        print("=== 🤖 AI 분석 결과 ===")
-        print(json.dumps(result, indent=4, ensure_ascii=False))
+        print("=== 🤖 1. AI 임계값 분석 결과 ===")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
         
-        # 실제 시연 코드 작성 팁: 파싱된 데이터 활용법
-        if result.get("status") == "success":
-            data = result.get("data", {})
-            threshold = data.get("pm25_alert_threshold")
-            print(f"\n[클라이언트 동작 예시] 받은 임계값 {threshold}을 메인 로직 변수에 업데이트했습니다.")
-        else:
-            print("\n⚠️ AI 서버 측에서 분석 도중 오류가 발생한 것 같습니다.")
-            
-    except requests.exceptions.ConnectionError:
-        print(f"\n❌ 연결 실패: '{SERVER_IP}:{REC_SERVER_PORT}' 서버에 접속할 수 없습니다.")
-        print("-> 팁: GPU 서버에서 recommendation/main.py (uvicorn)가 실행 중인지 확인하세요.")
-    except requests.exceptions.Timeout:
-        print("\n❌ 타임아웃: 서버 응답이 너무 오래 걸립니다.")
     except Exception as e:
-        print(f"\n❌ 알 수 없는 에러 발생: {e}")
+        print(f"\n❌ 이벤트 추천 통신 실패: {e}")
+
+    # 2. 스케줄 추천 테스트
+    schedule_url = f"http://{SERVER_IP}:{REC_SERVER_PORT}/api/schedule/ai-suggestions"
+    print(f"\n📡 [추천 시스템] 생활 패턴 기반 스케줄 추천 요청... ({schedule_url})")
+    
+    try:
+        start_time = time.time()
+        response = requests.post(schedule_url, json=payload, timeout=10)
+        response.raise_for_status() 
+        print(f"✅ 서버 응답 완료! ({round(time.time() - start_time, 2)}초 소요)")
+        
+        result = response.json()
+        print("=== 🤖 2. AI 스케줄 분석 결과 ===")
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        
+    except Exception as e:
+        print(f"\n❌ 스케줄 추천 통신 실패: {e}")
 
 def test_stt_api():
     """
