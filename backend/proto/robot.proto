@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package robot;
+
+// 로봇과 통신하기 위한 gRPC 서비스 (양방향 및 단방향 예시)
+service RobotService {
+  // 단방향: NestJS -> ROS2 명령 전송
+  rpc SendCommand (CommandRequest) returns (CommandResponse) {}
+  
+  // 서버 스트리밍: ROS2 -> NestJS 로봇 상태 연속 수신
+  rpc StreamTelemetry (TelemetryRequest) returns (stream TelemetryData) {}
+
+  // 양방향 스트리밍: 실시간 양방향 데이터 교환
+  rpc BidirectionalStream (stream ClientMessage) returns (stream ServerMessage) {}
+}
+
+message CommandRequest {
+  string command = 1;
+  map<string, string> parameters = 2; // 이동 좌표 등 추가 파라미터
+}
+
+message CommandResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message TelemetryRequest {
+  string robot_id = 1;
+}
+
+message TelemetryData {
+  double x = 1;
+  double y = 2;
+  double theta = 3;
+  double battery_level = 4;
+  string status = 5;
+}
+
+message ClientMessage {
+  string id = 1;
+  string type = 2; // 예: "VELOCITY_CMD"
+  string payload = 3; // JSON 형태의 데이터
+}
+
+message ServerMessage {
+  string id = 1;
+  string type = 2; // 예: "LIDAR_DATA"
+  string payload = 3; // JSON 형태의 데이터
+}

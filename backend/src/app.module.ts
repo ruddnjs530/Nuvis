@@ -1,32 +1,19 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { ConfigModule } from '@nestjs/config';
-import { PrismaModule } from './infrastructure/database/prisma/prisma.module';
-
-// Domain API Modules
-import { UserApiModule } from './presentation/api/user/user.module';
-import { RoomApiModule } from './presentation/api/room/room.module';
-import { RobotApiModule } from './presentation/api/robot/robot.module';
-import { ScheduleApiModule } from './presentation/api/schedule/schedule.module';
-import { EventApiModule } from './presentation/api/event/event.module';
+import { EventModule } from './modules/event/event.module';
+import { RobotModule } from './modules/robot/robot.module';
+import { RoomModule } from './modules/room/room.module';
+import { ScheduleModule } from './modules/schedule/schedule.module';
+import { AuthModule } from './modules/auth/auth.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
-    }),
-    PrismaModule,
-    
-    // Feature Modules
-    UserApiModule,
-    RoomApiModule,
-    RobotApiModule,
-    ScheduleApiModule,
-    EventApiModule,
+    AuthModule,
+    EventModule,
+    RobotModule,
+    RoomModule,
+    ScheduleModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}
