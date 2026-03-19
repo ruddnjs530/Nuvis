@@ -1,0 +1,122 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  userId        Int        @id @default(autoincrement()) @map("user_id")
+  email         String     @unique
+  passwordHash  String     @map("password_hash")
+  name          String
+  createdAt     DateTime   @default(now()) @map("created_at")
+  rooms         Room[]
+  robots        Robot[]
+  schedules     Schedule[]
+  events        Event[]
+
+  @@map("USERS")
+}
+
+model Room {
+  roomId        Int            @id @default(autoincrement()) @map("room_id")
+  userId        Int            @map("user_id")
+  name          String
+  mapData       Json?          @map("map_data")
+  
+  user          User           @relation(fields: [userId], references: [userId])
+  roomCondition RoomCondition?
+  robots        Robot[]
+  schedules     Schedule[]
+  events        Event[]
+
+  @@map("ROOMS")
+}
+
+model RoomCondition {
+  conditionId  Int      @id @default(autoincrement()) @map("condition_id")
+  roomId       Int      @unique @map("room_id")
+  temperature  Float
+  humidity     Float
+  fineDust     Float    @map("fine_dust")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  
+  room         Room     @relation(fields: [roomId], references: [roomId])
+
+  @@map("ROOM_CONDITIONS")
+}
+
+model Module {
+  moduleId Int     @id @default(autoincrement()) @map("module_id")
+  type     String
+  status   String
+  
+  robots   Robot[]
+
+  @@map("MODULES")
+}
+
+model Robot {
+  robotId         Int     @id @default(autoincrement()) @map("robot_id")
+  userId          Int     @map("user_id")
+  status          String
+  batteryLevel    Float   @map("battery_level")
+  currentRoomId   Int?    @map("current_room_id")
+  currentModuleId Int?    @map("current_module_id")
+
+  user            User    @relation(fields: [userId], references: [userId])
+  currentRoom     Room?   @relation(fields: [currentRoomId], references: [roomId])
+  currentModule   Module? @relation(fields: [currentModuleId], references: [moduleId])
+
+  @@map("ROBOTS")
+}
+
+model Schedule {
+  scheduleId       Int      @id @default(autoincrement()) @map("schedule_id")
+  userId           Int      @map("user_id")
+  roomId           Int      @map("room_id")
+  actionModuleType String   @map("action_module_type")
+  startTime        DateTime @db.Time @map("start_time")
+  durationMinutes  Int      @map("duration_minutes")
+  isActive         Boolean  @map("is_active")
+
+  user             User     @relation(fields: [userId], references: [userId])
+  room             Room     @relation(fields: [roomId], references: [roomId])
+
+  @@map("SCHEDULES")
+}
+
+model Event {
+  eventId            Int             @id @default(autoincrement()) @map("event_id")
+  userId             Int             @map("user_id")
+  roomId             Int             @map("room_id")
+  conditionType      String          @map("condition_type")
+  conditionOperator  String          @map("condition_operator")
+  thresholdValue     Float           @map("threshold_value")
+  actionModuleType   String          @map("action_module_type")
+  isActive           Boolean         @map("is_active")
+  
+  aiSuggestions      AiSuggestion[]
+
+  user               User            @relation(fields: [userId], references: [userId])
+  room               Room            @relation(fields: [roomId], references: [roomId])
+
+  @@map("EVENTS")
+}
+
+model AiSuggestion {
+  suggestionId       Int      @id @default(autoincrement()) @map("suggestion_id")
+  eventId            Int      @map("event_id")
+  suggestedThreshold Float    @map("suggested_threshold")
+  reason             String   @db.Text
+  status             String
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  event              Event    @relation(fields: [eventId], references: [eventId])
+
+  @@map("AI_SUGGESTIONS")
+}
