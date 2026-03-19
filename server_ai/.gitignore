@@ -1,3 +1,8 @@
+# Mock data in recommendation server
+recommendation/mock_payload.json
+recommendation/mock_sensor_data.csv
+
+
 # Local environment
 .env
 .env.*
