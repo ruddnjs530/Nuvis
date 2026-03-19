@@ -69,13 +69,23 @@
         "data_points_analyzed": 38,
         "pattern_confidence": "High"
       },
-      "reason": "유저 행동 분석 결과, 미세먼지 수치가 약 45.0㎍/m³ 일 때 공기청정기를 켰습니다."
+      "reason": "유저 행동 분석 결과, 미세먼지 수치가 약 45.0㎍/m³ 일 때 공기청정기를 켰습니다. ..."
     },
     "humidifier": { "..." : "..." },
-    "dehumidifier": { "..." : "..." }
+    "dehumidifier": { "..." : "..." },
+    "anomaly_warnings": {
+      "status": "warning",
+      "device": "air_purifier",
+      "ml_pm25_alert_threshold": 43.1,
+      "anomaly_data_points_analyzed": 4,
+      "reason": "최근 데이터의 이상치 분석 결과, 비정상적일 때의 평균 미세먼지가 약 45.4㎍/m³ 입니다. 급격한 미세먼지 증가로 인한 위기 상황을 사전에 알릴 수 있도록, 43.1㎍/m³ 도달 시 스마트 알림 전송을 추천합니다."
+    }
   }
 }
 ```
+
+> **💡 신규 추가 (위기 감지 알림):** 
+> 응답 결과 중 `anomaly_warnings` 객체는 AI의 **Isolation Forest(이상 탐지 머신러닝)** 알고리즘이 찾아낸 급격한 환경 변화(예: 미세먼지 폭증 등) 결과입니다. 만약 해당 필드의 `status`가 `"warning"`으로 반환될 경우, 메인 서버에서는 유저에게 **즉각적인 스마트 푸시 알림**을 보내는 용도로 활용해 주시기 바랍니다.
 
 #### 스케줄 추천
 
@@ -240,8 +250,9 @@ MVP 안정화 후 2차 고도화로 도입할 수 있는 **"완전 자동화(100
 | 1-A | **[필수]** | `ROOM_CONDITIONS_HISTORY` 테이블 추가 | 백엔드 | ⬜ |
 | 1-B | **[필수]** | `MODULE_CONTROL_LOGS` 테이블 추가 | 백엔드 | ⬜ |
 | 1-C | **[필수]** | AI 연동용 최근 14일치 데이터 조회 로직 구현 | 백엔드 | ⬜ |
-| 2 | **[필수]** | AI 서버 HTTP Read Timeout 30초 이상 설정 | 백엔드 | ⬜ |
-| 3 | **[필수]** | AI 서버 장애 시 Fallback 처리 구현 | 백엔드 | ⬜ |
+| 2-A | **[필수]** | AI 서버 HTTP Read Timeout 30초 이상 설정 | 백엔드 | ⬜ |
+| 2-B | **[필수]** | AI 서버 장애 시 Fallback 처리 구현 | 백엔드 | ⬜ |
+| 3 | **[권장]** | `anomaly_warnings` 기반 위기 감지 Push 알림 전송 로직 구현 | 백엔드 | ⬜ |
 | 4 | **[논의]** | 완전 자동화 시연용 연동 방식 합의 (Push vs Polling) | AI + 백엔드 | ⬜ |
 | 4-a | **[논의 후 구현]** | 완전 자동화 Safety Net (Auto-Fallback, Conflict Resolution) | 백엔드 | ⬜ |
 

@@ -5,6 +5,43 @@
 
 ---
 
+## 📅 2026-03-19
+
+### ⚙️ GPU 서버 개발환경 정비 & Git 관리 고도화
+
+**작업 내용:**
+- GPU 서버 브랜치를 `master`에서 `ai/feat/recomendation`으로 전환하여 작업 브랜치 일원화.
+- `.gitignore` 개선: `docs/personal/` 추적 해제, `stt/data/*`, `stt/model/` 추가 → 데이터/모델 파일 Git 제외 처리.
+- `stt/data/.gitkeep`으로 빈 폴더 구조 Git 유지 패턴 정착.
+
+### 🤖 Whisper 파인튜닝 전체 파이프라인 구축 및 완료
+
+**작업 내용:**
+- **데이터 확보:** AI Hub 카투홈(Car2Home) 데이터셋 1GB(약 3,978샘플) 확보, GPU 서버 `stt/data/`에 업로드.
+- **전처리 스크립트 작성 (`stt/preprocess_data.py`):**
+  - 48kHz WAV → 16kHz 변환 (Whisper 요구사항)
+  - AI Hub JSON 라벨파일에서 `전사정보.LabelText` 추출
+  - `QualityStatus: Good` 필터링 후 `metadata.csv` 생성
+- **파인튜닝 스크립트 작성 (`stt/finetune_whisper.py`):**
+  - `datasets.map()` 멀티프로세싱 데드락 이슈 → PyTorch 커스텀 Dataset으로 완전 우회 해결
+  - CUDA multi-GPU peer mapping 오류 → `CUDA_VISIBLE_DEVICES=5` 단일 GPU 지정 해결
+  - `transformers 5.x` API 변경(`tokenizer` → `processing_class`) 대응
+- **파인튜닝 결과 (Tesla V100-PCIE-32GB, ~9분 20초):**
+  - `eval_cer: 1.48%` — CER 5% 이하 우수 기준 대비 압도적 달성
+  - `eval_loss: 0.0743`
+- **벤치마크 결과:**
+  - `stt/stt_benchmark.py` 실행 → **9/9 (100%) 정확도** 달성
+  - 부정어(`켜지마`), 복합 명령(`거실 말고 안방`), 공백 변이(`내방`↔`내 방`) 모두 완벽 처리
+  - STT 오인식(`보일락`)도 파서가 복원하는 강인성 확인
+- **결과 문서화:** `docs/shared/stt_benchmark_results.md` 공식 작성
+
+**다음 작업 예정:**
+- GPU 서버 파인튜닝 모델 백업 (HuggingFace Hub 또는 구글 드라이브)
+- `stt/main.py`에 파인튜닝 모델 경로 연동
+- GPU 서버 API 서버 실행 및 백엔드 팀 엔드포인트 공유
+
+---
+
 ## 📅 2026-03-17
 
 ### 🧠 추천 시스템 고도화 및 라이프스타일 분석 적용

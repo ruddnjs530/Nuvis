@@ -21,7 +21,7 @@
 - [ ] 시뮬레이터 / 실제 카메라 토픽(`image_raw`) 수신 확인
 - [ ] `yolo_node.py` 모델 통합 및 테스트 환경 Bounding Box 시각화 성공
 - [ ] 탐지된 객체의 종류/거리/위치 정보를 주행 파트 ROS2 노드로 넘겨주기 (메시지 포맷 협의)
-- [ ] *(선택/고도화)* 타겟 물건 인식 (FR32)을 위한 Custom Dataset 기반 모델 파인튜닝(Fine Tunning)
+- [ ] *(선택/고도화)* 스마트홈 특화 타겟 물건(특정 장애물, 애완동물, 커스텀 가구 등) 인식을 위한 Custom Dataset 기반 모델 파인튜닝(YOLO)
 
 ---
 
@@ -39,9 +39,14 @@
 ## 🎙️ Phase 3: 자연어 음성 제어 인터페이스 (확장 기능)
 *목표: "거실로 와서 공기청정기 틀어" 라는 사람의 말을 로봇이 이해하도록 만들기*
 *배치 원칙: `server_ai` 독립 서비스에서 STT / 파서 API로 운영*
-- [ ] OpenAI `Whisper` 모델 작동 및 정확도 테스트 (완료)
+- [x] OpenAI `Whisper` 모델 작동 및 정확도 테스트 (완료)
 - [ ] 대시보드(웹) 또는 로봇의 오디오 입력을 메인 서버를 거쳐 AI 파서 엔진까지 전달하는 파이프라인 개통
-- [ ] `stt_parser.py` 고도화 (LLM API 접목 또는 정규표현식 보강으로 다양한 한국어 변형 예외 처리)
+- [x] `stt_parser.py` 고도화 (부정어/복합 명령/공백 변이 예외 처리 완료)
+- [x] **[완료]** AI Hub 카투홈 데이터 1GB 기반 Whisper-small 파인튜닝 완료
+  - `eval_cer 1.48%`, 벤치마크 정확도 **9/9 (100%)** 달성 (2026-03-19)
+  - `stt/preprocess_data.py`, `stt/finetune_whisper.py` 스크립트 완성
+  - 결과: `docs/shared/stt_benchmark_results.md` 문서화
+- [ ] **[Next]** 파인튜닝 모델 백업 (HuggingFace Hub) 및 `stt/main.py` 연동
 - [ ] 치환된 JSON 명령어가 실제 주행 파트 노드로 흘러가 로봇이 동작하는지 실증 테스트
 
 ---

@@ -67,6 +67,10 @@ test_command.wav
 install/
 log/
 
-
+# AI Training Data & Model (Exclude from Git - keep folder structure only)
+stt/data/*
+!stt/data/.gitkeep
+stt/model/
 stt/test_audio/
 *.mp3
+.gravityignore
