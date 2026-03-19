@@ -31,7 +31,8 @@ export class AuthService {
       name: user.name,
     });
   }
-
-
+  async create(data: any): Promise<any> {
+    return { id: 1, ...data };
+  }
 
 }
