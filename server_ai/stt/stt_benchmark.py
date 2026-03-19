@@ -43,6 +43,15 @@ TEST_CASES = [
         "text": "내방으로 와",
         "expected": {"action": "move", "target_room": "my_room", "module": None, "state": None}
     },
+    # 예외 상황 및 복합명령 테스트
+    {
+        "text": "거실 말고 안방 가습기 편하게 켜줄래",
+        "expected": {"action": "move_and_operate", "target_room": "bedroom", "module": "humidifier", "state": "on"}
+    },
+    {
+        "text": "주방 공기청정기 켜지마",
+        "expected": {"action": "move_and_operate", "target_room": "kitchen", "module": "air_purifier", "state": "off"}
+    },
     # 예외 상황 테스트 (등록되지 않은 기기)
     {
         "text": "보일러 켜",
@@ -104,8 +113,9 @@ def run_benchmark(model_size="base"):
         
         start_time = time.time()
         
-        # [Step 1] Whisper 추론
-        result = model.transcribe(audio_path, language="ko")
+        # [Step 1] Whisper 추론 (도메인 특화 단어 강제 주입으로 고유명사 오인식률 하락)
+        prompt_words = "거실, 안방, 침실, 주방, 공기청정기, 가습기, 제습기, 작동, 켜줄래, 켜지마"
+        result = model.transcribe(audio_path, language="ko", initial_prompt=prompt_words)
         recognized_text = result["text"].strip()
         
         # [Step 2] 로봇 명령어 파싱
