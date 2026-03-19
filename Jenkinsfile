@@ -20,7 +20,7 @@ pipeline {
                     echo "Cleaning up old practice containers and orphaned volumes..."
                     sh '''
                     # 1. 기존 컴포즈가 있다면 일단 안전하게 내리기 시도 (실패해도 계속 진행)
-                    docker compose down -v || true
+                    docker-compose down -v || true
                     
                     # 2. 이전에 수동으로 떠있던 (nuvis 이름이 들어간) 연습용 컨테이너들 무자비하게 강제 킬(Kill) 및 삭제
                     docker ps -a | grep -i "nuvis" | awk '{print $1}' | xargs -r docker rm -f || true
@@ -39,7 +39,7 @@ pipeline {
                     echo "Building Docker Images..."
                     sh '''
                     # 캐시 없이 깨끗한 상태로 각 Dockerfile(프론트, 백, AI) 이미지를 굽습니다.
-                    docker compose build --no-cache
+                    docker-compose build --no-cache
                     '''
                 }
             }
@@ -51,7 +51,7 @@ pipeline {
                     echo "Deploying new infrastructure..."
                     sh '''
                     # 백그라운드(-d)로 모든 서비스를 실행합니다.
-                    docker compose up -d
+                    docker-compose up -d
                     '''
                 }
             }
