@@ -38,7 +38,7 @@ pipeline {
                 script {
                     echo "Building Docker Images..."
                     sh '''
-                    // 캐시 없이 깨끗한 상태로 각 Dockerfile(프론트, 백, AI) 이미지를 굽습니다.
+                    # 캐시 없이 깨끗한 상태로 각 Dockerfile(프론트, 백, AI) 이미지를 굽습니다.
                     docker compose build --no-cache
                     '''
                 }
@@ -50,7 +50,7 @@ pipeline {
                 script {
                     echo "Deploying new infrastructure..."
                     sh '''
-                    // 백그라운드(-d)로 모든 서비스를 실행합니다.
+                    # 백그라운드(-d)로 모든 서비스를 실행합니다.
                     docker compose up -d
                     '''
                 }
