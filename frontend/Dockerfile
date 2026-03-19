@@ -1,5 +1,5 @@
 # 빌드 환경
-FROM node:18-alpine AS build
+FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 # pnpm 설치 후 종속성 설치
