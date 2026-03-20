@@ -9,3 +9,10 @@ scikit-learn
 ultralytics
 uvicorn
 gTTS
+transformers
+accelerate
+evaluate
+jiwer
+soundfile
+torch
+librosa

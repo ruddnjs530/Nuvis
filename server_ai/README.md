@@ -83,9 +83,11 @@ pip install -r requirements.txt
 *   **설명:** 서버의 환경 데이터와 유저의 과거 모듈 제어 내역을 Pandas로 분석하여 이동 평균 기반 통계 임계값(`pm25_alert_threshold` 등)을 스마트하게 산출하고 추천합니다.
 *   **의존성 구분:** 이 모듈은 ROS2 없이 `pip install -r requirements.txt` 만으로 실행 가능합니다.
 *   **실행:**
-    1.  `python generate_mock_data.py` : 테스트용 14일 치 가상 데이터 CSV 파일 생성
-    2.  `python main.py` : Uvicorn 내부 API 서버 실행 (기본 포트 8000)
-    3.  `GET http://localhost:8000/api/event/ai-suggestions` 로 결과 확인 가능.
+    1.  `python generate_mock_data.py` : 테스트용 가상 데이터 생성 (`mock_payload.json`)
+    2.  `python gpu_lstm_model.py` : LSTM 기반 시계열 예측 모델 학습 및 저장 (`model/lstm_device_model.pth`)
+        - **주의:** GPU 서버 환경에서 실행 시 GPU 가속을 활용하며, 학습 완료 후 최신 모델이 자동 저장됩니다.
+    3.  `python main.py` : Uvicorn 내부 API 서버 실행 (기본 포트 8000)
+    4.  `GET http://localhost:8000/api/event/ai-suggestions` 로 결과 확인 가능.
 
 #### 🎙️ 음성 인식 제어 (STT Pipeline)
 *   **경로:** `stt/whisper_test.py`, `stt/stt_parser.py`

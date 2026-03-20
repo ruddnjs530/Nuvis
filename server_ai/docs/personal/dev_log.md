@@ -1,203 +1,454 @@
-# 📝 개발 일지 (Development Log)
+# Development Log
 
-> **담당:** AI 서버 (`server_ai`) 중심 작업 기록, 백엔드 연동 이슈 포함  
-> 형식: 날짜별로 작업 내용, 이슈 & 해결, 다음 작업 예정을 기록합니다.
+이 문서는 PR 본문 요약과 별개로, `server_ai` 변경 이력과 판단 근거를 누적하는 상세 개발 일지입니다.  
+목표는 "왜 이렇게 바꿨는지와 어떻게 재현할 수 있는지"를 남기는 것입니다.
 
----
-
-## 📅 2026-03-19
-
-### ⚙️ GPU 서버 개발환경 정비 & Git 관리 고도화
-
-**작업 내용:**
-- GPU 서버 브랜치를 `master`에서 `ai/feat/recomendation`으로 전환하여 작업 브랜치 일원화.
-- `.gitignore` 개선: `docs/personal/` 추적 해제, `stt/data/*`, `stt/model/` 추가 → 데이터/모델 파일 Git 제외 처리.
-- `stt/data/.gitkeep`으로 빈 폴더 구조 Git 유지 패턴 정착.
-
-### 🤖 Whisper 파인튜닝 전체 파이프라인 구축 및 완료
-
-**작업 내용:**
-- **데이터 확보:** AI Hub 카투홈(Car2Home) 데이터셋 1GB(약 3,978샘플) 확보, GPU 서버 `stt/data/`에 업로드.
-- **전처리 스크립트 작성 (`stt/preprocess_data.py`):**
-  - 48kHz WAV → 16kHz 변환 (Whisper 요구사항)
-  - AI Hub JSON 라벨파일에서 `전사정보.LabelText` 추출
-  - `QualityStatus: Good` 필터링 후 `metadata.csv` 생성
-- **파인튜닝 스크립트 작성 (`stt/finetune_whisper.py`):**
-  - `datasets.map()` 멀티프로세싱 데드락 이슈 → PyTorch 커스텀 Dataset으로 완전 우회 해결
-  - CUDA multi-GPU peer mapping 오류 → `CUDA_VISIBLE_DEVICES=5` 단일 GPU 지정 해결
-  - `transformers 5.x` API 변경(`tokenizer` → `processing_class`) 대응
-- **파인튜닝 결과 (Tesla V100-PCIE-32GB, ~9분 20초):**
-  - `eval_cer: 1.48%` — CER 5% 이하 우수 기준 대비 압도적 달성
-  - `eval_loss: 0.0743`
-- **벤치마크 결과:**
-  - `stt/stt_benchmark.py` 실행 → **9/9 (100%) 정확도** 달성
-  - 부정어(`켜지마`), 복합 명령(`거실 말고 안방`), 공백 변이(`내방`↔`내 방`) 모두 완벽 처리
-  - STT 오인식(`보일락`)도 파서가 복원하는 강인성 확인
-- **결과 문서화:** `docs/shared/stt_benchmark_results.md` 공식 작성
-
-**다음 작업 예정:**
-- GPU 서버 파인튜닝 모델 백업 (HuggingFace Hub 또는 구글 드라이브)
-- `stt/main.py`에 파인튜닝 모델 경로 연동
-- GPU 서버 API 서버 실행 및 백엔드 팀 엔드포인트 공유
+## 작성 기준
+- 최근 `master` 머지 이후의 작업 흐름이 끊기지 않도록 날짜 단위로 기록합니다.
+- "무엇을 바꿨는지"뿐 아니라 "왜 그렇게 바꿨는지"를 함께 남깁니다.
+- 테스트는 명령, 결과, 제약을 함께 기록합니다.
+- 시연 단계의 임시 선택과 장기적으로 바꿔야 할 구조를 분리해서 적습니다.
 
 ---
 
-## 📅 2026-03-17
+## Week 1
 
-### 🧠 추천 시스템 고도화 및 라이프스타일 분석 적용
-
-**작업 내용:**
-- 스케줄 추천 알고리즘을 단순 시간 빈도 기반에서 **라이프스타일 클러스터링(평일/주말, 수면/기상/일과/저녁)** 기반으로 개선함.
-- `generate_mock_data.py`를 업데이트하여 백엔드 API 계약에 맞는 JSON 페이로드를 생성하고, 세 가지 라이프스타일 패턴(퇴근 후 공기청정기, 수면 중 가습기, 주말 대청소 제습기)을 시뮬레이션하도록 구현함.
-- `test_client.py`에서 JSON 페이로드를 읽어와 STT와 이벤트/스케줄 추천 엔드포인트 모두를 테스트하도록 통신 모듈을 강화함.
-- 반환된 NumPy 타입을 `int`, `float`, `str` 등 순수 파이썬 타입으로 명시적 변환(Casting)하여 FastAPI JSON 직렬화 오류를 해결함.
-
-**다음 작업 예정:**
-- 실제 메인 백엔드(Spring)와 통신 포트 및 라우팅 연결 점검
-
-### 🎙️ STT 자연어 파싱 고도화 및 인식률 극대화
-
-**작업 내용:**
-- `stt_parser.py`를 개선하여 부정어("말고", "아니고", "켜지마" 등)를 정규식(Regex)으로 필터링하고 정확한 대상 기기와 방 이름만 타겟팅하도록 고도화함.
-- `stt_parser.py` 단어 매핑 시 STT 엔진의 띄어쓰기 변수("내 방" vs "내방")를 해결하기 위해, 원본 문장과 공백을 제거한 문장 모두에서 키워드를 매칭하는 예외 처리 로직을 추가함.
-- STT 파이프라인에서 Whisper 모델 엔진 추론 시 `initial_prompt` 기능을 활용하여 로봇 제어 도메인 특화 단어(`공기청정기`, `가습기`, `켜지마` 등) 강제 주입으로 고유명사 인식률 상승 적용함.
-- `stt_benchmark.py` 스크립트를 통해 부정어/복합 명령 테스트 케이스를 벤치마크 셋에 추가 등록.
-
-**다음 작업 예정:**
-- GPU 환경에서 ffmpeg 연동 후 테스트 재수행 및 STT 파서의 다중 인텐트 처리 확대 (추후)
-
----
-
-## 📅 2026-03-16
-
-### 🧭 모노레포 구조 정리
-
-**작업 내용:**
-
-- AI 파트 내부 기능을 역할 기준으로 다시 구분함.
-  - `server_ai`: 추천 AI + STT 전용 서비스
-  - `YOLO`: ROS2 카메라 토픽 기반 비전 노드로 분류
-- 백엔드/인프라 담당자와 공유할 구조 기준을 문서 기준으로 정리함.
-- 현재 저장소에는 `server_ai/vision/` 프로토타입이 남아 있지만, **최종 모노레포 배치 기준에서는 `ros2_ws` 측 비전 패키지로 재배치 예정**이라는 원칙을 확정함.
-- 루트 README, AI README, 개인 문서, 배포 가이드에 위 구조 결정을 반영함.
-
-**이슈 & 해결:**
-- *이슈*: AI가 `scheduler` 내부 기능인지, 별도 서비스인지, YOLO까지 같은 범주로 묶어야 하는지 팀 내 해석 여지가 있었음.
-- *해결*: 추천 AI/STT는 백엔드가 호출하는 독립 `server_ai` 서비스로 두고, YOLO는 언어와 무관하게 ROS2 런타임에 더 가까운 비전 노드로 정리하여 문서 기준을 통일함.
-
-**다음 작업 예정:**
-- 실제 모노레포 루트(`S14P21B110`)에 `server_ai` 디렉토리 생성 후 `recommendation`, `stt` 이관
-- YOLO의 `ros2_ws` 재배치 시점은 추후 통합 규격 확정 후 별도 진행
-
-### 🚀 배포 전략 및 협업 문서 정리
-
-**작업 내용:**
-
-- GPU 서버에 `server_ai/`만 부분 복제하는 `git sparse-checkout` 방식이 실제 운영 구조와 충돌하지 않는지 재검토함.
-- "일반 서버는 Docker / GPU 서버는 AI 단독 실행" 구조가 가능한지 질문 흐름을 정리하고, 분리 배포가 현재 아키텍처와 가장 잘 맞는다는 결론을 문서 기준으로 명문화함.
-- 특히 Jenkins를 사용할 경우에도 배포 대상 서버가 둘로 나뉠 수 있으며,
-  - 일반 서버: 프론트 / 백엔드 / DB Docker 배포
-  - GPU 서버: `server_ai` 최신화 후 AI 서버 재시작
-  방식으로 충분히 자동화 가능하다는 기준을 정리함.
-- 백엔드 / 인프라 담당자에게 바로 전달할 수 있도록
-  `docs/shared/deployment_strategy_for_backend_and_infra.md` 문서를 신규 작성함.
-
-**이슈 & 해결:**
-- *이슈*: "모노레포 + Docker + GPU 서버 + Jenkins"를 같이 쓰면 AI까지 하나의 통합 Compose에 넣어야 하는지, 아니면 AI를 별도 서버에서 돌려도 배포로 볼 수 있는지 해석이 혼재됨.
-- *해결*: Docker는 패키징/실행 방식이고, 배포는 대상 서버 구조와 별개라는 기준으로 정리함. 따라서 일반 서버는 Docker/Jenkins, GPU 서버는 `server_ai` 단독 운영(또는 GPU Docker)으로 분리하고, 백엔드는 HTTP로 AI 서버를 호출하는 구조를 공식화함.
-
-**다음 작업 예정:**
-- 백엔드 / 인프라 담당자에게 `backend_integration_proposal.md`와 신규 배포 전략 문서 전달
-- GPU 서버에서 `git_sparse_guide.md` 기준으로 `server_ai` 부분 복제 및 실제 실행 검증
-- `recommendation` mock 데이터 / 테스트 클라이언트와 현재 API 계약 간 불일치 정리
+### 2026-03-10 - [feat][server-ai] AI 프로토타입 뼈대 구축과 역할 범위 초기 정리
+- 브랜치
+  - 작업 브랜치: `feature/server_ai_setup` 계열 초기 작업 브랜치
+  - 대상 브랜치: `master`
+- 작업 배경
+  - 프로젝트 초기 단계에서 AI 담당 범위가 명확하지 않았고, 추천/STT/비전 각각의 실험용 베이스가 필요했습니다.
+  - ROS2 통신과 메인 백엔드가 아직 안정화되지 않은 상태라, AI 핵심 기능을 독립적으로 검증할 수 있어야 했습니다.
+- 목표(DoD)
+  - `server_ai` 기준으로 추천, STT, 비전 프로토타입이 최소 동작 가능한 형태일 것
+  - 각 모듈이 다른 파트 준비 상태와 무관하게 단독 실행/검증 가능할 것
+- 결정 사항
+  - AI 기능은 `비전`, `추천`, `STT` 세 갈래로 나눠 프로토타입 시작
+  - 추천과 STT는 Python/FastAPI 중심 서비스형 구조
+  - 비전은 ROS2 노드 성격을 유지한 채 Python 프로토타입으로 별도 관리
+- 선택 근거
+  - 초반에는 완성도보다 "각 기능 축이 실제로 성립하는지"를 확인하는 것이 중요했습니다.
+  - 백엔드와 ROS2 파트가 준비되지 않아도 AI 로직 자체를 검증할 수 있어야 병렬 개발이 가능했습니다.
+- 대안 비교
+  - 대안 1: 추천부터 끝까지 완성 후 STT 착수
+    - 장점: 한 줄기 집중 가능
+    - 기각 이유: AI 전체 역할 정의가 늦어지고 구조 판단이 어려움
+  - 대안 2: ROS2/백엔드 연동 완료 후 AI 착수
+    - 장점: 실제 인터페이스 기준 개발 가능
+    - 기각 이유: AI 파트 착수 자체가 지나치게 늦어짐
+- 트레이드오프
+  - 프로토타입 중심으로 시작하면서 코드 재작성 여지는 남았지만, 기능 검증과 역할 분리는 빨라졌습니다.
+- 구현 상세
+  - 비전
+    - `vision/yolo_node.py` 베이스 구성
+  - 추천
+    - `recommendation/main.py` FastAPI 골격
+    - `recommendation/generate_mock_data.py` 데이터 생성기
+  - STT
+    - `stt/stt_parser.py` 초기 파서
+    - `stt/whisper_test.py` 로컬 테스트 스크립트
+  - 환경
+    - `requirements.txt` 작성, venv 기준 실행 구조 마련
+- 변경 파일
+  - `server_ai/recommendation/main.py`
+  - `server_ai/recommendation/generate_mock_data.py`
+  - `server_ai/stt/stt_parser.py`
+  - `server_ai/stt/whisper_test.py`
+  - `server_ai/vision/yolo_node.py`
+  - `server_ai/requirements.txt`
+- 테스트 및 검증
+  - 실행 환경
+    - 로컬 Python venv
+  - 결과
+    - 각 모듈의 독립 실행 가능한 골격 확보
+  - 제약
+    - 실 ROS2 토픽, 메인 백엔드 연동은 미완성
+- 리스크 및 롤백
+  - 리스크
+    - 프로토타입 기준으로 시작해 추후 구조 재편 가능성 높음
+  - 롤백 방법
+    - 모듈별 독립 파일 단위로 교체 가능
+- 이슈/메모
+  - 초기에 SLAM/Nav2 범위까지 AI가 맡는 것으로 오해할 여지가 있었음
+- 다음 작업
+  - AI-백엔드 연동 구조와 GPU 서버 운영 방안 정리
 
 ---
 
-## 📅 2026-03-13
-
-### 🤖 AI 서버
-
-**작업 내용:**
-
-#### 🛡️ AI 서버 안전장치(Safety Guard) 적용 — `recommendation/main.py` 개선
-
-기존 아키텍처(Stateless Data Passing) 방식의 잠재적 취약점 2가지를 파악하고, 코드 레벨에서 직접 보완함.
-
-- **페이로드 상한선 적용 (`MAX_RECORDS = 500`):**
-  - 메인 서버가 수천 건의 이력 데이터를 한 번에 전송할 경우 AI 서버 메모리 및 처리 속도 저하 가능성 확인.
-  - `sensor_data[-MAX_RECORDS:]` 슬라이싱으로 최신 500건만 분석에 사용하도록 처리. 500건 초과 수신 시 서버 로그에 Warning 기록.
-  - 어차피 최신 데이터가 패턴 분석에 더 유효하므로 분석 품질에 영향 없음.
-
-- **기기별 분석 타임아웃 및 격리된 예외 처리 (`ANALYSIS_TIMEOUT = 5.0초`):**
-  - 기존 코드는 기기 1개 분석 중 오류 발생 시 전체 API 요청이 실패하는 구조.
-  - `asyncio.wait_for` + `asyncio.to_thread` 조합으로 기기별 독립적인 타임아웃 적용.
-  - 공기청정기 분석이 타임아웃 나도 가습기·제습기 결과는 정상 반환 → 장애 전파 차단.
-  - 타임아웃 및 오류 발생 시 사용자에게 명확한 `fallback` 메시지 반환.
-
-- **로깅 체계 추가:**
-  - `import logging` 적용, 요청/오류/경고 레벨별 서버 로그 기록 시작.
-
-**이슈 & 해결:**
-- *이슈*: Stateless Data Passing 방식은 대량 이력 전달 시 페이로드 크기 문제와 AI 서버 장애가 메인 서버로 전파되는 문제가 잠재되어 있었음.
-- *해결*: 상한선(MAX_RECORDS)과 타임아웃(ANALYSIS_TIMEOUT) 두 상수를 파일 최상단에 분리 선언하여, 운영 중 튜닝이 필요할 때 코드 한 줄만 수정해도 되는 구조로 개선.
-
-### 🔵 백엔드 서버
-
-**작업 내용:**
-- `server_backend/` 폴더 구조 초기 세팅
-- 공용 docs/ 폴더 구성 확인 (ERD, MVP, API 명세서, 시스템 아키텍처)
-- AI 팀 연동 제안서(`backend_integration_proposal.md`) 검토 시작
-- `docs/personal/` 통합 — AI 서버 + 백엔드 서버 1인 담당으로 개인 문서 일원화
-
-**다음 작업 예정:**
-- 백엔드팀 `ROOM_CONDITIONS_HISTORY` / `MODULE_CONTROL_LOGS` 테이블 추가 반영
-- GPU 서버에서 `git_sparse_guide.md` 가이드대로 `server_ai/` 폴더 클론 작동 여부 직접 검증
-- 스케줄 추천 기능 (`analyze_schedule_patterns`) 실제 코드 구현
-
----
-
-## 📅 2026-03-12
-
-### 🤖 AI 서버
-
-**작업 내용:**
-
-#### 🤝 AI ↔ 백엔드 연동 아키텍처 설계 및 제안서 작성
-- **연동 방식 확정:** AI 서버는 DB 직접 접근 없이, 메인 서버가 데이터를 전달하는 **Stateless API (Data Passing)** 방식으로 최종 결정.
-- **MVP 추천 흐름 설계:** 메인 서버 → AI 서버 `POST /api/v1/event/ai-suggestions` → 분석 결과 반환 → 사용자 수락/거절(Human-in-the-loop) 전체 파이프라인 구체화.
-- **ERD 검토 및 수정 요청 정리:** `ROOM_CONDITIONS` 테이블이 현재값 1건만 보관하는 덮어쓰기 구조임을 파악. AI 패턴 분석에 필요한 시계열 이력 테이블 2개 (`ROOM_CONDITIONS_HISTORY`, `MODULE_CONTROL_LOGS`) 추가를 공식 요청.
-- **다중 기기 확장성 검증:** `MODULES.type`, `EVENTS.action_module_type` 등이 VARCHAR로 설계되어 공기청정기/가습기/제습기 등 모든 기기 타입에 동일한 AI 로직 재사용 가능함을 확인.
-- **완전 자동화 시나리오 추가 제안:** MVP 안정화 후 2차 고도화용 '100% 자율 제어' 흐름 및 안전장치(Auto-Fallback, Conflict Resolution) 설계 가이드 문서화.
-- **산출물:** `docs/shared/backend_integration_proposal.md` 기준 문서 작성 및 공유.
-
-#### 🖥️ GPU 서버 모노레포 동기화 전략 수립
-- **문제 파악:** GPU 서버(JupyterHub 웹 환경)는 외부 SSH/SFTP 포트 차단으로 이전 SFTP 동기화 방식 사용 불가.
-- **해결책 결정:** `git sparse-checkout` 방식으로 모노레포 전체가 아닌 `server_ai/` 폴더만 GPU 서버에 클론하는 방식 채택.
-- **가이드 문서 작성:** `docs/shared/git_sparse_guide.md` 신규 작성.
-
-**이슈 & 해결:**
-- *이슈*: 백엔드 ERD에 AI 분석에 필요한 시계열 이력 데이터가 누적되지 않는 구조.
-- *해결*: 2개의 이력 테이블 추가를 제안하는 `backend_integration_proposal.md` 작성 후 공유.
-- *이슈*: GPU 서버 웹 환경에서 포트 차단으로 SFTP 접근 불가.
-- *해결*: Git HTTP 프로토콜 기반 `sparse-checkout` 방식으로 전환.
+### 2026-03-12 - [task][integration] AI-백엔드 연동 아키텍처와 GPU 서버 동기화 전략 수립
+- 브랜치
+  - 작업 브랜치: `ai/feat/recomendation` 이전 연동/문서 작업 브랜치
+  - 대상 브랜치: `master`
+- 작업 배경
+  - AI 서버가 DB를 직접 읽을지, 백엔드가 데이터를 전달할지, GPU 서버에 어떻게 코드 동기화할지 기준이 필요했습니다.
+  - 특히 SSAFY GPU 서버는 일반 SSH/SFTP 운영이 어려운 제약이 있어 별도 전략이 필요했습니다.
+- 목표(DoD)
+  - AI와 백엔드 사이 데이터 전달 방식이 문서로 확정될 것
+  - GPU 서버 동기화 방식이 재현 가능한 수준으로 정리될 것
+- 결정 사항
+  - AI 서버는 DB 직접 접근 대신 `Stateless API / Data Passing`
+  - 백엔드가 최근 이력 데이터를 추출해 AI 서버로 전달
+  - GPU 서버는 `git sparse-checkout`으로 `server_ai`만 운영
+- 선택 근거
+  - AI 서버가 DB까지 직접 접근하면 권한, 보안, 운영 책임 범위가 과도하게 넓어집니다.
+  - JupyterHub 기반 GPU 서버는 일반 개발 서버처럼 파일 전송하기 어려워 Git 중심 동기화가 더 안정적이었습니다.
+- 대안 비교
+  - 대안 1: AI 서버 직접 DB 조회
+    - 장점: 백엔드 개발량 감소
+    - 기각 이유: 아키텍처 결합도 증가, 보안 부담 확대
+  - 대안 2: SFTP/수동 업로드 유지
+    - 장점: 당장 직관적
+    - 기각 이유: GPU 웹 환경과 맞지 않고 재현성 낮음
+- 트레이드오프
+  - 백엔드가 데이터를 준비해야 하는 부담은 늘었지만, 서버 책임 경계는 명확해졌습니다.
+  - sparse-checkout은 초기 설정이 필요하지만 장기적으로 가장 안정적인 운영 패턴이었습니다.
+- 구현 상세
+  - 문서
+    - `backend_integration_proposal.md` 작성
+    - `git_sparse_guide.md` 작성
+  - 설계
+    - AI 추천 흐름과 향후 완전 자동화 시나리오 정리
+    - 백엔드 ERD 검토 후 시계열 이력 테이블 2종 요청
+- 변경 파일
+  - `server_ai/docs/shared/backend_integration_proposal.md`
+  - `server_ai/docs/shared/git_sparse_guide.md`
+- 테스트 및 검증
+  - 결과
+    - 백엔드/AI 연동 문서 및 GPU 운영 문서 정리 완료
+  - 제약
+    - 실제 GPU 서버 clone/pull 검증은 후속 작업으로 남김
+- 리스크 및 롤백
+  - 리스크
+    - 문서 합의가 실제 구현으로 이어지지 않으면 계약 드리프트 발생
+  - 롤백 방법
+    - 연동 문서 기준 조정 가능
+- 이슈/메모
+  - GPU 서버 제약이 단순 개발 이슈가 아니라 운영 전략 이슈라는 점이 확인됨
+- 다음 작업
+  - 추천 안전장치, 구조 정리, 실제 GPU 서버 실행 검증
 
 ---
 
-## 📅 2026-03-10
+## Week 2
 
-### 🤖 AI 서버
+### 2026-03-13 - [feat][recommendation] 안전장치 적용 및 백엔드 연동 기준 정리
+- 브랜치
+  - 작업 브랜치: `ai/feat/recomendation`
+  - 대상 브랜치: `master`
+- 작업 배경
+  - 추천 AI 서버가 백엔드에서 호출되는 구조로 확정되면서, 대량 이력 전달과 장애 전파에 대한 방어 로직이 필요했습니다.
+  - 동시에 백엔드와 데이터 계약을 맞추기 위한 공식 문서가 필요했습니다.
+- 목표(DoD)
+  - 추천 API가 대량 데이터와 개별 분석 실패에 견딜 것
+  - 백엔드가 AI 서버를 어떤 방식으로 호출해야 하는지 문서로 전달 가능할 것
+- 결정 사항
+  - AI 서버는 DB 직접 접근 대신 `Stateless API / Data Passing` 구조를 유지
+  - 추천 분석에는 페이로드 상한선과 기기별 timeout을 둠
+  - 백엔드에 시계열 이력 테이블 추가를 공식 요청
+- 선택 근거
+  - 시연 단계에서 가장 큰 리스크는 "AI 서버 하나의 장애가 전체 메인 서비스 실패로 이어지는 것"이었습니다.
+  - 운영 중 튜닝 가능해야 하므로 상한선과 timeout을 상수화하는 편이 유리했습니다.
+- 대안 비교
+  - 대안 1: AI 서버가 DB 직접 조회
+    - 장점: 백엔드 작업량 감소
+    - 기각 이유: 보안/운영 책임이 AI 서버까지 확장되고 구조가 결합됨
+  - 대안 2: 방어 로직 없이 단순 분석
+    - 장점: 구현 단순
+    - 기각 이유: 대량 payload나 부분 장애에 매우 취약
+- 트레이드오프
+  - 분석 대상 제한으로 이론상 일부 장기 패턴 정보는 줄 수 있지만, MVP 단계에서는 안정성이 더 중요했습니다.
+- 구현 상세
+  - 백엔드
+    - `backend_integration_proposal.md` 작성
+    - `ROOM_CONDITIONS_HISTORY`, `MODULE_CONTROL_LOGS` 추가 필요성 명시
+  - AI 서버
+    - `recommendation/main.py`에 `MAX_RECORDS`, `ANALYSIS_TIMEOUT`, 로깅 적용
+  - 문서
+    - AI 서버 호출 계약, timeout, fallback 요구사항 정리
+- 변경 파일
+  - `server_ai/recommendation/main.py`: payload 상한선, timeout, fallback 로직
+  - `server_ai/docs/shared/backend_integration_proposal.md`: 백엔드 연동 제안서
+- 테스트 및 검증
+  - 실행 환경
+    - 로컬 Python venv
+  - 명령
+    - 추천 API 로컬 실행 후 mock payload 요청
+  - 결과
+    - 기기별 예외 분리와 fallback 응답 구조 확인
+  - 제약
+    - 실 백엔드 엔드포인트는 아직 미연동 상태
+- 리스크 및 롤백
+  - 리스크
+    - 상한선이 너무 낮으면 분석 품질 저하 가능
+  - 롤백 방법
+    - 상수 조정 또는 관련 커밋 revert
+- 이슈/메모
+  - ERD상 시계열 누적 구조 부재가 추천 정확도보다 더 큰 선행 이슈였음
+- 다음 작업
+  - 모노레포 구조 정리와 GPU 서버 배포 방식 명문화
 
-**작업 내용:**
-- 프로젝트 MVP 및 API 명세서 분석 완료
-- 주행 제어 파트와 겹치는 자율주행(SLAM, Nav2) 내용 롤백 후 순수 AI 아키텍처 재정립
-- **Phase 1 (비전):** ROS2 카메라 토픽 기반 YOLO 객체 인식 프레임워크 베이스 노드 구현 (`server_ai/vision/yolo_node.py`)
-- **Phase 2 (추천 AI):** 가상 IoT 데이터(CSV) 생성 스크립트 작성 및 Pandas 통계 기반 임계값 이상 탐지 추천 로직 `FastAPI` 서버 구현 완료 (`server_ai/recommendation/`)
-- **Phase 3 (STT):** OpenAI Whisper 베이스 STT 변환 파이프라인 및 자연어-로봇 제어 명령어(JSON) 매핑 파서 구현 (`server_ai/stt/stt_parser.py`, `whisper_test.py`)
-- Python 가상환경(`venv`) 구축 및 패키지 설치.
+---
 
-**이슈 & 해결:**
-- *이슈*: 현재 시뮬레이터 환경 및 ROS2 통신 규격이 확정되지 않음.
-- *해결*: ROS2 통신이 없어도 단독으로 실행되고 검증할 수 있도록 AI 핵심 로직(YOLO 추론, Pandas 통계 모델, Whisper STT)들을 모두 분리된 프로토타입 형태로 모듈화.
+### 2026-03-16 - [task][architecture] server_ai 역할 분리와 배포 전략 문서화
+- 브랜치
+  - 작업 브랜치: `ai/feat/recomendation`
+  - 대상 브랜치: `master`
+- 작업 배경
+  - AI 범위가 추천/STT/API 서버인지, YOLO까지 같은 서비스인지 팀 내 해석 차이가 있었습니다.
+  - GPU 서버 운영 방식과 Jenkins 배포 구조도 함께 정리할 필요가 있었습니다.
+- 목표(DoD)
+  - `server_ai`의 책임 범위를 문서로 고정
+  - 일반 서버와 GPU 서버의 분리 배포 전략을 설명 가능할 것
+- 결정 사항
+  - `server_ai`는 추천 AI + STT 전용 서비스
+  - YOLO는 최종적으로 `ros2_ws` 측 비전 패키지로 분리
+  - 배포는 일반 서버(Docker/Jenkins)와 GPU 서버(`server_ai`) 분리 운영
+- 선택 근거
+  - 추천/STT는 백엔드 호출형 API 서비스이고, YOLO는 ROS2 런타임과 더 밀접해 실행 맥락이 달랐습니다.
+  - 기능 기준보다 실행 환경 기준으로 나누는 편이 운영 설명과 배포 전략 수립에 유리했습니다.
+- 대안 비교
+  - 대안 1: `server_ai`에 YOLO까지 통합
+    - 장점: 폴더 수 감소
+    - 기각 이유: ROS2 런타임 의존성과 일반 API 서버 의존성이 충돌
+  - 대안 2: GPU 서버도 전체 Docker 통합 배포
+    - 장점: 개념상 단순
+    - 기각 이유: GPU 운영과 일반 서버 운영이 실제로 다름
+- 트레이드오프
+  - 서비스 경계를 분리하면서 문서와 운영 규칙은 늘어났지만, 역할 충돌은 크게 줄었습니다.
+- 구현 상세
+  - 문서 / 운영
+    - `server_ai/README.md` 책임 범위 정리
+    - `deployment_strategy_for_backend_and_infra.md` 신규 작성
+    - `docker_deployment_guide.md`와 개인 문서 동기화
+- 변경 파일
+  - `server_ai/README.md`
+  - `server_ai/docs/shared/deployment_strategy_for_backend_and_infra.md`
+  - `server_ai/docs/shared/docker_deployment_guide.md`
+  - `server_ai/docs/personal/ai_roadmap.md`
+- 테스트 및 검증
+  - 결과
+    - 백엔드/인프라 공유 기준 문서 완성
+  - 제약
+    - 실제 Jenkins 배포는 아직 미적용
+- 리스크 및 롤백
+  - 리스크
+    - 문서만 있고 실제 운영 규칙이 뒤따르지 않으면 다시 해석 차이 발생
+  - 롤백 방법
+    - 문서 기준만 조정하면 됨
+- 이슈/메모
+  - GPU 서버에서는 전체 모노레포보다 `server_ai` 중심 운영이 현실적이라는 결론
+- 다음 작업
+  - 추천 알고리즘과 STT 파서 고도화
+
+---
+
+### 2026-03-17 - [feat][recommendation-stt] 추천 로직 고도화와 STT 파서 예외 처리 강화
+- 브랜치
+  - 작업 브랜치: `ai/feat/recomendation`
+  - 대상 브랜치: `master`
+- 작업 배경
+  - 추천 쪽은 단순 시간 빈도 기반을 넘어서 사용자 생활 패턴을 반영해야 했고, STT 쪽은 실제 말투/오인식에 더 견고해야 했습니다.
+- 목표(DoD)
+  - 추천 mock 데이터와 분석 로직이 생활 패턴을 더 잘 반영할 것
+  - STT 파서가 부정어와 공백 변이에 대응할 것
+- 결정 사항
+  - 추천 mock 데이터에 라이프스타일 패턴을 명시적으로 삽입
+  - STT 파서는 정규식 기반 부정어 필터와 공백 제거 문자열을 함께 사용
+- 선택 근거
+  - 시연 단계에서는 정교한 모델보다 "의도한 패턴이 잘 재현되는 데이터"가 중요했습니다.
+  - STT는 음성 인식 자체보다 후처리 파서가 안정성을 크게 좌우했습니다.
+- 대안 비교
+  - 대안 1: 추천 로직을 그대로 두고 데이터만 추가
+    - 장점: 수정량 적음
+    - 기각 이유: 라이프스타일 맥락을 설명하기 어려움
+  - 대안 2: STT 모델만 믿고 파서 최소화
+    - 장점: 규칙 코드 감소
+    - 기각 이유: "내 방", "켜지마", "거실 말고 안방" 같은 케이스에 취약
+- 트레이드오프
+  - 파서 규칙이 늘어나면서 코드가 길어졌지만, 도메인 특화 강인성은 크게 올라갔습니다.
+- 구현 상세
+  - 추천
+    - `generate_mock_data.py`에 라이프스타일 기반 시나리오 반영
+    - `test_client.py`에서 추천/STT 테스트 통합
+  - STT
+    - `stt_parser.py` 부정어 필터링, 공백 변이 처리
+    - `stt_benchmark.py` 예외 케이스 추가
+- 변경 파일
+  - `server_ai/recommendation/generate_mock_data.py`
+  - `server_ai/test_client.py`
+  - `server_ai/stt/stt_parser.py`
+  - `server_ai/stt/stt_benchmark.py`
+- 테스트 및 검증
+  - 결과
+    - 추천 mock payload와 STT 예외 케이스 테스트 가능 상태 확보
+  - 제약
+    - 실제 백엔드 라우팅은 미검증
+- 다음 작업
+  - Whisper 파인튜닝 파이프라인 본격 구축
+
+---
+
+### 2026-03-19 - [feat][stt] 1GB 파인튜닝 파이프라인 구축과 1차 성능 검증 완료
+- 브랜치
+  - 작업 브랜치: `ai/feat/recomendation`
+  - 대상 브랜치: `master`
+- 작업 배경
+  - 일반 Whisper만으로는 스마트홈 명령어 도메인에 최적화되지 않아, 실제 데이터 기반 파인튜닝이 필요했습니다.
+  - 동시에 GPU 서버 환경과 Git 동기화 전략도 정리해야 했습니다.
+- 목표(DoD)
+  - 전처리 스크립트, 파인튜닝 스크립트, 벤치마크 스크립트가 모두 동작할 것
+  - 1차 파인튜닝 성능을 수치로 확인할 것
+- 결정 사항
+  - 데이터셋은 AI Hub Car2Home 1GB 샘플로 시작
+  - `datasets.map()` 대신 PyTorch Custom Dataset 채택
+  - GPU는 `CUDA_VISIBLE_DEVICES=5`로 단일 장치 고정
+- 선택 근거
+  - 초기 목표는 거대 데이터 전체 학습보다 "도메인 적합성 검증"이었기 때문에 1GB 샘플로 빠르게 성능을 보는 편이 합리적이었습니다.
+  - 실제로 `datasets.map()` 계열 이슈를 우회하려면 로우레벨 Dataset 구성이 더 안정적이었습니다.
+- 대안 비교
+  - 대안 1: 전체 대용량 데이터 바로 학습
+    - 장점: 더 많은 데이터 사용
+    - 기각 이유: 전처리/운영 리스크가 너무 큼
+  - 대안 2: HuggingFace datasets 파이프라인 유지
+    - 장점: 구현 간단
+    - 기각 이유: 데드락, torchcodec, 멀티프로세싱 이슈
+- 트레이드오프
+  - 구현 난이도는 높아졌지만, 재현성과 GPU 서버 안정성은 크게 높아졌습니다.
+- 구현 상세
+  - STT
+    - `preprocess_data.py`: 48kHz WAV -> 16kHz 변환, `metadata.csv` 생성
+    - `finetune_whisper.py`: custom dataset 기반 학습 엔진 구축
+    - `stt_benchmark.py`: 9개 핵심 명령어 벤치마크
+  - 문서
+    - `docs/shared/stt_benchmark_results.md` 결과 문서화
+  - 운영
+    - GPU 서버 브랜치 정리, `.gitignore`/`.gitkeep` 정리
+- 변경 파일
+  - `server_ai/stt/preprocess_data.py`
+  - `server_ai/stt/finetune_whisper.py`
+  - `server_ai/stt/stt_benchmark.py`
+  - `server_ai/docs/shared/stt_benchmark_results.md`
+  - `server_ai/.gitignore`
+- 테스트 및 검증
+  - 실행 환경
+    - SSAFY GPU 서버, Tesla V100 32GB
+  - 결과
+    - `eval_cer: 1.48%`
+    - `eval_loss: 0.0743`
+    - 벤치마크 `9/9 (100%)`
+  - 제약
+    - 모델 파일은 대용량이라 Git에 포함하지 않음
+- 리스크 및 롤백
+  - 리스크
+    - GPU 서버 의존성 큼
+  - 롤백 방법
+    - base 모델 fallback 유지
+- 이슈/메모
+  - torchcodec, datasets.map, CUDA peer mapping 이슈를 모두 우회한 것이 핵심 수확이었음
+- 다음 작업
+  - 20GB급 full raw 재학습 구조 확장
+  - STT API에 파인튜닝 모델 로드 경로 연결
+
+---
+
+### 2026-03-20 - [feat][stt] 20GB 재학습 준비, roomId 연동, 벤치마크 기준 정리
+- 브랜치
+  - 작업 브랜치: `ai/feat/recomendation`
+  - 대상 브랜치: `master`
+- 작업 배경
+  - 1GB 파인튜닝 성공 이후 더 큰 데이터셋으로 재학습할 준비가 필요했습니다.
+  - 동시에 STT 결과가 `"living_room"` 같은 문자열을 반환하는 구조는 백엔드/프론트의 `roomId` 계약과 맞지 않았습니다.
+  - 학습 완료 후 월요일에 저장 모델 기준으로 바로 성능을 확인할 수 있게 벤치마크 기준도 정리해야 했습니다.
+- 목표(DoD)
+  - `v2_full` 저장 경로와 20GB 학습 설정이 반영될 것
+  - STT 파서/서버가 `roomId` 기반 응답을 지원할 것
+  - 백엔드 협업 문서와 벤치마크 기준이 현재 구조와 맞을 것
+- 결정 사항
+  - STT API startup 시 `GET /api/room/name` 호출 후 방 이름 맵 캐싱
+  - 백엔드 API 미준비 시 fallback 하드코딩 맵 유지
+  - 별칭 `안방/침실/내방`은 AI 서버 파서에서 동일 `roomId`로 확장
+  - 벤치마크는 `v2_full -> whisper-smarthome -> base` 순서로 모델 선택
+- 선택 근거
+  - 시연 단계에서는 백엔드와 `roomId` 계약을 먼저 맞추는 것이 중요했고, API 미완성 상태에서도 멈추지 않게 fallback이 필요했습니다.
+  - 학습 결과 확인을 월요일로 미루는 상황을 고려하면, 벤치마크가 저장된 모델을 자동으로 우선 읽는 편이 가장 실용적이었습니다.
+- 대안 비교
+  - 대안 1: `target_room` 문자열 유지
+    - 장점: 구현량 적음
+    - 기각 이유: 백엔드/프론트와 식별 기준 불일치
+  - 대안 2: room alias도 전부 백엔드에서 처리
+    - 장점: AI 규칙 감소
+    - 기각 이유: 시연 단계에서 API 계약이 단순한 편이 유리
+  - 대안 3: 벤치마크를 base 모델 기준 유지
+    - 장점: 기존 코드 재사용
+    - 기각 이유: 학습 결과 검증용으로 부적합
+- 트레이드오프
+  - fallback 맵과 alias 레이어를 AI 서버에 두면서 임시 규칙은 늘었지만, 시연 전 연동 리스크는 줄었습니다.
+  - 20GB 재학습은 정확도 향상 가능성이 있지만, JupyterHub 세션 정책과 장기 실행 리스크를 함께 떠안게 됩니다.
+- 구현 상세
+  - AI 서버
+    - `stt/main.py`: `v2_full` 자동 로드, `.env` 기반 backend base URL 조회, startup 캐시
+    - `stt/stt_parser.py`: `roomId` 반환, fallback 맵, alias 확장
+    - `test_client.py`: `roomId` 출력 형식 반영
+    - `stt/stt_benchmark.py`: `v2_full` 우선 로드, transformers 기반 검증
+  - 문서
+    - `docs/shared/stt_room_id_backend_request.md`: 백엔드 요청 문서 작성
+    - 개인 문서들: 20GB 학습/연동 진행 상황 반영
+  - 운영
+    - GPU 서버 `metadata.csv` 확인: 128,468개 샘플
+    - `CUDA_VISIBLE_DEVICES=5`로 학습 실행 및 `stt_train.log` 모니터링
+- 변경 파일
+  - `server_ai/stt/main.py`: room name API 캐시, fallback, backend env 처리
+  - `server_ai/stt/stt_parser.py`: `roomId` 기반 응답, alias 처리
+  - `server_ai/stt/stt_benchmark.py`: `v2_full` 우선 벤치마크
+  - `server_ai/test_client.py`: `roomId` 출력 반영
+  - `server_ai/docs/shared/stt_room_id_backend_request.md`: 백엔드 협업 문서
+  - `server_ai/docs/personal/daily_todo.md`
+  - `server_ai/docs/personal/ai_roadmap.md`
+  - `server_ai/docs/personal/portfolio.md`
+- 테스트 및 검증
+  - 실행 환경
+    - 로컬 Python 3 기준 문법 점검
+    - SSAFY GPU 서버, Tesla V100 5번
+  - 명령
+    - `python3 -m compileall server_ai/stt/main.py server_ai/stt/stt_parser.py server_ai/stt/stt_benchmark.py server_ai/test_client.py`
+    - `python3 -c "import sys; sys.path.insert(0, 'server_ai/stt'); from stt_parser import parse_voice_command; print(parse_voice_command('거실에 제습기 켜줘'))"`
+    - GPU 서버에서 `CUDA_VISIBLE_DEVICES=5 nohup python stt/finetune_whisper.py > stt_train.log 2>&1 &`
+  - 결과
+    - `roomId` 기반 파서 출력 확인
+    - 20GB 전처리 결과 기준 `metadata.csv` 128,468개 샘플 확인
+    - 학습 로그에서 초기 step/eval 정상 출력 확인
+  - 실패/제약
+    - JupyterHub/Citrix 환경이라 세션 정책에 따라 장기 프로세스가 영향받을 수 있음
+    - 실제 `GET /api/room/name` 연동은 백엔드 API 준비 후 검증 예정
+- 리스크 및 롤백
+  - 리스크
+    - 세션 제한 전에 학습이 끝나지 않으면 재실행 필요
+    - 백엔드 응답 형식이 문서와 다르면 startup 캐시 로직 수정 필요
+  - 롤백 방법
+    - `roomId` 연동 이슈 발생 시 fallback 맵 기준 시연 유지
+    - 벤치마크 로딩 문제 시 base 모델 경로로 즉시 하향 가능
+- 이슈/메모
+  - Citrix/JupyterHub 세션 표시상 누적 시간은 약 5시간이었고, 현재 로그 속도 기준 24시간 안에 완주 가능성이 높다고 판단
+  - `tail -f stt_train.log`와 `nvidia-smi -i 5`로 실시간 모니터링 체계 확보
+- 실패 대응
+  - Git 작업 시 `server_ai` 하위에서 경로를 잘못 붙여 add 실패
+    - 대응: 현재 위치 기준 상대 경로로 다시 add하고, 이후에는 루트/하위 위치를 먼저 확인하는 습관으로 정리
+  - 벤치마크가 기본 base 모델을 읽는 구조
+    - 대응: `v2_full` 우선 로드 방식으로 스크립트 수정
+- 다음 작업
+  - GPU 서버 20GB 학습 완료 후 최종 `eval_loss`, `eval_cer` 확인
+  - `v2_full` 기준 STT 벤치마크 재실행 및 결과 문서화
+  - 백엔드 `GET /api/room/name` 준비 후 실제 roomId 연동 테스트
+  - 단일 GPU(5번) 기준 효율 최적화 검토
+    - `eval/save` 주기 조정 가능성 검토
+    - `batch size` 상향 가능 여부 확인
+    - 데이터 로딩/검증 병목 구간 분석
+  - STT 실서버 추론 성능 최적화 방안 조사
+    - `stt/main.py` 기준 응답시간 병목 구간 정리
+    - 모델 로딩, 오디오 전처리, 동시 요청 처리 개선 후보 검토
+    - 필요 시 경량 모델/배치 추론/ONNX·TensorRT 전환 가능성 조사
+  - 개인 문서와 PR/발표 자료에 학습 결과 반영
 
 ---
 

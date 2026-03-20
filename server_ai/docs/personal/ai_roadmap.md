@@ -46,7 +46,15 @@
   - `eval_cer 1.48%`, 벤치마크 정확도 **9/9 (100%)** 달성 (2026-03-19)
   - `stt/preprocess_data.py`, `stt/finetune_whisper.py` 스크립트 완성
   - 결과: `docs/shared/stt_benchmark_results.md` 문서화
-- [ ] **[Next]** 파인튜닝 모델 백업 (HuggingFace Hub) 및 `stt/main.py` 연동
+- [x] **[완료]** `stt/main.py`에서 파인튜닝 모델(`v2_full`) 자동 로드 지원
+- [x] **[완료]** STT 응답을 백엔드 계약에 맞춰 `roomId` 기반으로 변환하는 구조 구현
+  - startup 시 `GET /api/room/name` 호출 → 방 이름 맵 캐싱
+  - 백엔드 미연동 시 시연용 fallback 맵 유지
+- [~] **[진행 중]** 20GB급 full raw 재학습 및 `v2_full` 검증 환경 구축
+  - GPU 서버 `metadata.csv` 기준 128,468개 샘플 학습 중
+  - `stt_benchmark.py`는 `v2_full -> whisper-smarthome -> base` 순서로 검증하도록 업데이트
+- [ ] **[Next]** 파인튜닝 모델 백업 (HuggingFace Hub 등) 및 최종 모델 보존 전략 정리
+- [ ] **[Next]** 백엔드 `GET /api/room/name` 응답 기준 실제 roomId 연동 테스트
 - [ ] 치환된 JSON 명령어가 실제 주행 파트 노드로 흘러가 로봇이 동작하는지 실증 테스트
 
 ---

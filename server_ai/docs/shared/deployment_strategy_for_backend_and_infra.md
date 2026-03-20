@@ -17,7 +17,7 @@
 - **GPU 서버**
   - `server_ai` (추천 AI + STT)
   - GPU가 필요한 추론을 담당
-  - 별도 프로세스 실행 또는 GPU 지원 Docker로 운영
+  - PM2로 백그라운드 프로세스 관리
 - **Jenkins**
   - 배포 자동화 오케스트레이션 담당
   - 일반 서버와 GPU 서버에 각각 다른 방식으로 배포 가능
@@ -88,43 +88,48 @@
 
 ### 4.2 GPU 서버
 
-GPU 서버의 `server_ai`는 두 방식 중 하나로 운영 가능합니다.
+GPU 서버의 `server_ai`는 PM2 프로세스 관리자로 운영합니다.
 
-#### 방식 A. 일반 프로세스로 실행
+#### PM2 프로세스 관리자로 실행
 
-가장 단순하고 현재 단계에서 추천하는 방식입니다.
+PM2를 사용하여 각 AI 서비스를 백그라운드에서 안정적으로 운영하는 방식입니다.
+
+**사전 준비 (최초 1회)**
 
 ```bash
+# Node.js 설치 후 PM2 글로벌 설치
+npm install -g pm2
+```
+
+**서비스 실행**
+
+```bash
+# 추천 AI 서비스 실행
 cd my_project/server_ai/recommendation
-python main.py
+pm2 start main.py --name "ai-rec" --interpreter python
+
+# STT 서비스 실행
+cd my_project/server_ai/stt
+pm2 start main.py --name "ai-stt" --interpreter python
 ```
+
+**유용한 PM2 명령어**
 
 ```bash
-cd my_project/server_ai/stt
-python main.py
+pm2 list          # 실행 중인 프로세스 목록 확인
+pm2 logs          # 실시간 로그 확인
+pm2 restart all   # 전체 재시작
+pm2 stop all      # 전체 중지
+pm2 save          # 현재 프로세스 목록 저장 (재부팅 대응)
+pm2 startup       # 서버 재부팅 시 자동 시작 등록
 ```
 
 장점:
 
-- 설정이 단순함
-- GPU Docker 설정이 없어도 바로 테스트 가능
-- 개발 / 시연 단계에서 빠르게 운영 가능
-
-#### 방식 B. GPU 지원 Docker로 실행
-
-인프라에 NVIDIA Docker 환경이 이미 준비되어 있다면 가능합니다.
-
-장점:
-
-- 운영 방식 통일 가능
-- 재시작 정책, 로그 관리, 이미지 버전 관리가 쉬움
-
-주의:
-
-- GPU 서버에 `nvidia-container-toolkit` 등 GPU Docker 실행 환경 필요
-- Whisper / 모델 캐시 볼륨 설계 필요
-
-현재 프로젝트 단계에서는 **방식 A로 먼저 안정화 후, 필요하면 방식 B로 전환**하는 것을 권장합니다.
+- 터미널 창 없이 백그라운드 실행 가능
+- 오류 발생 시 자동 재시작
+- 서버 재부팅 시에도 자동 복구 가능 (`pm2 startup` + `pm2 save`)
+- 여러 서비스의 로그를 한곳에서 관리 가능
 
 ---
 
@@ -142,7 +147,7 @@ Jenkins를 사용하더라도, **배포 대상이 둘로 나뉘는 것**은 전�
   - 내용: 프론트엔드 / 백엔드 / DB 관련 Docker 배포
 - **Job 2. AI 서비스 배포**
   - 대상: GPU 서버
-  - 내용: `server_ai` 최신화 후 AI 서버 재시작
+  - 내용: `server_ai` 최신화 후 AI 서비스 재시작 (9000, 9001 포트)
 
 ### 5.2 예시 배포 흐름
 
@@ -156,24 +161,12 @@ Jenkins Pipeline
 
 ### 5.3 GPU 서버 배포 시 Jenkins가 할 수 있는 일
 
-#### 방식 A. 프로세스 재시작형
-
 Jenkins가 GPU 서버에 SSH로 접속해서 아래 흐름을 수행합니다.
 
 1. 지정 브랜치 pull
 2. `server_ai/` 최신화
 3. 가상환경 활성화 또는 의존성 반영
-4. 기존 AI 프로세스 종료
-5. 추천 API / STT API 재시작
-
-이 방식은 현재 구조에서 가장 단순합니다.
-
-#### 방식 B. GPU Docker 재배포형
-
-GPU 서버에 Docker + NVIDIA 런타임이 준비되어 있다면,
-Jenkins가 GPU 서버에서 AI 이미지를 다시 빌드/재시작할 수도 있습니다.
-
-현재 단계에서는 방식 A가 더 가볍고 현실적입니다.
+4. PM2로 AI 서비스 재시작 (`pm2 restart ai-rec ai-stt`)
 
 ---
 
@@ -235,8 +228,8 @@ AI 서버는 DB에 직접 접근하지 않고,
 
 - 백엔드 서버에서 GPU 서버의 AI 포트 접근 가능해야 함
 - 최소 필요 포트:
-  - `8000` 추천 AI API
-  - `8001` STT API
+  - `9000` 추천 AI API
+  - `9001` STT API
 
 내부망 / 방화벽 / 보안그룹 정책에 따라 아래를 확인해야 합니다.
 
@@ -245,17 +238,22 @@ AI 서버는 DB에 직접 접근하지 않고,
 
 ### 8.2 프로세스 유지
 
-GPU 서버에서 AI 서버가 꺼지지 않도록 운영 도구가 필요합니다.
+GPU 서버에서 AI 서버가 꺼지지 않도록 **PM2**를 사용하여 프로세스를 관리합니다.
 
-예시:
+**권장 도구: PM2**
 
-- `systemd`
-- `supervisor`
-- `pm2`
-- Docker restart policy
+- 오류 발생 시 자동 재시작
+- 서버 재부팅 후 자동 복구 (`pm2 startup` + `pm2 save`)
+- 로그 통합 관리
+- GPU Docker 환경 없이도 안정적 운영 가능
 
-개발/시연 단계에서는 수동 실행도 가능하지만,  
-배포 환경에서는 반드시 자동 재시작 정책이 필요합니다.
+```bash
+# 최초 설정 (서버 재부팅 시 자동 시작 등록)
+pm2 startup
+pm2 save
+```
+
+
 
 ### 8.3 도메인 / 주소 관리
 
@@ -324,10 +322,11 @@ Jenkins를 사용할 경우 아래 항목도 함께 준비되어야 합니다.
   - 프론트엔드 / 백엔드 / DB를 Docker Compose로 운영
 - **GPU 서버**
   - `server_ai`만 `sparse-checkout`으로 가져옴
-  - 추천 API / STT API를 별도로 실행
+  - 추천 API / STT API를 **PM2**로 백그라운드 실행 및 관리
+  - `pm2 startup` + `pm2 save`로 서버 재부팅 대응
 - **Jenkins**
   - 일반 서버용 배포 Job
-  - GPU 서버용 배포 Job
+  - GPU 서버용 배포 Job (`pm2 restart`로 AI 서비스 재시작)
   - 또는 하나의 Pipeline 안에서 두 서버를 순차 배포
 - **백엔드**
   - GPU 서버 AI API를 HTTP로 호출
@@ -345,23 +344,10 @@ Jenkins를 사용할 경우 아래 항목도 함께 준비되어야 합니다.
 
 향후 인프라가 안정화되면 아래와 같은 확장도 가능합니다.
 
-### 선택지 A. GPU 서버에서도 Docker 사용
-
-- `server_ai`를 GPU 지원 Docker 이미지로 운영
-- 운영 방식 통일
-
-### 선택지 B. 추천 AI만 일반 서버로 이동
+### 선택지. 추천 AI만 일반 서버로 이동
 
 - 추천 AI는 CPU 부하가 낮으면 일반 서버 Compose에 편입
 - STT만 GPU 서버에 남기는 하이브리드 구조 가능
-
-### 선택지 C. 전체 AI를 통합 운영
-
-- 일반 서버에도 GPU가 있고
-- Docker GPU 세팅이 충분하며
-- 네트워크 및 모델 캐시 전략이 안정화된 경우
-
-이 경우에만 전체 통합 Compose를 검토할 수 있습니다.
 
 ---
 
@@ -385,5 +371,4 @@ Jenkins를 사용할 경우 아래 항목도 함께 준비되어야 합니다.
 ## 13. 함께 보면 좋은 문서
 
 - `backend_integration_proposal.md`
-- `docker_deployment_guide.md`
 - `git_sparse_guide.md`
