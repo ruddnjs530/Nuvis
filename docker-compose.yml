@@ -42,13 +42,5 @@ services:
       timeout: 20s
       retries: 10
 
-  # 4. AI STT 서버
-  server_ai_stt:
-    build:
-      context: ./server_ai
-      dockerfile: Dockerfile
-    container_name: smarthome_server_ai_stt
-    restart: always
-
 volumes:
   db_data:
