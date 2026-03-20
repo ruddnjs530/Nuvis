@@ -39,7 +39,7 @@ pipeline {
                     echo "Building Docker Images..."
                     sh '''
                     # 캐시 없이 깨끗한 상태로 각 Dockerfile(프론트, 백, AI) 이미지를 굽습니다.
-                    docker-compose build --no-cache
+                    docker-compose build
                     '''
                 }
             }
