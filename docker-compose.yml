@@ -10,6 +10,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/nginx/ssl:ro
     restart: always
 
   # 2. 백엔드
