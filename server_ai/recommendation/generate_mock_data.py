@@ -2,8 +2,14 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-def generate_mock_json_payload(filename="mock_payload.json", days=14):
-    print(f"Generating {days} days of mock sensor payload...")
+import os
+
+def generate_mock_json_payload(filename=None, days=14):
+    if filename is None:
+        # 스크립트 위치 기준으로 경로 설정
+        filename = os.path.join(os.path.dirname(__file__), "mock_payload.json")
+    
+    print(f"Generating {days} days of mock sensor payload to {filename}...")
     
     start_time = datetime.now() - timedelta(days=days)
     end_time = datetime.now()
@@ -21,11 +27,11 @@ def generate_mock_json_payload(filename="mock_payload.json", days=14):
         # 1. 기본 환경 데이터 시뮬레이션
         temp = 22.0 + np.sin(hour / 24.0 * 2 * np.pi - np.pi/2) * 5 + np.random.normal(0, 0.5)
         hum = 45.0 + np.cos(hour / 24.0 * 2 * np.pi) * 10 + np.random.normal(0, 2)
-        pm25 = np.clip(np.random.normal(25, 10), 0, None)
+        fine_dust = np.clip(np.random.normal(25, 10), 0, None) # pm25 -> fine_dust
         
         # 간헐적 미세먼지 스파이크
         if np.random.random() < 0.05:
-            pm25 += np.random.uniform(50, 100)
+            fine_dust += np.random.uniform(50, 100)
             
         # 2. 기기 작동 로직 (생활 패턴 반영)
         air_on = 0
@@ -45,15 +51,16 @@ def generate_mock_json_payload(filename="mock_payload.json", days=14):
             dehum_on = 1
             
         # 환경적 의존성 (단순 스파이크 대비)
-        if pm25 > 80: air_on = 1
+        if fine_dust > 80: air_on = 1
         if hum < 30: hum_on = 1
         if hum > 70: dehum_on = 1
             
         records.append({
             "timestamp": ts.isoformat(),
+            "room_id": 1,                      # 방 ID 추가
             "temperature": round(temp, 1),
             "humidity": round(hum, 1),
-            "pm25": round(pm25, 1),
+            "fine_dust": round(fine_dust, 1),  # pm25 -> fine_dust
             "air_purifier_on": air_on,
             "humidifier_on": hum_on,
             "dehumidifier_on": dehum_on
@@ -61,7 +68,7 @@ def generate_mock_json_payload(filename="mock_payload.json", days=14):
         
     # JSON 파일 저장 (API 통신용 포맷 시뮬레이션)
     payload = {
-        "user_id": "user_12345",
+        "user_id": 12345, # str -> int
         "sensor_data": records
     }
     

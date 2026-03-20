@@ -79,8 +79,8 @@ def run():
             skipped += 1
             continue
 
-        # 대응하는 WAV 파일 경로
-        wav_path = json_path.with_suffix(".wav")
+        # 대응하는 WAV 파일 경로 (라벨: 라벨링데이터/, 음성: 원천데이터/ 로 분리된 구조)
+        wav_path = Path(str(json_path).replace("/라벨링데이터/", "/원천데이터/")).with_suffix(".wav")
         if not wav_path.exists():
             print(f"  [경고] WAV 없음: {wav_path.name}")
             skipped += 1

@@ -34,7 +34,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # ─────────────────────────────────────────
 BASE_DIR      = Path(__file__).parent
 METADATA_PATH = BASE_DIR / "data" / "processed" / "metadata.csv"
-MODEL_OUTPUT  = BASE_DIR / "model" / "whisper-smarthome"
+MODEL_OUTPUT  = BASE_DIR / "model" / "v2_full"
 
 MODEL_NAME    = "openai/whisper-small"
 LANGUAGE      = "Korean"
@@ -42,7 +42,7 @@ TASK          = "transcribe"
 SAMPLING_RATE = 16000
 
 TRAIN_RATIO   = 0.9
-MAX_STEPS     = 1000
+MAX_STEPS     = 10000
 BATCH_SIZE    = 8
 LEARNING_RATE = 1e-5
 WARMUP_STEPS  = 100

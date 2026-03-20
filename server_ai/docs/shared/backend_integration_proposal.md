@@ -8,75 +8,54 @@
 
 ---
 
-## 1. 기본 연동 방식 (MVP: Human-in-the-loop)
-
-현재 MVP 단계에서 권장하는 기본적인 **"추천 후 사용자 수락"** 기반의 파이프라인입니다.
-
 ### 1.1. 데이터 흐름 (Data Flow)
 
 1. **데이터 추출:** 메인 서버(Spring Boot)에서 정기적으로(예: 앱 기동 시 또는 사용자가 추천 버튼 클릭 시) 특정 유저의 최근 N일치 센서 로그 데이터를 DB에서 추출합니다.
 2. **API 요청:** 메인 서버가 AI 서버의 엔드포인트로 추출한 데이터를 JSON 형태로 `POST` 요청합니다.
-3. **분석 및 응답:** AI 서버는 수신된 데이터를 메모리상(Pandas DataFrame)에서 즉시 분석하고, "최적의 기기 제어 임계값(Threshold)" 수치를 메인 서버로 응답합니다.
-4. **사용자 제안:** 메인 서버는 응답받은 결과값을 기반으로 사용자에게 "이 조건으로 자동화를 설정할까요?"라고 묻습니다.
-5. **룰 반영:** 사용자가 앱에서 '수락'을 누르면 해당 조건이 메인 DB의 자동화 룰 테이블에 최종 저장됩니다.
+3. **분석 및 응답:** AI 서버는 수신된 데이터를 메모리상(Pandas DataFrame)에서 즉시 분석하고, 분석 결과를 반환합니다.
+4. **사용자 제안:** 메인 서버는 응답받은 결과값을 기반으로 사용자에게 "이 조건으로 자동화를 설정할까요?"라고 묻거나 위기 상황을 알립니다.
 
 ### 1.2. API 명세 (제안)
 
-#### 이벤트 추천
-
-- **Endpoint:** `POST /api/event/ai-suggestions` (AI 서버)
-- **Request Body (메인 서버 → AI 서버):** 최근 이력 데이터를 배열로 전송 (최대 500건)
-
+#### 이벤트 및 위기 감지 추천
+- **Endpoint:** `POST /api/event/ai-suggestions` (AI 서버, 포트 9000)
+- **Request Body (메인 서버 → AI 서버):**
 ```json
 {
-  "user_id": "user_12345",
+  "user_id": 12345,
   "sensor_data": [
     {
-      "timestamp": "2026-03-13T12:00:00",
-      "temperature": 22.5,
-      "humidity": 45,
-      "pm25": 40.2,
-      "air_purifier_on": 1,
-      "humidifier_on": 0,
-      "dehumidifier_on": 0
-    },
-    {
-      "timestamp": "2026-03-13T12:05:00",
-      "temperature": 22.5,
-      "humidity": 44,
-      "pm25": 45.1,
-      "air_purifier_on": 1,
-      "humidifier_on": 0,
+      "timestamp": "2026-03-20T10:00:00",
+      "room_id": 1,
+      "temperature": 23.5,
+      "humidity": 45.0,
+      "fine_dust": 15.2,
+      "air_purifier_on": 0,
+      "humidifier_on": 1,
       "dehumidifier_on": 0
     }
   ]
 }
 ```
 
-- **Response Body (AI 서버 → 메인 서버):** 기기별 분석 결과 반환
-
+- **Response Body (AI 서버 → 메인 서버):**
 ```json
 {
   "status": "success",
-  "user_id": "user_12345",
+  "user_id": 12345,
   "data": {
     "air_purifier": {
-      "device": "공기청정기",
+      "actionModuleType": "공기청정기",
+      "sensor": "fine_dust",
+      "context": "저녁",
       "threshold_value": 42.7,
-      "condition_operator": ">",
-      "analysis_details": {
-        "avg_pm25_when_turned_on": 45.0,
-        "data_points_analyzed": 38,
-        "pattern_confidence": "High"
-      },
-      "reason": "유저 행동 분석 결과, 미세먼지 수치가 약 45.0㎍/m³ 일 때 공기청정기를 켰습니다. ..."
+      "condition": "42.7 ㎍/m³ 이상",
+      "reason": "유저님은 주로 '저녁'에 미세먼지가 42.7 ㎍/m³ 이상일 때 공기청정기를 사용하셨습니다. 현재 미세먼지가 높으니 가동할까요?"
     },
-    "humidifier": { "..." : "..." },
-    "dehumidifier": { "..." : "..." },
     "anomaly_warnings": {
       "status": "warning",
-      "device": "air_purifier",
-      "ml_pm25_alert_threshold": 43.1,
+      "actionModuleType": "air_purifier",
+      "fine_dust": 43.1,
       "anomaly_data_points_analyzed": 4,
       "reason": "최근 데이터의 이상치 분석 결과, 비정상적일 때의 평균 미세먼지가 약 45.4㎍/m³ 입니다. 급격한 미세먼지 증가로 인한 위기 상황을 사전에 알릴 수 있도록, 43.1㎍/m³ 도달 시 스마트 알림 전송을 추천합니다."
     }
@@ -84,13 +63,55 @@
 }
 ```
 
-> **💡 신규 추가 (위기 감지 알림):** 
-> 응답 결과 중 `anomaly_warnings` 객체는 AI의 **Isolation Forest(이상 탐지 머신러닝)** 알고리즘이 찾아낸 급격한 환경 변화(예: 미세먼지 폭증 등) 결과입니다. 만약 해당 필드의 `status`가 `"warning"`으로 반환될 경우, 메인 서버에서는 유저에게 **즉각적인 스마트 푸시 알림**을 보내는 용도로 활용해 주시기 바랍니다.
+#### 스케줄 기반 루틴 추천
+- **Endpoint:** `POST /api/schedule/ai-suggestions` (AI 서버, 포트 9000)
+- **Response Body 예시:**
+```json
+{
+  "status": "success",
+  "user_id": 12345,
+  "data": {
+    "air_purifier": {
+      "recommended_schedule": {
+        "time": "20:00",
+        "actionModuleType": "air_purifier",
+        "action": "ON"
+      },
+      "analysis_details": {
+        "total_on_events_analyzed": 50,
+        "top_lifestyle_pattern": "저녁",
+        "pattern_hits": 35,
+        "pattern_ratio": "70.0%"
+      },
+      "reason": "유저님의 생활 패턴을 분석한 결과, 주로 저녁에 공기청정기을(를) 가장 많이 사용하셨습니다. 매일 해당 시간에 맞춰 자동 실행을 추천합니다."
+    }
+  }
+}
+```
 
-#### 스케줄 추천
+#### STT 음성 명령 인식
+- **Endpoint:** `POST /api/stt/transcribe` (AI 서버, 포트 9001)
+- **Request:** `multipart/form-data` 형식으로 오디오 파일 업로드
+  - `audio`: 음성 파일 (wav, mp3 등 librosa 지원 포맷)
+- **Response Body:**
+```json
+{
+  "status": "success",
+  "recognized_text": "거실 공기청정기 켜줘",
+  "robot_command": {
+    "action": "move_and_operate",
+    "target_room": "living_room",
+    "module": "air_purifier",
+    "state": "on"
+  }
+}
+```
 
-- **Endpoint:** `POST /api/schedule/ai-suggestions` (AI 서버)
-- **Request/Response 구조:** 이벤트 추천과 동일한 Request Body, 시간대 기반 스케줄 결과 반환
+> **action 필드 값 설명:**
+> - `move_and_operate`: 특정 방으로 이동 후 기기 제어
+> - `operate_module`: 현재 위치에서 기기만 제어 (방 이름 미포함 시)
+> - `move`: 이동만 (기기 제어 없이)
+> - `none` (error): 명령 파싱 실패
 
 > **⚠️ 안전장치 (AI 서버 자체 적용 완료):**
 > - 전달 데이터가 500건을 초과하면 **최신 500건만** 분석에 사용합니다.
@@ -105,8 +126,13 @@
 
 ### ✅ 이미 잘 설계된 부분 (변경 불필요)
 
-- **기기 범용성:** `MODULES.type`, `EVENTS.action_module_type`, `SCHEDULES.action_module_type` 컬럼이 `VARCHAR` 타입으로 설계되어, 공기청정기/가습기/제습기 등 **어떤 기기 타입이든 동일한 AI 추천 로직에 연결 가능**합니다.
-- **AI 추천 결과 저장:** `AI_SUGGESTIONS` 테이블이 이미 존재하며 `suggested_threshold`, `reason`, `status(수락/거절)` 컬럼을 갖춰 Human-in-the-loop 흐름을 완벽하게 지원합니다.
+-   **기기 범용성:** `MODULES.type`, `EVENTS.action_module_type`, `SCHEDULES.action_module_type` 컬럼이 `VARCHAR` 타입으로 설계되어, 공기청정기/가습기/제습기 등 **어떤 기기 타입이든 동일한 AI 추천 로직에 연결 가능**합니다. (단, 스케줄의 요일 반복 기능은 백엔드 테이블 구조에 따라 제외됨)
+-   **AI 추천 결과 저장:** `AI_SUGGESTIONS` 테이블이 이미 존재하며 `suggested_threshold`, `reason`, `status(수락/거절)` 컬럼을 갖춰 Human-in-the-loop 흐름을 완벽하게 지원합니다.
+
+```env
+AI_RECOMMENDATION_BASE_URL=http://70.12.130.101:9000
+AI_STT_BASE_URL=http://70.12.130.101:9001
+```
 
 ### ❌ AI 분석을 위해 추가가 필요한 부분 (★ 필수 요청)
 
@@ -152,13 +178,14 @@
 ```json
 // sensor_data 배열 1건 = ROOM_CONDITIONS_HISTORY 1행 + 해당 시각 MODULE_CONTROL_LOGS 기기 상태 조인
 {
-  "user_id": "user_001",
+  "user_id": 12345,
   "sensor_data": [
     {
       "timestamp": "2026-03-13 09:00:00",
+      "room_id": 1,
       "temperature": 24.3,
       "humidity": 55.2,
-      "pm25": 32.1,
+      "fine_dust": 32.1,
       "air_purifier_on": 0,
       "humidifier_on": 1,
       "dehumidifier_on": 0
