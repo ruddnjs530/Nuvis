@@ -7,6 +7,7 @@ import { PrismaModule } from 'src/common/prisma/prisma.module';
 import jwtConfig from './config/jwt.config';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TokenService } from './services/token.service';
+import { AuthRepository } from './repositories/auth.repository';
 
 @Global()
 @Module({
@@ -18,7 +19,7 @@ import { TokenService } from './services/token.service';
     }),
     PrismaModule,
   ],
-  providers: [AuthService, TokenService],
+  providers: [AuthService, TokenService, AuthRepository],
   controllers: [AuthController],
   exports: [TokenService],
 })

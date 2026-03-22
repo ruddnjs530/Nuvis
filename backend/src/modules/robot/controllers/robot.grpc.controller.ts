@@ -6,8 +6,33 @@ import { RobotService } from '../services/robot.service';
 export class RobotGrpcController {
   constructor(private readonly service: RobotService) {}
 
-  @GrpcMethod('RobotService', 'CreateRobot')
-  create(data: any) {
-    return this.service.create(data);
+  @GrpcMethod('RobotGateway', 'ExecuteTask')
+  executeTask(data: any) {
+    return this.service.executeTask(data);
+  }
+
+  @GrpcMethod('RobotGateway', 'CancelTask')
+  cancelTask(data: any) {
+    return this.service.cancelTask(data);
+  }
+
+  @GrpcMethod('RobotGateway', 'EmergencyStop')
+  emergencyStop(data: any) {
+    return this.service.emergencyStop(data);
+  }
+
+  @GrpcMethod('RobotGateway', 'ManualControl')
+  manualControl(data: any) {
+    return this.service.manualControl(data);
+  }
+
+  @GrpcMethod('RobotGateway', 'GetStatus')
+  getStatus(data: any) {
+    return this.service.getStatus();
+  }
+
+  @GrpcMethod('RobotGateway', 'StreamStatus')
+  streamStatus(data: { interval_ms: number }) {
+    return this.service.streamStatus(data.interval_ms);
   }
 }

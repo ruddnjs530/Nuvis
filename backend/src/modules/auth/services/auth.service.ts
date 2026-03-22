@@ -31,8 +31,12 @@ export class AuthService {
       name: user.name,
     });
   }
-  async create(data: any): Promise<any> {
-    return { id: 1, ...data };
-  }
 
+
+
+
+  create(data: any) {
+    // Skeleton method added to pass compilation
+    return { ...data, createdAt: new Date() };
+  }
 }

@@ -3,7 +3,10 @@ import { RoomRepository } from '../repositories/room.repository';
 
 @Injectable()
 export class RoomService {
-  create(data: any): any {
-    return { id: 1, ...data };
+  constructor(private readonly roomRepository: RoomRepository) {}
+
+  create(data: any) {
+    // Skeleton method added to pass compilation
+    return { ...data, createdAt: new Date() };
   }
 }

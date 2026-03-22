@@ -3,7 +3,10 @@ import { ScheduleRepository } from '../repositories/schedule.repository';
 
 @Injectable()
 export class ScheduleService {
-  create(data: any): any {
-    return { id: 1, ...data };
+  constructor(private readonly scheduleRepository: ScheduleRepository) {}
+
+  create(data: any) {
+    // Skeleton method added to pass compilation
+    return { ...data, createdAt: new Date() };
   }
 }
