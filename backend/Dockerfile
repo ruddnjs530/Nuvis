@@ -24,6 +24,7 @@ WORKDIR /usr/src/app
 
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY proto ./proto/
 
 # Install only production dependencies
 RUN npm ci --only=production
