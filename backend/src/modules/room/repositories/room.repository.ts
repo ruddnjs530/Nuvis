@@ -15,4 +15,16 @@ export class RoomRepository {
       orderBy: { roomId: 'asc' },
     });
   }
+
+  async findAllMaps(userId: number) {
+    return this.prismaService.room.findMany({
+      where: { userId },
+      select: {
+        roomId: true,
+        name: true,
+        mapData: true,
+      },
+      orderBy: { roomId: 'asc' },
+    });
+  }
 }
