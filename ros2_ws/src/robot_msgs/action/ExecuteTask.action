@@ -1,0 +1,40 @@
+uint8 TASK_MOVE_AND_EXECUTE=0
+uint8 TASK_MOVE_ONLY=1
+uint8 TASK_MODULE_ONLY=2
+uint8 TASK_RETURN_HOME=3
+
+string task_id
+string command_id
+uint8 task_type
+string target_zone
+geometry_msgs/PoseStamped target_pose
+uint8 module_type
+bool module_power
+uint8 module_level
+uint32 max_exec_sec
+---
+uint8 FINAL_COMPLETED=0
+uint8 FINAL_FAILED=1
+uint8 FINAL_CANCELED=2
+uint8 FINAL_REJECTED=3
+
+string task_id
+uint8 final_state
+uint32 result_code
+string result_message
+builtin_interfaces/Time started_at
+builtin_interfaces/Time finished_at
+uint32 error_code
+---
+uint8 PHASE_VALIDATING=0
+uint8 PHASE_MOVING=1
+uint8 PHASE_EXECUTING_MODULE=2
+uint8 PHASE_RETURNING=3
+uint8 PHASE_FINISHING=4
+
+string task_id
+uint8 phase
+float32 progress_pct
+geometry_msgs/PoseStamped current_pose
+int32 eta_sec
+string note

@@ -1,0 +1,6 @@
+string reason
+string command_id
+---
+bool accepted
+builtin_interfaces/Time applied_at
+string message

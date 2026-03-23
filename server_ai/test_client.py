@@ -93,7 +93,7 @@ def test_stt_api():
             cmd = result.get("robot_command", {})
             print(f"\n[클라이언트 동작 예시] 로봇에게 음성 인식 결과가 도착했습니다!")
             print(f"  - 원본 명령어: '{text}'")
-            print(f"  - {cmd.get('target_room')} 쪽으로 이동하여 {cmd.get('module')} 기기를 {cmd.get('state')} 상태로 만들겠습니다.")
+            print(f"  - roomId={cmd.get('roomId')} 위치로 이동하여 {cmd.get('module')} 기기를 {cmd.get('state')} 상태로 만들겠습니다.")
                 
     except requests.exceptions.ConnectionError:
         print(f"\n❌ 연결 실패: '{SERVER_IP}:{STT_SERVER_PORT}' 서버에 접속할 수 없습니다.")

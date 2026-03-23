@@ -1,0 +1,7 @@
+float32 vx
+float32 wz
+uint32 duration_ms
+string command_id
+---
+bool accepted
+string message

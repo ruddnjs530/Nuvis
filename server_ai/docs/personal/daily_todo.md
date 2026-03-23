@@ -1,11 +1,99 @@
 # 📝 오늘의 할 일 (Daily To-Do List)
 
-> **담당:** AI 서버 (`server_ai`) 중심 작업 기록, 백엔드 연동 작업 포함  
+> **담당:** AI 서버 (`server_ai`) 개발 및 백엔드 연동 협업 기록  
 > 이 문서는 매일 아침 전날 작업 내역을 체크하고, 오늘의 목표를 갱신하는 일일 업무 로깅 문서입니다.
 
 ---
 
-## 🕒 2026-03-16 (현재)
+## 📦 아카이브 — 2026-03-19
+**[목표] GPU 서버 동기화 문제 해결 + Whisper 파인튜닝 completion + 추천 시스템 AI 고도화**
+
+### ✅ 완료한 작업 (Done)
+
+#### 🛠️ 환경 세팅 & Git 관리
+- [x] GPU 서버 `git pull` Divergent branches 오류 해결 (`git reset --hard`)
+- [x] GPU 서버에서 `ai/feat/recomendation` 브랜치 체크아웃 및 트래킹 설정
+- [x] GPU 서버 venv 세팅 및 `requirements.txt` 패키지 설치 완료
+- [x] `.gitignore` 개선: `docs/personal/` 제거, `stt/data/`, `stt/model/` 추가
+- [x] `stt/data/.gitkeep`으로 폴더 구조 Git 유지 처리
+- [x] 루트 폴더의 중복 `mock_payload.json` 삭제 및 `recommendation/` 내 데이터로 단일화
+
+#### 🤖 AI 서버 고도화 (STT + Recommendation)
+- [x] **Whisper 파인튜닝 완료 (CER 1.48%, 100% 정확도)**
+  - `stt/stt_benchmark.py` 9/9 합격 및 `docs/shared/stt_benchmark_results.md` 공유
+- [x] **추천 시스템 Phase 1: 컨텍스트 기반 동적 임계값 구현**
+  - 시간대(취침/활동/귀가 등)별 유저 행동 분리 분석 → 상황 맞춤형 임계값 자동 추천
+- [x] **추천 시스템 Phase 2: 머신러닝 예측 모델 도입**
+  - `RandomForestClassifier`를 활용한 기기 작동 확률 예측 모델 (`ml_model.py`)
+- [x] **GPU 가속 시계열 예측 모델 프로토타입 완료**
+  - PyTorch 기반 **LSTM** 구조 설계 및 GPU(`cuda`) 학습 파이프라인 구축 (`gpu_lstm_model.py`)
+- [x] **GPU 활용 전략 로드맵 수립** (`docs/recommendation_upgrade_plan.md`, `gpu_recommendation_strategy.md`)
+  - 로컬 LLM 연동(Speaky 설명형 AI) 및 비전(YOLO) 융합 멀티모달 설계안 정립
+
+---
+
+## 📦 아카이브 — 2026-03-20
+**[목표] STT 20GB 학습 환경 최적화 + LSTM 주기성 로직 고도화 + 개인 문서 역할 정립**
+
+### ✅ 완료한 작업 (Done)
+
+#### 🤖 STT & 파인튜닝 (20GB 준비)
+- [x] **STT API (`stt/main.py`) 리팩토링 및 고도화**
+  - HuggingFace Transformers 기반으로 전환, 파인튜닝 모델(`v2_full`) 자동 로드 로직 구현
+- [x] **20GB 데이터셋 학습 설정 업데이트**
+  - `MAX_STEPS` 상향(10,000), 모델 저장 경로 `v2_full` 분리 적용
+- [x] **대용량 데이터 업로드 가이드 작성**
+  - 로컬 환경 압축(zip) 및 GPU 서버 전송(`scp`) 프로세스 최적화 및 `walkthrough.md` 배포
+- [x] **STT 방 이름 -> `roomId` 연동 구조 구현**
+  - `stt/main.py` startup 시 백엔드 `GET /api/room/name` 호출 후 방 이름 맵 캐싱
+  - `stt/stt_parser.py` 반환 형식을 `target_room`에서 `roomId` 중심으로 변경
+  - 백엔드 API 실패 시 fallback 하드코딩 맵으로 대체되도록 예외 처리 적용
+- [x] **백엔드 협업용 STT 연동 요청 문서 작성**
+  - `docs/shared/stt_room_id_backend_request.md` 작성 및 팀 채팅 공유용 요약본 정리
+- [x] **벤치마크 스크립트 `v2_full` 우선 검증 구조 반영**
+  - `stt/stt_benchmark.py`가 `v2_full -> whisper-smarthome -> base` 순서로 모델을 선택하도록 수정
+
+#### 📈 추천 시스템 (LSTM 고도화)
+- [x] **LSTM 모델 시계열 데이터 생성 로직 보강**
+  - `sin/cos` 주기적 인코딩 및 주말 여부 특징 추가 → 시간대별 행동 예측력 강화
+  - 공기청정기/가습기/제습기 3개 기기 동시 예측(Multi-label) 구조 구현
+- [x] **로컬 환경 학습 및 모델 검증 완료**
+  - `recommendation/model/lstm_device_model.pth` 저장 및 데이터 참조 경로 자동화
+
+#### 🏗️ 문서 및 역할 관리
+- [x] **개인 포트폴리오(`portfolio.md`) 역할 재정의**
+  - 백엔드 개발 삭제 → AI Engineer & ROS2 Vision Developer 집중
+- [x] **전체 README.md 및 개발 일지(`dev_log.md`) 작업 내역 동기화**
+- [x] **분리 커밋 및 원격 저장소(`ai/feat/recomendation`) 푸시 완료**
+
+#### 🚀 GPU 서버 실행 및 모니터링
+- [x] **20GB급 전처리 결과 확인**
+  - `stt/data/processed/metadata.csv` 기준 총 128,468개 샘플 확인
+- [x] **Tesla V100 5번 GPU 기준 장기 학습 프로세스 기동**
+  - `CUDA_VISIBLE_DEVICES=5`로 백그라운드 학습 시작 및 로그 모니터링 환경 구성
+- [x] **JupyterHub 세션 제약 검토**
+  - 세션 누적 시간과 예상 학습 시간을 대조하여 24시간 내 완주 가능성 점검
+
+### 🔴 내일 할 일 (Next) — 2026-03-21
+
+#### 🤖 AI 서버 (모니터링 & 연동)
+- [ ] **[필수] GPU 서버 20GB 파인튜닝 완료 여부 및 최종 로그 확인**
+- [ ] **[필수] `v2_full` 기준 STT 벤치마크 재실행 및 성능 수치 정리**
+- [ ] **[연동] 백엔드 팀 `GET /api/room/name` 응답 기준으로 STT roomId 변환 실제 연동 테스트**
+- [ ] **[최적화] 단일 GPU(5번) 효율 향상 검토**
+  - `eval/save` 주기 조정으로 wall-clock time 단축 가능 여부 확인
+  - VRAM 사용량 기준 `batch size` 상향 가능 여부 점검
+  - 데이터 로딩/검증 병목 여부 확인 후 loader 최적화 후보 정리
+- [ ] **[최적화] STT 실서버 추론 성능 개선 방안 조사**
+  - 실제 `stt/main.py` 운영 시 응답시간 병목 구간 분석
+  - 모델 로딩 방식, 오디오 전처리, 동시 요청 처리 방식 개선 후보 정리
+  - 필요 시 경량 모델/배치 추론/ONNX·TensorRT 전환 가능성 검토
+- [ ] **[자동화] LSTM 리트레이닝 Cron Job GPU 서버 등록 및 테스트**
+- [ ] **[문서] 학습 결과 확정 후 `dev_log.md`, `portfolio.md`, `ai_roadmap.md` 최종 업데이트**
+
+---
+
+## 📦 아카이브 — 2026-03-16
 **[목표] 모노레포 역할 경계 정리 + 문서 기준 통일 + 배포 전략 공유안 정리**
 
 ### ✅ 완료한 작업 (Done)
@@ -37,7 +125,7 @@
 - [x] `test_client.py`를 현재 `POST /api/event/ai-suggestions` 계약에 맞게 수정
 - [x] GPU 서버에서 `git_sparse_guide.md` 기준으로 `server_ai/` 부분 복제 및 실행 검증
 - [x] **[작업 완료]** 로컬 머신에서 수정한 STT 공백 예외 처리("내 방" vs "내방") 및 문서 업데이트를 Git에 커밋 및 푸시
-- [ ] **[내일 작업 예정]** 추천 시스템 고도화: `ml_model.py`의 Isolation Forest (이상 탐지 머신러닝) 모델을 `main.py` API에 통합하여 '위기 감지형 알림(예: 급격한 미세먼지 증가)' 추천 로직 추가
+- [x] **[작업 완료]** 추천 시스템 고도화: `ml_model.py`의 Isolation Forest (이상 탐지 머신러닝) 모델을 `main.py` API에 통합하여 '위기 감지형 알림(예: 급격한 미세먼지 증가)' 추천 로직 추가
 
 #### 🔵 백엔드 / 인프라 협업
 - [ ] `backend_integration_proposal.md`와 `deployment_strategy_for_backend_and_infra.md` 전달

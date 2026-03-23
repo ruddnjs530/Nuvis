@@ -4,6 +4,7 @@ from typing import List, Optional
 import asyncio
 import logging
 import pandas as pd
+from sklearn.ensemble import IsolationForest
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ DEVICE_CONFIG = {
     "air_purifier": {
         "label": "공기청정기",
         "device_col": "air_purifier_on",      # SensorRecord의 ON/OFF 컬럼명
-        "sensor_col": "pm25",                 # 관련 환경 센서 컬럼명
+        "sensor_col": "fine_dust",            # 관련 환경 센서 컬럼명
         "trigger_when": "high",               # 센서값이 높을 때 켬
         "unit": "㎍/m³",
     },
@@ -55,16 +56,17 @@ DEVICE_CONFIG = {
 class SensorRecord(BaseModel):
     """메인 서버에서 전달하는 센서 + 조작 이력 1건"""
     timestamp: str
+    room_id: int                          # 어느 방의 센서 데이터인지
     temperature: Optional[float] = None
     humidity: Optional[float] = None
-    pm25: Optional[float] = None
+    fine_dust: Optional[float] = None     # pm25 -> fine_dust
     air_purifier_on: Optional[int] = 0
-    humidifier_on: Optional[int] = 0      # 가습기 ON/OFF 이력
-    dehumidifier_on: Optional[int] = 0   # 제습기 ON/OFF 이력
+    humidifier_on: Optional[int] = 0
+    dehumidifier_on: Optional[int] = 0
 
 class AnalysisRequest(BaseModel):
     """AI 서버에 분석을 요청할 때의 Body 전체"""
-    user_id: str
+    user_id: int                          # str -> int
     sensor_data: List[SensorRecord]
 
 
@@ -74,9 +76,9 @@ class AnalysisRequest(BaseModel):
 
 def analyze_event_for_device(df: pd.DataFrame, config: dict) -> dict:
     """
-    [이벤트 추천 - 범용]
-    특정 기기를 켰을 당시의 평균 센서 수치를 기반으로
-    최적의 자동화 임계값(Threshold)을 추천합니다.
+    [이벤트 추천 - 고도화 버전]
+    특정 기기를 켰을 당시에 더해 '생활 패턴(시간대)' 컨텍스트를 분석하여
+    상황에 맞는 최적의 자동화 임계값(Threshold)을 추천합니다.
     """
     device_col = config["device_col"]
     sensor_col = config["sensor_col"]
@@ -84,45 +86,53 @@ def analyze_event_for_device(df: pd.DataFrame, config: dict) -> dict:
     trigger_when = config["trigger_when"]
     unit = config["unit"]
 
-    # 해당 기기/센서 컬럼이 데이터에 없으면 스킵
     if device_col not in df.columns or sensor_col not in df.columns:
         return {"message": f"No data columns found for {label}. Skipping."}
 
-    on_events = df[df[device_col] == 1]
+    df_copy = df.copy()
+    df_copy['timestamp'] = pd.to_datetime(df_copy['timestamp'])
+    df_copy['hour'] = df_copy['timestamp'].dt.hour
+    df_copy['period'] = df_copy['hour'].apply(get_lifestyle_period)
+
+    on_events = df_copy[df_copy[device_col] == 1]
 
     if len(on_events) < 5:
         return {"message": f"Not enough data for {label} recommendation."}
 
+    # 1. 전체 평균 기반 임계값 (Base)
     avg_sensor_val = float(on_events[sensor_col].mean())
-    std_sensor_val = float(on_events[sensor_col].std())
+    
+    # 2. 가장 빈번한 시간대(Context) 분석
+    most_freq_period = on_events['period'].mode()[0]
+    period_events = on_events[on_events['period'] == most_freq_period]
+    period_avg = float(period_events[sensor_col].mean())
 
-    # trigger_when에 따라 임계값 방향이 달라짐
-    # high(공청기/제습기): 평균보다 살짝 낮게 설정 (선제적 대응)
-    # low(가습기):         평균보다 살짝 높게 설정 (선제적 대응)
+    # trigger_when에 따라 임계값 방향 설정
     if trigger_when == "high":
-        threshold = round(avg_sensor_val * 0.95, 1)
+        threshold = round(period_avg * 0.95, 1)
         condition = f"{threshold} {unit} 이상"
     else:
-        threshold = round(avg_sensor_val * 1.05, 1)
+        threshold = round(period_avg * 1.05, 1)
         condition = f"{threshold} {unit} 이하"
 
-    confidence = "High" if std_sensor_val < 15.0 else "Medium"
-
     return {
-        "device": label,
+        "actionModuleType": label,        # device -> actionModuleType
         "sensor": sensor_col,
+        "context": most_freq_period,
         "threshold_value": threshold,
         "condition_operator": ">" if trigger_when == "high" else "<",
         "analysis_details": {
-            f"avg_{sensor_col}_when_turned_on": round(avg_sensor_val, 1),
-            "data_points_analyzed": len(on_events),
-            "pattern_confidence": confidence
+            "overall_avg": round(avg_sensor_val, 1),
+            "context_avg": round(period_avg, 1),
+            "data_points_in_context": len(period_events)
         },
         "reason": (
-            f"유저 행동 분석 결과, {sensor_col} 수치가 약 {avg_sensor_val:.1f}{unit} 일 때 "
-            f"{label}을(를) 켰습니다. 선제적 대응을 위해 {condition}일 때 자동 실행을 추천합니다."
+            f"유저님은 주로 '{most_freq_period}'에 {label}을(를) 사용하셨습니다. "
+            f"이 시간대 평균 {sensor_col} 수치는 {period_avg:.1f}{unit}입니다. "
+            f"해당 상황에 맞춰 {condition}일 때 자동 가동을 추천합니다."
         )
     }
+
 
 
 def get_lifestyle_period(hour: int) -> str:
@@ -152,15 +162,12 @@ def analyze_schedule_for_device(df: pd.DataFrame, config: dict) -> dict:
     if len(on_events) < 5:
         return {"message": f"Not enough data for {label} schedule recommendation."}
 
-    # 2. 특징 추출 (시간대, 주말 여부, 라이프스타일 기간)
+    # 2. 특징 추출 (시간대, 라이프스타일 기간)
     on_events.loc[:, 'hour'] = on_events['timestamp'].dt.hour
-    on_events.loc[:, 'is_weekend'] = on_events['timestamp'].dt.weekday >= 5
     on_events.loc[:, 'period'] = on_events['hour'].apply(get_lifestyle_period)
     
-    # 주말/평일 + 시간대 조합 패턴 찾기
-    on_events.loc[:, 'pattern'] = on_events.apply(
-        lambda row: ("주말 " if row['is_weekend'] else "평일 ") + row['period'], axis=1
-    )
+    # 시간대별 패턴 찾기 (요일 구분 제거)
+    on_events.loc[:, 'pattern'] = on_events['period']
     
     # 가장 빈번한 패턴 찾기
     pattern_counts = on_events['pattern'].value_counts()
@@ -176,16 +183,12 @@ def analyze_schedule_for_device(df: pd.DataFrame, config: dict) -> dict:
     # 추천 시간 도출 (해당 패턴 그룹 중 가장 잦은 시간)
     pattern_data = on_events[on_events['pattern'] == most_frequent_pattern]
     most_frequent_hour = int(pattern_data['hour'].mode()[0])
-    is_weekend = "주말" in most_frequent_pattern
-    
-    repeat_days = ["Sat", "Sun"] if is_weekend else ["Mon", "Tue", "Wed", "Thu", "Fri"]
 
     return {
         "recommended_schedule": {
             "time": f"{most_frequent_hour:02d}:00",
-            "device": config["device_col"].replace("_on", ""),
+            "actionModuleType": config["device_col"].replace("_on", ""), # device -> actionModuleType
             "action": "ON",
-            "repeat_days": repeat_days
         },
         "analysis_details": {
             "total_on_events_analyzed": total_on,
@@ -196,9 +199,61 @@ def analyze_schedule_for_device(df: pd.DataFrame, config: dict) -> dict:
         "reason": (
             f"유저님의 생활 패턴을 분석한 결과, 주로 {most_frequent_pattern}에 {label}을(를) 가장 많이 사용하셨습니다. "
             f"이 패턴이 전체 작동 횟수의 {pattern_ratio:.1%}를 차지합니다. "
-            f"해당 패턴의 핵심 시간인 {most_frequent_hour}시에 자동 실행되도록 스케줄을 추가할까요?"
+            f"해당 패턴의 핵심 시간인 {most_frequent_hour:02d}시에 자동 실행되도록 스케줄을 추가할까요?"
         )
     }
+
+
+# ─────────────────────────────────────────
+# 위기 감지형(Isolation Forest) AI 이상 탐지 함수
+# ─────────────────────────────────────────
+def analyze_environmental_anomalies(df: pd.DataFrame) -> dict:
+    """
+    [위기 감지형 알림]
+    Isolation Forest 모델을 사용하여 최근 센서(온도, 습도, 미세먼지) 데이터의 
+    유의미한 이상치(Anomaly)를 감지하고, 해당 시점의 평균 데이터를 바탕으로 
+    선제적 위기 대응 알림을 위한 임계값을 추천합니다.
+    """
+    features = ['temperature', 'humidity', 'fine_dust'] # pm25 -> fine_dust
+    
+    # 필요한 컬럼이 없으면 조기 반환
+    missing_features = [f for f in features if f not in df.columns]
+    if missing_features:
+        return {"status": "skipped", "message": "필수 환경 센서 데이터가 부족하여 위기 감지를 건너뜁니다."}
+        
+    # 센서 측정값이 있는 깔끔한 데이터만 확보
+    df_clean = df[features].dropna().copy()
+    if len(df_clean) < 20: 
+        return {"status": "skipped", "message": "위기 감지 모델을 분석하기에 유효한 데이터가 부족합니다."}
+        
+    try:
+        # 상위 5%의 극단적/비정상적인 환경 데이터를 찾도록 모델 학습
+        model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+        df_clean['anomaly_score'] = model.fit_predict(df_clean[features])
+        
+        # -1 로 분류된 데이터가 시스템이 판단한 이상치(Anomaly)
+        anomalies = df_clean[df_clean['anomaly_score'] == -1]
+        
+        if len(anomalies) == 0:
+            return {"status": "normal", "message": "최근 환경 상태에서 특이사항이 감지되지 않았습니다."}
+            
+        # 주로 미세먼지 기준으로 비정상 상황 임계값을 추천
+        ml_recommended_fine_dust = anomalies['fine_dust'].mean()
+        safe_margin_fine_dust = round(ml_recommended_fine_dust * 0.95, 1)
+        
+        return {
+            "status": "warning",
+            "actionModuleType": "air_purifier", # device -> actionModuleType
+            "fine_dust": safe_margin_fine_dust,      # ml_pm25_alert_threshold -> fine_dust
+            "anomaly_data_points_analyzed": int(len(anomalies)),
+            "reason": (
+                f"최근 데이터의 이상치 분석 결과, 비정상적일 때의 평균 미세먼지가 약 {round(ml_recommended_fine_dust, 1)}㎍/m³ 입니다. "
+                f"급격한 미세먼지 증가로 인한 위기 상황을 사전에 알릴 수 있도록, {safe_margin_fine_dust}㎍/m³ 도달 시 스마트 알림 전송을 추천합니다."
+            )
+        }
+    except Exception as e:
+        logger.error(f"[anomaly] 이상 탐지 오류: {e}")
+        return {"status": "error", "message": "위기 감지 분석 중 오류가 발생했습니다."}
 
 
 # ─────────────────────────────────────────
@@ -248,6 +303,26 @@ async def get_event_suggestions(request: AnalysisRequest):
                     "status": "error",
                     "message": f"{config['label']} 분석 중 오류가 발생했습니다."
                 }
+
+        # ③ 위기 감지 분석 (Isolation Forest) 적용
+        try:
+            anomaly_result = await asyncio.wait_for(
+                asyncio.to_thread(analyze_environmental_anomalies, df),
+                timeout=ANALYSIS_TIMEOUT,
+            )
+            suggestions["anomaly_warnings"] = anomaly_result
+        except asyncio.TimeoutError:
+            logger.error(f"[event] 이상 탐지 분석 타임아웃 ({ANALYSIS_TIMEOUT}초 초과)")
+            suggestions["anomaly_warnings"] = {
+                "status": "timeout",
+                "message": "위기 감지 분석이 지연되고 있습니다."
+            }
+        except Exception as e:
+            logger.error(f"[event] 이상 탐지 분석 오류: {e}")
+            suggestions["anomaly_warnings"] = {
+                "status": "error",
+                "message": "위기 감지 분석 중 오류가 발생했습니다."
+            }
 
         return {"status": "success", "user_id": request.user_id, "data": suggestions}
 
@@ -309,4 +384,4 @@ async def get_schedule_suggestions(request: AnalysisRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=9000)

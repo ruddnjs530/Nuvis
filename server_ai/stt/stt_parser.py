@@ -1,20 +1,52 @@
 import json
 import re
 
-# 가상의 방 위치 및 모듈 사전 (현장 상황에 맞게 매핑 추가)
-ROOM_MAP = {
-    "거실": "living_room",
-    "주방": "kitchen",
-    "침실": "bedroom",
-    "안방": "bedroom",
-    "내방": "my_room"
+# 시연용 fallback 방 매핑
+DEFAULT_ROOM_MAP = {
+    "거실": 1,
+    "주방": 2,
+    "안방": 3,
 }
+
+ROOM_ALIAS_GROUPS = (
+    ("안방", "침실", "내방"),
+)
+
+
+def _expand_room_aliases(base_room_map: dict) -> dict:
+    expanded_map = dict(base_room_map)
+
+    for alias_group in ROOM_ALIAS_GROUPS:
+        matched_room_id = next(
+            (expanded_map[name] for name in alias_group if name in expanded_map),
+            None,
+        )
+        if matched_room_id is None:
+            continue
+
+        for alias in alias_group:
+            expanded_map.setdefault(alias, matched_room_id)
+
+    return expanded_map
+
+
+ROOM_MAP = _expand_room_aliases(DEFAULT_ROOM_MAP)
 
 MODULE_MAP = {
     "공기청정기": "air_purifier",
     "가습기": "humidifier",
     "제습기": "dehumidifier"
 }
+
+
+def set_room_map(room_map: dict) -> dict:
+    global ROOM_MAP
+    ROOM_MAP = _expand_room_aliases(room_map or DEFAULT_ROOM_MAP)
+    return ROOM_MAP
+
+
+def get_room_map() -> dict:
+    return dict(ROOM_MAP)
 
 def parse_voice_command(stt_text: str) -> str:
     """
@@ -24,7 +56,7 @@ def parse_voice_command(stt_text: str) -> str:
     """
     command = {
         "action": "none",
-        "target_room": None,
+        "roomId": None,
         "module": None,
         "state": None
     }
@@ -36,9 +68,9 @@ def parse_voice_command(stt_text: str) -> str:
     no_space_text = filtered_text.replace(" ", "")
 
     # 1. 대상 위치 파악 (공백 제거된 텍스트와 원본 필터링 텍스트 모두 고려)
-    for kor_room, eng_room in ROOM_MAP.items():
+    for kor_room, room_id in ROOM_MAP.items():
         if kor_room in filtered_text or kor_room in no_space_text:
-            command["target_room"] = eng_room
+            command["roomId"] = room_id
             command["action"] = "move" # 방 이름이 있으면 일단 이동 명령 부여
             break
 
@@ -47,7 +79,7 @@ def parse_voice_command(stt_text: str) -> str:
         if kor_module in filtered_text:
             command["module"] = eng_module
             # 방 이름이 있으면 이동 후 제어, 없으면 현재 위치에서 모듈만 제어
-            command["action"] = "move_and_operate" if command["target_room"] else "operate_module"
+            command["action"] = "move_and_operate" if command["roomId"] else "operate_module"
             break
 
     # 3. ON/OFF 상태 제어 파악

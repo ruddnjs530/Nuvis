@@ -1,6 +1,7 @@
 import os
 import json
 import time
+from pathlib import Path
 
 try:
     from gtts import gTTS
@@ -9,53 +10,60 @@ except ImportError:
     print("명령프롬프트에서 다음을 실행해주세요: pip install gTTS")
     exit(1)
 
-import whisper
+import librosa
+import torch
 from stt_parser import parse_voice_command
+from transformers import WhisperForConditionalGeneration, WhisperProcessor
 
 # 경고 무시
 import warnings
 warnings.filterwarnings("ignore")
 
+BASE_DIR = Path(__file__).parent
+MODEL_V2 = BASE_DIR / "model" / "v2_full"
+MODEL_V1 = BASE_DIR / "model" / "whisper-smarthome"
+BASE_MODEL = "openai/whisper-small"
+
 # 1. 평가할 테스트 데이터셋 정의
-# 형식: {"text": "발화 문장", "expected": { "action": "", "target_room": "", "module": "", "state": "" }}
+# 형식: {"text": "발화 문장", "expected": { "action": "", "roomId": "", "module": "", "state": "" }}
 TEST_CASES = [
     {
         "text": "거실로 가서 공기청정기 켜줘",
-        "expected": {"action": "move_and_operate", "target_room": "living_room", "module": "air_purifier", "state": "on"}
+        "expected": {"action": "move_and_operate", "roomId": 1, "module": "air_purifier", "state": "on"}
     },
     {
         "text": "안방 가습기 좀 꺼줄래",
-        "expected": {"action": "move_and_operate", "target_room": "bedroom", "module": "humidifier", "state": "off"}
+        "expected": {"action": "move_and_operate", "roomId": 3, "module": "humidifier", "state": "off"}
     },
     {
         "text": "그냥 주방으로 이동해",
-        "expected": {"action": "move", "target_room": "kitchen", "module": None, "state": None}
+        "expected": {"action": "move", "roomId": 2, "module": None, "state": None}
     },
     {
         "text": "제습기 작동",
-        "expected": {"action": "operate_module", "target_room": None, "module": "dehumidifier", "state": "on"}
+        "expected": {"action": "operate_module", "roomId": None, "module": "dehumidifier", "state": "on"}
     },
     {
         "text": "침실 공기청정기 멈춰",
-        "expected": {"action": "move_and_operate", "target_room": "bedroom", "module": "air_purifier", "state": "off"}
+        "expected": {"action": "move_and_operate", "roomId": 3, "module": "air_purifier", "state": "off"}
     },
     {
         "text": "내방으로 와",
-        "expected": {"action": "move", "target_room": "my_room", "module": None, "state": None}
+        "expected": {"action": "move", "roomId": 3, "module": None, "state": None}
     },
     # 예외 상황 및 복합명령 테스트
     {
         "text": "거실 말고 안방 가습기 편하게 켜줄래",
-        "expected": {"action": "move_and_operate", "target_room": "bedroom", "module": "humidifier", "state": "on"}
+        "expected": {"action": "move_and_operate", "roomId": 3, "module": "humidifier", "state": "on"}
     },
     {
         "text": "주방 공기청정기 켜지마",
-        "expected": {"action": "move_and_operate", "target_room": "kitchen", "module": "air_purifier", "state": "off"}
+        "expected": {"action": "move_and_operate", "roomId": 2, "module": "air_purifier", "state": "off"}
     },
     # 예외 상황 테스트 (등록되지 않은 기기)
     {
         "text": "보일러 켜",
-        "expected": {"action": "none", "target_room": None, "module": None, "state": None} 
+        "expected": {"action": "none", "roomId": None, "module": None, "state": None} 
     }
 ]
 
@@ -82,7 +90,48 @@ def generate_test_audios():
     
     print("✅ 오디오 생성 완료!\n")
 
-def run_benchmark(model_size="base"):
+def resolve_model_path() -> str:
+    if MODEL_V2.exists():
+        print(f"🔥 Loading Fine-tuned Model V2: {MODEL_V2}")
+        return str(MODEL_V2)
+
+    if MODEL_V1.exists():
+        print(f"🔥 Loading Fine-tuned Model V1: {MODEL_V1}")
+        return str(MODEL_V1)
+
+    print(f"📡 Loading Base Model: {BASE_MODEL}")
+    return BASE_MODEL
+
+
+def load_stt_model():
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    if device == "cpu":
+        print("⚠️ GPU를 찾을 수 없어 CPU 환경에서 실행합니다. 속도가 느릴 수 있습니다.")
+    else:
+        print(f"✅ GPU 환경 감지됨. (장치: {device})")
+
+    model_path = resolve_model_path()
+    processor = WhisperProcessor.from_pretrained(model_path)
+    model = WhisperForConditionalGeneration.from_pretrained(model_path).to(device)
+    model.config.forced_decoder_ids = None
+
+    print("✅ Model loaded!\n")
+    return processor, model, device
+
+
+def transcribe_audio(processor, model, device: str, audio_path: str) -> str:
+    audio_input, _ = librosa.load(audio_path, sr=16000)
+    input_features = processor(
+        audio_input,
+        sampling_rate=16000,
+        return_tensors="pt",
+    ).input_features.to(device)
+
+    predicted_ids = model.generate(input_features, language="korean", task="transcribe")
+    return processor.batch_decode(predicted_ids, skip_special_tokens=True)[0].strip()
+
+
+def run_benchmark():
     """
     Whisper 모델로 텍스트를 인식하고, 파서로 파싱한 뒤 정확도(Accuracy)를 측정합니다.
     """
@@ -90,20 +139,10 @@ def run_benchmark(model_size="base"):
     generate_test_audios()
     
     # 2. 모델 로드
-    print(f"Loading Whisper model '{model_size}'...")
-    # 테스트 스크립트 특성상 GPU가 사용 가능하다면 GPU, 아니면 CPU를 쓰게끔 유연하게 처리
-    device = "cuda" if whisper.torch.cuda.is_available() else "cpu"
-    if device == "cpu":
-        print("⚠️ GPU를 찾을 수 없어 CPU 환경에서 실행합니다. 속도가 느릴 수 있습니다.")
-    else:
-        print(f"✅ GPU 환견 감지됨. (장치: {device})")
-        
-    model = whisper.load_model(model_size, device=device)
-    print("✅ Model loaded!\n")
+    processor, model, device = load_stt_model()
     
     print("=== 정확도 테스트 시작 ===")
     total_cases = len(TEST_CASES)
-    success_count = 0
     parsing_success_count = 0
     
     for idx, case in enumerate(TEST_CASES):
@@ -113,10 +152,8 @@ def run_benchmark(model_size="base"):
         
         start_time = time.time()
         
-        # [Step 1] Whisper 추론 (도메인 특화 단어 강제 주입으로 고유명사 오인식률 하락)
-        prompt_words = "거실, 안방, 침실, 주방, 공기청정기, 가습기, 제습기, 작동, 켜줄래, 켜지마"
-        result = model.transcribe(audio_path, language="ko", initial_prompt=prompt_words)
-        recognized_text = result["text"].strip()
+        # [Step 1] Whisper 추론
+        recognized_text = transcribe_audio(processor, model, device, audio_path)
         
         # [Step 2] 로봇 명령어 파싱
         parsed_str = parse_voice_command(recognized_text)
@@ -130,11 +167,11 @@ def run_benchmark(model_size="base"):
         
         # 파싱 오류가 있는 경우({"error": ...})를 포함하므로, 'error' 키가 있으면 기본 구조 포맷팅
         if "error" in parsed_json:
-             actual_parsed = {"action": "none", "target_room": None, "module": None, "state": None}
+             actual_parsed = {"action": "none", "roomId": None, "module": None, "state": None}
         else:
              actual_parsed = {
                  "action": parsed_json.get("action"),
-                 "target_room": parsed_json.get("target_room"),
+                 "roomId": parsed_json.get("roomId"),
                  "module": parsed_json.get("module"),
                  "state": parsed_json.get("state")
              }
@@ -168,4 +205,4 @@ def run_benchmark(model_size="base"):
     print(" 2. STT는 맞았는데 stt_parser.py 규칙이 부족한지 확인 (새로운 예외 처리 필요)")
 
 if __name__ == "__main__":
-    run_benchmark(model_size="base")
+    run_benchmark()

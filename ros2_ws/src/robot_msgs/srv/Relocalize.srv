@@ -1,0 +1,5 @@
+uint8 strategy
+---
+bool success
+float32 score
+string message

@@ -1,0 +1,10 @@
+* text=auto
+
+# Keep shell scripts LF for Linux containers
+*.sh text eol=lf
+
+# Keep ROS launch/config files deterministic
+*.py text eol=lf
+*.xml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
