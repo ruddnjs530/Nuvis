@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { RoomNameListResponseDto, RoomDataListResponseDto, RoomConditionDto } from '../dto/room.dto';
+import { RoomNameListResponseDto } from '../dto/response/room-name.response.dto';
+import { RoomDataListResponseDto, RoomConditionDto } from '../dto/response/room-data.response.dto';
+import { RoomMapListResponseDto } from '../dto/response/room-map.response.dto';
 import { RoomRepository } from '../repositories/room.repository';
 
 interface RoomState {
@@ -56,6 +58,33 @@ export class RoomService {
       return {
         ...room,
         condition: state.condition,
+      };
+    });
+
+    return { data };
+  }
+
+  async getRoomMaps(userId: number): Promise<RoomMapListResponseDto> {
+    const rooms = await this.roomRepository.findAllMaps(userId);
+
+    const data = rooms.map((room) => {
+      // DB에 mapData가 없으면 Unity 연동 데모를 위해 기본(MOCK) 맵 데이터 제공
+      let mapData = room.mapData;
+      if (!mapData) {
+        mapData = {
+          width: 4000,
+          height: 4000,
+          resolution: 0.05,
+          origin: { x: -10.0, y: -10.0, theta: 0.0 },
+          // 실제 서비스에서는 S3 주소 등을 반환
+          mapImageUrl: `https://dummyimage.com/4000x4000/cccccc/000000&text=${encodeURIComponent(room.name + ' Map')}`,
+        };
+      }
+
+      return {
+        roomId: room.roomId,
+        name: room.name,
+        mapData: mapData as any,
       };
     });
 

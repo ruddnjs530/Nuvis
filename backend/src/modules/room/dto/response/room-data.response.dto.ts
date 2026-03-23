@@ -1,14 +1,3 @@
-export class CreateRoomDto {}
-
-export class RoomNameResponseDto {
-  roomId: number;
-  name: string;
-}
-
-export class RoomNameListResponseDto {
-  data: RoomNameResponseDto[];
-}
-
 export class RoomConditionDto {
   temperature: number;
   humidity: number;
