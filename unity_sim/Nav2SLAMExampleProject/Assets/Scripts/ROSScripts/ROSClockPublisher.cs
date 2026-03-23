@@ -52,19 +52,20 @@ public class ROSClockPublisher : MonoBehaviour
     {
         SetClockMode(m_ClockMode);
         m_ROS = ROSConnection.GetOrCreateInstance();
-        m_ROS.RegisterPublisher<ClockMsg>("clock");
+        m_ROS.RegisterPublisher<ClockMsg>("/clock");
     }
 
     void PublishMessage()
     {
         var publishTime = Clock.time;
-        var clockMsg = new TimeMsg
+        var timeMsg = new TimeMsg
         {
             sec = (int)publishTime,
             nanosec = (uint)((publishTime - Math.Floor(publishTime)) * Clock.k_NanoSecondsInSeconds)
         };
+        var clockMsg = new ClockMsg(timeMsg);
         m_LastPublishTimeSeconds = publishTime;
-        m_ROS.Publish("clock", clockMsg);
+        m_ROS.Publish("/clock", clockMsg);
     }
 
     void Update()

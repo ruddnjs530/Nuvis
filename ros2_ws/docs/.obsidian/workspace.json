@@ -1,0 +1,201 @@
+{
+  "main": {
+    "id": "9df87e83c1fa56a4",
+    "type": "split",
+    "children": [
+      {
+        "id": "64960ee0d8ecabbd",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "13565d4783ae0748",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "새 탭"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "ab19cae9150fa207",
+    "type": "split",
+    "children": [
+      {
+        "id": "af369dbe57787fd2",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "e87b2e70943bce57",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "파일 탐색기"
+            }
+          },
+          {
+            "id": "a95630cdae53bcd1",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "검색"
+            }
+          },
+          {
+            "id": "857fd25a64678790",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "북마크"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "2ad3bd96beb1d65b",
+    "type": "split",
+    "children": [
+      {
+        "id": "a2214fa72a46a918",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "cc0468d856f9a922",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "API.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "API 의 백링크"
+            }
+          },
+          {
+            "id": "aee58a7c2bf61e4b",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "API.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "API 의 나가는 링크"
+            }
+          },
+          {
+            "id": "2ab7e4dcfd436137",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "태그"
+            }
+          },
+          {
+            "id": "99cd53c37ae64f11",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "모든 속성"
+            }
+          },
+          {
+            "id": "1c5bff2bfd99531c",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "API.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "API 의 개요"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:빠른 전환기 열기": false,
+      "graph:그래프 뷰 열기": false,
+      "canvas:새 캔버스 만들기": false,
+      "daily-notes:오늘의 일일 노트 열기": false,
+      "templates:템플릿 삽입": false,
+      "command-palette:명령어 팔레트 열기": false,
+      "bases:새 베이스 생성하기": false
+    }
+  },
+  "active": "13565d4783ae0748",
+  "lastOpenFiles": [
+    "unity_integration.ko.md",
+    "unity_integration.md",
+    "grpc api.md",
+    "grpc_gateway_api.md",
+    "grpc_gateway_api.ko.md",
+    "docker_ros2.md",
+    "state_machine.md",
+    "state_machine.ko.md",
+    "robot_control_mvp.md",
+    "robot_control_mvp.ko.md",
+    "error_codes.md",
+    "error_codes.ko.md",
+    "charts/Mermaid Chart - Create complex, visual diagrams with text.-2026-03-18-051516.svg",
+    "charts/Mermaid Chart - Create complex, visual diagrams with text.-2026-03-18-051006.svg",
+    "charts",
+    "API.md"
+  ]
+}

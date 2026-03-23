@@ -22,6 +22,8 @@ namespace RosSharp.Control
         public float trackWidth = 0.288f; // meters Distance between tyres
         public float forceLimit = 10;
         public float damping = 10;
+        public bool invertLinearX = false;
+        public bool invertAngularZ = true;
 
         public float ROSTimeout = 0.5f;
         private float lastCmdReceived = 0f;
@@ -38,7 +40,7 @@ namespace RosSharp.Control
             SetParameters(wA1);
             SetParameters(wA2);
             ros = ROSConnection.GetOrCreateInstance();
-            ros.Subscribe<TwistMsg>("cmd_vel", ReceiveROSCmd);
+            ros.Subscribe<TwistMsg>("/cmd_vel", ReceiveROSCmd);
         }
 
         void ReceiveROSCmd(TwistMsg cmdVel)
@@ -124,7 +126,9 @@ namespace RosSharp.Control
                 rosLinear = 0f;
                 rosAngular = 0f;
             }
-            RobotInput(rosLinear, -rosAngular);
+            float linear = invertLinearX ? -rosLinear : rosLinear;
+            float angular = invertAngularZ ? -rosAngular : rosAngular;
+            RobotInput(linear, angular);
         }
 
         private void RobotInput(float speed, float rotSpeed) // m/s and rad/s

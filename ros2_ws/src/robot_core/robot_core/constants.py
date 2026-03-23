@@ -1,0 +1,105 @@
+try:
+    from robot_msgs.action import ExecuteTask
+    from robot_msgs.msg import ErrorReport, Heartbeat, ModuleState, RobotStatus
+except ImportError:
+    # Fallback constants for local unit tests before ROS interface generation.
+    class RobotStatus:  # type: ignore
+        MODE_IDLE = 0
+        MODE_MANUAL = 1
+        MODE_AUTONOMOUS = 2
+        MODE_DOCKING = 3
+        MODE_ERROR = 4
+        TASK_NONE = 0
+        TASK_RECEIVED = 1
+        TASK_VALIDATING = 2
+        TASK_ACCEPTED = 3
+        TASK_MOVING = 4
+        TASK_ARRIVED = 5
+        TASK_EXECUTING_MODULE = 6
+        TASK_RETURNING = 7
+        TASK_COMPLETED = 8
+        TASK_FAILED = 9
+        TASK_CANCELED = 10
+        SAFETY_NORMAL = 0
+        SAFETY_WARN = 1
+        SAFETY_ESTOP = 2
+
+    class Heartbeat:  # type: ignore
+        HEALTH_ONLINE = 0
+        HEALTH_DEGRADED = 1
+        HEALTH_OFFLINE = 2
+
+    class ErrorReport:  # type: ignore
+        SEVERITY_INFO = 0
+        SEVERITY_WARN = 1
+        SEVERITY_ERROR = 2
+        SEVERITY_FATAL = 3
+
+    class ModuleState:  # type: ignore
+        MODULE_NONE = 0
+        MODULE_AIR_PURIFIER = 1
+        MODULE_HUMIDIFIER = 2
+        MODULE_DEHUMIDIFIER = 3
+        HEALTH_OK = 0
+        HEALTH_WARN = 1
+        HEALTH_FAULT = 2
+
+    class ExecuteTask:  # type: ignore
+        class Goal:
+            TASK_MOVE_AND_EXECUTE = 0
+            TASK_MOVE_ONLY = 1
+            TASK_MODULE_ONLY = 2
+            TASK_RETURN_HOME = 3
+
+
+class ErrorCode:
+    OK = 0
+    VALIDATION_FAILED = 1001
+    NAVIGATION_FAILED = 2001
+    MODULE_FAILED = 3001
+    CANCELED = 4001
+    EMERGENCY_STOP = 5001
+    LOW_BATTERY = 5002
+    LOCALIZATION_LOST = 6001
+
+
+ROBOT_MODE_IDLE = RobotStatus.MODE_IDLE
+ROBOT_MODE_MANUAL = RobotStatus.MODE_MANUAL
+ROBOT_MODE_AUTONOMOUS = RobotStatus.MODE_AUTONOMOUS
+ROBOT_MODE_DOCKING = RobotStatus.MODE_DOCKING
+ROBOT_MODE_ERROR = RobotStatus.MODE_ERROR
+
+TASK_NONE = RobotStatus.TASK_NONE
+TASK_RECEIVED = RobotStatus.TASK_RECEIVED
+TASK_VALIDATING = RobotStatus.TASK_VALIDATING
+TASK_ACCEPTED = RobotStatus.TASK_ACCEPTED
+TASK_MOVING = RobotStatus.TASK_MOVING
+TASK_ARRIVED = RobotStatus.TASK_ARRIVED
+TASK_EXECUTING_MODULE = RobotStatus.TASK_EXECUTING_MODULE
+TASK_RETURNING = RobotStatus.TASK_RETURNING
+TASK_COMPLETED = RobotStatus.TASK_COMPLETED
+TASK_FAILED = RobotStatus.TASK_FAILED
+TASK_CANCELED = RobotStatus.TASK_CANCELED
+
+SAFETY_NORMAL = RobotStatus.SAFETY_NORMAL
+SAFETY_WARN = RobotStatus.SAFETY_WARN
+SAFETY_ESTOP = RobotStatus.SAFETY_ESTOP
+
+HEARTBEAT_ONLINE = Heartbeat.HEALTH_ONLINE
+HEARTBEAT_DEGRADED = Heartbeat.HEALTH_DEGRADED
+HEARTBEAT_OFFLINE = Heartbeat.HEALTH_OFFLINE
+
+ERROR_SEVERITY_INFO = ErrorReport.SEVERITY_INFO
+ERROR_SEVERITY_WARN = ErrorReport.SEVERITY_WARN
+ERROR_SEVERITY_ERROR = ErrorReport.SEVERITY_ERROR
+ERROR_SEVERITY_FATAL = ErrorReport.SEVERITY_FATAL
+
+MODULE_NONE = ModuleState.MODULE_NONE
+MODULE_AIR_PURIFIER = ModuleState.MODULE_AIR_PURIFIER
+MODULE_HUMIDIFIER = ModuleState.MODULE_HUMIDIFIER
+MODULE_DEHUMIDIFIER = ModuleState.MODULE_DEHUMIDIFIER
+
+TASK_TYPE_MOVE_AND_EXECUTE = ExecuteTask.Goal.TASK_MOVE_AND_EXECUTE
+TASK_TYPE_MOVE_ONLY = ExecuteTask.Goal.TASK_MOVE_ONLY
+TASK_TYPE_MODULE_ONLY = ExecuteTask.Goal.TASK_MODULE_ONLY
+TASK_TYPE_RETURN_HOME = ExecuteTask.Goal.TASK_RETURN_HOME

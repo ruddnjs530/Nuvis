@@ -1,0 +1,16 @@
+string task_id
+string command_id
+string target_zone
+geometry_msgs/PoseStamped target_pose
+uint32 timeout_sec
+---
+string task_id
+bool success
+uint32 result_code
+string message
+---
+string task_id
+float32 progress_pct
+geometry_msgs/PoseStamped current_pose
+int32 eta_sec
+string phase

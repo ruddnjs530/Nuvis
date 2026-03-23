@@ -1,0 +1,43 @@
+state_manager_node:
+  ros__parameters:
+    robot_id: "R1"
+    publish_rate_hz: 2.0
+    default_battery_pct: 100.0
+    prefer_unity_pose: true
+    unity_pose_topic: "/unity/robot_pose"
+    unity_pose_timeout_sec: 5.0
+    unity_origin_offset_x: 0.0
+    unity_origin_offset_y: 0.0
+    unity_yaw_offset_rad: 0.0
+    unity_scale: 1.0
+
+heartbeat_node:
+  ros__parameters:
+    robot_id: "R1"
+    publish_rate_hz: 1.0
+    node_name_override: "robot_core"
+
+sensor_fusion_node:
+  ros__parameters:
+    source: "sim_env"
+    publish_rate_hz: 2.0
+    base_temperature: 24.0
+    base_humidity: 45.0
+    base_pm25: 18.0
+
+module_controller_node:
+  ros__parameters: {}
+
+safety_manager_node:
+  ros__parameters:
+    warning_battery_pct: 20.0
+    return_battery_pct: 15.0
+    simulate_battery: true
+    battery_drain_per_tick: 0.05
+    battery_publish_rate_hz: 2.0
+
+task_executor_node:
+  ros__parameters:
+    default_timeout_sec: 300
+    always_return_home: false
+    simulation_step_sec: 0.5

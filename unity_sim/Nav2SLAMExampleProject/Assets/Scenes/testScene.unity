@@ -34010,6 +34010,26 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1017606091530846216, guid: c5be39b879c83f54d9bbfebe68c809be, type: 3}
   m_PrefabInstance: {fileID: 1606719191}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1607144201 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1872241788697882711, guid: 34effcfe811ae3149930f116567a9d19, type: 3}
+  m_PrefabInstance: {fileID: 1154388436}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1607144203
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1607144201}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0339720ffb604bb4ba72ff04c362c3b9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_TopicName: /unity/robot_pose
+  m_FrameId: unity
+  m_PublishRateHz: 20
 --- !u!1 &1610991211
 GameObject:
   m_ObjectHideFlags: 0
