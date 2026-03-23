@@ -15,7 +15,7 @@ import { TokenResponseDto } from '../dto/response/token.dto';
 import { ExceptionList } from 'src/common/decorator/exception-list.decorator';
 
 @ApiTags('Auth API')
-@Controller('auth')
+@Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
