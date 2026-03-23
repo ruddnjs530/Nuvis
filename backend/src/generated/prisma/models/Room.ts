@@ -213,8 +213,11 @@ export type RoomWhereInput = {
   robots?: Prisma.RobotListRelationFilter
   schedules?: Prisma.ScheduleListRelationFilter
   events?: Prisma.EventListRelationFilter
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogListRelationFilter
   roomConditionHistories?: Prisma.RoomConditionHistoryListRelationFilter
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomOrderByWithRelationInput = {
@@ -227,8 +230,11 @@ export type RoomOrderByWithRelationInput = {
   robots?: Prisma.RobotOrderByRelationAggregateInput
   schedules?: Prisma.ScheduleOrderByRelationAggregateInput
   events?: Prisma.EventOrderByRelationAggregateInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogOrderByRelationAggregateInput
   roomConditionHistories?: Prisma.RoomConditionHistoryOrderByRelationAggregateInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   _relevance?: Prisma.RoomOrderByRelevanceInput
 }
 
@@ -245,8 +251,11 @@ export type RoomWhereUniqueInput = Prisma.AtLeast<{
   robots?: Prisma.RobotListRelationFilter
   schedules?: Prisma.ScheduleListRelationFilter
   events?: Prisma.EventListRelationFilter
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogListRelationFilter
   roomConditionHistories?: Prisma.RoomConditionHistoryListRelationFilter
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }, "roomId">
 
 export type RoomOrderByWithAggregationInput = {
@@ -279,8 +288,11 @@ export type RoomCreateInput = {
   robots?: Prisma.RobotCreateNestedManyWithoutCurrentRoomInput
   schedules?: Prisma.ScheduleCreateNestedManyWithoutRoomInput
   events?: Prisma.EventCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedCreateInput = {
@@ -292,8 +304,11 @@ export type RoomUncheckedCreateInput = {
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutCurrentRoomInput
   schedules?: Prisma.ScheduleUncheckedCreateNestedManyWithoutRoomInput
   events?: Prisma.EventUncheckedCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUpdateInput = {
@@ -304,8 +319,11 @@ export type RoomUpdateInput = {
   robots?: Prisma.RobotUpdateManyWithoutCurrentRoomNestedInput
   schedules?: Prisma.ScheduleUpdateManyWithoutRoomNestedInput
   events?: Prisma.EventUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedUpdateInput = {
@@ -317,8 +335,11 @@ export type RoomUncheckedUpdateInput = {
   robots?: Prisma.RobotUncheckedUpdateManyWithoutCurrentRoomNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutRoomNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateManyInput = {
@@ -495,6 +516,7 @@ export type RoomUpdateOneRequiredWithoutEventsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.RoomUpdateToOneWithWhereWithoutEventsInput, Prisma.RoomUpdateWithoutEventsInput>, Prisma.RoomUncheckedUpdateWithoutEventsInput>
 }
 
+<<<<<<< HEAD
 export type RoomCreateNestedOneWithoutRoomConditionHistoriesInput = {
   create?: Prisma.XOR<Prisma.RoomCreateWithoutRoomConditionHistoriesInput, Prisma.RoomUncheckedCreateWithoutRoomConditionHistoriesInput>
   connectOrCreate?: Prisma.RoomCreateOrConnectWithoutRoomConditionHistoriesInput
@@ -525,6 +547,8 @@ export type RoomUpdateOneWithoutModuleControlLogsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.RoomUpdateToOneWithWhereWithoutModuleControlLogsInput, Prisma.RoomUpdateWithoutModuleControlLogsInput>, Prisma.RoomUncheckedUpdateWithoutModuleControlLogsInput>
 }
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 export type RoomCreateWithoutUserInput = {
   name: string
   mapData?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
@@ -532,8 +556,11 @@ export type RoomCreateWithoutUserInput = {
   robots?: Prisma.RobotCreateNestedManyWithoutCurrentRoomInput
   schedules?: Prisma.ScheduleCreateNestedManyWithoutRoomInput
   events?: Prisma.EventCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedCreateWithoutUserInput = {
@@ -544,8 +571,11 @@ export type RoomUncheckedCreateWithoutUserInput = {
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutCurrentRoomInput
   schedules?: Prisma.ScheduleUncheckedCreateNestedManyWithoutRoomInput
   events?: Prisma.EventUncheckedCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateOrConnectWithoutUserInput = {
@@ -591,8 +621,11 @@ export type RoomCreateWithoutRoomConditionInput = {
   robots?: Prisma.RobotCreateNestedManyWithoutCurrentRoomInput
   schedules?: Prisma.ScheduleCreateNestedManyWithoutRoomInput
   events?: Prisma.EventCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedCreateWithoutRoomConditionInput = {
@@ -603,8 +636,11 @@ export type RoomUncheckedCreateWithoutRoomConditionInput = {
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutCurrentRoomInput
   schedules?: Prisma.ScheduleUncheckedCreateNestedManyWithoutRoomInput
   events?: Prisma.EventUncheckedCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateOrConnectWithoutRoomConditionInput = {
@@ -630,8 +666,11 @@ export type RoomUpdateWithoutRoomConditionInput = {
   robots?: Prisma.RobotUpdateManyWithoutCurrentRoomNestedInput
   schedules?: Prisma.ScheduleUpdateManyWithoutRoomNestedInput
   events?: Prisma.EventUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedUpdateWithoutRoomConditionInput = {
@@ -642,8 +681,11 @@ export type RoomUncheckedUpdateWithoutRoomConditionInput = {
   robots?: Prisma.RobotUncheckedUpdateManyWithoutCurrentRoomNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutRoomNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateWithoutRobotsInput = {
@@ -653,8 +695,11 @@ export type RoomCreateWithoutRobotsInput = {
   roomCondition?: Prisma.RoomConditionCreateNestedOneWithoutRoomInput
   schedules?: Prisma.ScheduleCreateNestedManyWithoutRoomInput
   events?: Prisma.EventCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedCreateWithoutRobotsInput = {
@@ -665,8 +710,11 @@ export type RoomUncheckedCreateWithoutRobotsInput = {
   roomCondition?: Prisma.RoomConditionUncheckedCreateNestedOneWithoutRoomInput
   schedules?: Prisma.ScheduleUncheckedCreateNestedManyWithoutRoomInput
   events?: Prisma.EventUncheckedCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateOrConnectWithoutRobotsInput = {
@@ -692,8 +740,11 @@ export type RoomUpdateWithoutRobotsInput = {
   roomCondition?: Prisma.RoomConditionUpdateOneWithoutRoomNestedInput
   schedules?: Prisma.ScheduleUpdateManyWithoutRoomNestedInput
   events?: Prisma.EventUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedUpdateWithoutRobotsInput = {
@@ -704,8 +755,11 @@ export type RoomUncheckedUpdateWithoutRobotsInput = {
   roomCondition?: Prisma.RoomConditionUncheckedUpdateOneWithoutRoomNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutRoomNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateWithoutSchedulesInput = {
@@ -715,8 +769,11 @@ export type RoomCreateWithoutSchedulesInput = {
   roomCondition?: Prisma.RoomConditionCreateNestedOneWithoutRoomInput
   robots?: Prisma.RobotCreateNestedManyWithoutCurrentRoomInput
   events?: Prisma.EventCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedCreateWithoutSchedulesInput = {
@@ -727,8 +784,11 @@ export type RoomUncheckedCreateWithoutSchedulesInput = {
   roomCondition?: Prisma.RoomConditionUncheckedCreateNestedOneWithoutRoomInput
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutCurrentRoomInput
   events?: Prisma.EventUncheckedCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateOrConnectWithoutSchedulesInput = {
@@ -754,8 +814,11 @@ export type RoomUpdateWithoutSchedulesInput = {
   roomCondition?: Prisma.RoomConditionUpdateOneWithoutRoomNestedInput
   robots?: Prisma.RobotUpdateManyWithoutCurrentRoomNestedInput
   events?: Prisma.EventUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedUpdateWithoutSchedulesInput = {
@@ -766,8 +829,11 @@ export type RoomUncheckedUpdateWithoutSchedulesInput = {
   roomCondition?: Prisma.RoomConditionUncheckedUpdateOneWithoutRoomNestedInput
   robots?: Prisma.RobotUncheckedUpdateManyWithoutCurrentRoomNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateWithoutEventsInput = {
@@ -777,8 +843,11 @@ export type RoomCreateWithoutEventsInput = {
   roomCondition?: Prisma.RoomConditionCreateNestedOneWithoutRoomInput
   robots?: Prisma.RobotCreateNestedManyWithoutCurrentRoomInput
   schedules?: Prisma.ScheduleCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedCreateWithoutEventsInput = {
@@ -789,8 +858,11 @@ export type RoomUncheckedCreateWithoutEventsInput = {
   roomCondition?: Prisma.RoomConditionUncheckedCreateNestedOneWithoutRoomInput
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutCurrentRoomInput
   schedules?: Prisma.ScheduleUncheckedCreateNestedManyWithoutRoomInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutRoomInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedCreateNestedManyWithoutRoomInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateOrConnectWithoutEventsInput = {
@@ -816,8 +888,11 @@ export type RoomUpdateWithoutEventsInput = {
   roomCondition?: Prisma.RoomConditionUpdateOneWithoutRoomNestedInput
   robots?: Prisma.RobotUpdateManyWithoutCurrentRoomNestedInput
   schedules?: Prisma.ScheduleUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedUpdateWithoutEventsInput = {
@@ -828,6 +903,7 @@ export type RoomUncheckedUpdateWithoutEventsInput = {
   roomCondition?: Prisma.RoomConditionUncheckedUpdateOneWithoutRoomNestedInput
   robots?: Prisma.RobotUncheckedUpdateManyWithoutCurrentRoomNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedUpdateManyWithoutRoomNestedInput
 }
@@ -954,6 +1030,8 @@ export type RoomUncheckedUpdateWithoutModuleControlLogsInput = {
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutRoomNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCreateManyUserInput = {
@@ -969,8 +1047,11 @@ export type RoomUpdateWithoutUserInput = {
   robots?: Prisma.RobotUpdateManyWithoutCurrentRoomNestedInput
   schedules?: Prisma.ScheduleUpdateManyWithoutRoomNestedInput
   events?: Prisma.EventUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedUpdateWithoutUserInput = {
@@ -981,8 +1062,11 @@ export type RoomUncheckedUpdateWithoutUserInput = {
   robots?: Prisma.RobotUncheckedUpdateManyWithoutCurrentRoomNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutRoomNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutRoomNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutRoomNestedInput
   roomConditionHistories?: Prisma.RoomConditionHistoryUncheckedUpdateManyWithoutRoomNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomUncheckedUpdateManyWithoutUserInput = {
@@ -1000,16 +1084,22 @@ export type RoomCountOutputType = {
   robots: number
   schedules: number
   events: number
+<<<<<<< HEAD
   moduleControlLogs: number
   roomConditionHistories: number
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type RoomCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   robots?: boolean | RoomCountOutputTypeCountRobotsArgs
   schedules?: boolean | RoomCountOutputTypeCountSchedulesArgs
   events?: boolean | RoomCountOutputTypeCountEventsArgs
+<<<<<<< HEAD
   moduleControlLogs?: boolean | RoomCountOutputTypeCountModuleControlLogsArgs
   roomConditionHistories?: boolean | RoomCountOutputTypeCountRoomConditionHistoriesArgs
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 /**
@@ -1043,6 +1133,7 @@ export type RoomCountOutputTypeCountEventsArgs<ExtArgs extends runtime.Types.Ext
   where?: Prisma.EventWhereInput
 }
 
+<<<<<<< HEAD
 /**
  * RoomCountOutputType without action
  */
@@ -1057,6 +1148,8 @@ export type RoomCountOutputTypeCountRoomConditionHistoriesArgs<ExtArgs extends r
   where?: Prisma.RoomConditionHistoryWhereInput
 }
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 
 export type RoomSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   roomId?: boolean
@@ -1068,8 +1161,11 @@ export type RoomSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   robots?: boolean | Prisma.Room$robotsArgs<ExtArgs>
   schedules?: boolean | Prisma.Room$schedulesArgs<ExtArgs>
   events?: boolean | Prisma.Room$eventsArgs<ExtArgs>
+<<<<<<< HEAD
   moduleControlLogs?: boolean | Prisma.Room$moduleControlLogsArgs<ExtArgs>
   roomConditionHistories?: boolean | Prisma.Room$roomConditionHistoriesArgs<ExtArgs>
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   _count?: boolean | Prisma.RoomCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["room"]>
 
@@ -1089,8 +1185,11 @@ export type RoomInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   robots?: boolean | Prisma.Room$robotsArgs<ExtArgs>
   schedules?: boolean | Prisma.Room$schedulesArgs<ExtArgs>
   events?: boolean | Prisma.Room$eventsArgs<ExtArgs>
+<<<<<<< HEAD
   moduleControlLogs?: boolean | Prisma.Room$moduleControlLogsArgs<ExtArgs>
   roomConditionHistories?: boolean | Prisma.Room$roomConditionHistoriesArgs<ExtArgs>
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   _count?: boolean | Prisma.RoomCountOutputTypeDefaultArgs<ExtArgs>
 }
 
@@ -1102,8 +1201,11 @@ export type $RoomPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     robots: Prisma.$RobotPayload<ExtArgs>[]
     schedules: Prisma.$SchedulePayload<ExtArgs>[]
     events: Prisma.$EventPayload<ExtArgs>[]
+<<<<<<< HEAD
     moduleControlLogs: Prisma.$ModuleControlLogPayload<ExtArgs>[]
     roomConditionHistories: Prisma.$RoomConditionHistoryPayload<ExtArgs>[]
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     roomId: number
@@ -1455,8 +1557,11 @@ export interface Prisma__RoomClient<T, Null = never, ExtArgs extends runtime.Typ
   robots<T extends Prisma.Room$robotsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Room$robotsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RobotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   schedules<T extends Prisma.Room$schedulesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Room$schedulesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SchedulePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   events<T extends Prisma.Room$eventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Room$eventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+<<<<<<< HEAD
   moduleControlLogs<T extends Prisma.Room$moduleControlLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Room$moduleControlLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ModuleControlLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   roomConditionHistories<T extends Prisma.Room$roomConditionHistoriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Room$roomConditionHistoriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RoomConditionHistoryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1929,6 +2034,7 @@ export type Room$eventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 }
 
 /**
+<<<<<<< HEAD
  * Room.moduleControlLogs
  */
 export type Room$moduleControlLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1977,6 +2083,8 @@ export type Room$roomConditionHistoriesArgs<ExtArgs extends runtime.Types.Extens
 }
 
 /**
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
  * Room without action
  */
 export type RoomDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {

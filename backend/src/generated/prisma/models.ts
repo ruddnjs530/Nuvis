@@ -16,6 +16,9 @@ export type * from './models/Robot'
 export type * from './models/Schedule'
 export type * from './models/Event'
 export type * from './models/AiSuggestion'
+<<<<<<< HEAD
 export type * from './models/RoomConditionHistory'
 export type * from './models/ModuleControlLog'
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 export type * from './commonInputTypes'

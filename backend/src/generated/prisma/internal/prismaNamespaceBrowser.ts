@@ -58,9 +58,13 @@ export const ModelName = {
   Robot: 'Robot',
   Schedule: 'Schedule',
   Event: 'Event',
+<<<<<<< HEAD
   AiSuggestion: 'AiSuggestion',
   RoomConditionHistory: 'RoomConditionHistory',
   ModuleControlLog: 'ModuleControlLog'
+=======
+  AiSuggestion: 'AiSuggestion'
+>>>>>>> origin/infra/task/ci-cd-setup
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -172,6 +176,7 @@ export const AiSuggestionScalarFieldEnum = {
 export type AiSuggestionScalarFieldEnum = (typeof AiSuggestionScalarFieldEnum)[keyof typeof AiSuggestionScalarFieldEnum]
 
 
+<<<<<<< HEAD
 export const RoomConditionHistoryScalarFieldEnum = {
   id: 'id',
   roomId: 'roomId',
@@ -198,6 +203,8 @@ export const ModuleControlLogScalarFieldEnum = {
 export type ModuleControlLogScalarFieldEnum = (typeof ModuleControlLogScalarFieldEnum)[keyof typeof ModuleControlLogScalarFieldEnum]
 
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -293,6 +300,7 @@ export const AiSuggestionOrderByRelevanceFieldEnum = {
 
 export type AiSuggestionOrderByRelevanceFieldEnum = (typeof AiSuggestionOrderByRelevanceFieldEnum)[keyof typeof AiSuggestionOrderByRelevanceFieldEnum]
 
+<<<<<<< HEAD
 
 export const ModuleControlLogOrderByRelevanceFieldEnum = {
   actionModuleType: 'actionModuleType',
@@ -302,3 +310,5 @@ export const ModuleControlLogOrderByRelevanceFieldEnum = {
 
 export type ModuleControlLogOrderByRelevanceFieldEnum = (typeof ModuleControlLogOrderByRelevanceFieldEnum)[keyof typeof ModuleControlLogOrderByRelevanceFieldEnum]
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup

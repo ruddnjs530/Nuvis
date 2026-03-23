@@ -1,3 +1,8 @@
+# Mock data in recommendation server
+recommendation/mock_payload.json
+recommendation/mock_sensor_data.csv
+
+
 # Local environment
 .env
 .env.*
@@ -61,3 +66,7 @@ test_command.wav
 # ROS2 build outputs
 install/
 log/
+
+
+stt/test_audio/
+*.mp3

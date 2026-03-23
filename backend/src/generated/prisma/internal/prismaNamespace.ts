@@ -391,9 +391,13 @@ export const ModelName = {
   Robot: 'Robot',
   Schedule: 'Schedule',
   Event: 'Event',
+<<<<<<< HEAD
   AiSuggestion: 'AiSuggestion',
   RoomConditionHistory: 'RoomConditionHistory',
   ModuleControlLog: 'ModuleControlLog'
+=======
+  AiSuggestion: 'AiSuggestion'
+>>>>>>> origin/infra/task/ci-cd-setup
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -409,7 +413,11 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
+<<<<<<< HEAD
     modelProps: "user" | "room" | "roomCondition" | "module" | "robot" | "schedule" | "event" | "aiSuggestion" | "roomConditionHistory" | "moduleControlLog"
+=======
+    modelProps: "user" | "room" | "roomCondition" | "module" | "robot" | "schedule" | "event" | "aiSuggestion"
+>>>>>>> origin/infra/task/ci-cd-setup
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -941,6 +949,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+<<<<<<< HEAD
     RoomConditionHistory: {
       payload: Prisma.$RoomConditionHistoryPayload<ExtArgs>
       fields: Prisma.RoomConditionHistoryFieldRefs
@@ -1073,6 +1082,8 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   }
 } & {
   other: {
@@ -1205,6 +1216,7 @@ export const AiSuggestionScalarFieldEnum = {
 export type AiSuggestionScalarFieldEnum = (typeof AiSuggestionScalarFieldEnum)[keyof typeof AiSuggestionScalarFieldEnum]
 
 
+<<<<<<< HEAD
 export const RoomConditionHistoryScalarFieldEnum = {
   id: 'id',
   roomId: 'roomId',
@@ -1231,6 +1243,8 @@ export const ModuleControlLogScalarFieldEnum = {
 export type ModuleControlLogScalarFieldEnum = (typeof ModuleControlLogScalarFieldEnum)[keyof typeof ModuleControlLogScalarFieldEnum]
 
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1327,6 +1341,7 @@ export const AiSuggestionOrderByRelevanceFieldEnum = {
 export type AiSuggestionOrderByRelevanceFieldEnum = (typeof AiSuggestionOrderByRelevanceFieldEnum)[keyof typeof AiSuggestionOrderByRelevanceFieldEnum]
 
 
+<<<<<<< HEAD
 export const ModuleControlLogOrderByRelevanceFieldEnum = {
   actionModuleType: 'actionModuleType',
   action: 'action',
@@ -1336,6 +1351,8 @@ export const ModuleControlLogOrderByRelevanceFieldEnum = {
 export type ModuleControlLogOrderByRelevanceFieldEnum = (typeof ModuleControlLogOrderByRelevanceFieldEnum)[keyof typeof ModuleControlLogOrderByRelevanceFieldEnum]
 
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 
 /**
  * Field references
@@ -1493,8 +1510,11 @@ export type GlobalOmitConfig = {
   schedule?: Prisma.ScheduleOmit
   event?: Prisma.EventOmit
   aiSuggestion?: Prisma.AiSuggestionOmit
+<<<<<<< HEAD
   roomConditionHistory?: Prisma.RoomConditionHistoryOmit
   moduleControlLog?: Prisma.ModuleControlLogOmit
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 /* Types for Logging */

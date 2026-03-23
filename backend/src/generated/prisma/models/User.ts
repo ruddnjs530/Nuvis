@@ -220,7 +220,10 @@ export type UserWhereInput = {
   robots?: Prisma.RobotListRelationFilter
   schedules?: Prisma.ScheduleListRelationFilter
   events?: Prisma.EventListRelationFilter
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogListRelationFilter
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserOrderByWithRelationInput = {
@@ -233,7 +236,10 @@ export type UserOrderByWithRelationInput = {
   robots?: Prisma.RobotOrderByRelationAggregateInput
   schedules?: Prisma.ScheduleOrderByRelationAggregateInput
   events?: Prisma.EventOrderByRelationAggregateInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogOrderByRelationAggregateInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   _relevance?: Prisma.UserOrderByRelevanceInput
 }
 
@@ -250,7 +256,10 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   robots?: Prisma.RobotListRelationFilter
   schedules?: Prisma.ScheduleListRelationFilter
   events?: Prisma.EventListRelationFilter
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogListRelationFilter
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }, "userId" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -286,7 +295,10 @@ export type UserCreateInput = {
   robots?: Prisma.RobotCreateNestedManyWithoutUserInput
   schedules?: Prisma.ScheduleCreateNestedManyWithoutUserInput
   events?: Prisma.EventCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedCreateInput = {
@@ -299,7 +311,10 @@ export type UserUncheckedCreateInput = {
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutUserInput
   schedules?: Prisma.ScheduleUncheckedCreateNestedManyWithoutUserInput
   events?: Prisma.EventUncheckedCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUpdateInput = {
@@ -311,7 +326,10 @@ export type UserUpdateInput = {
   robots?: Prisma.RobotUpdateManyWithoutUserNestedInput
   schedules?: Prisma.ScheduleUpdateManyWithoutUserNestedInput
   events?: Prisma.EventUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedUpdateInput = {
@@ -324,7 +342,10 @@ export type UserUncheckedUpdateInput = {
   robots?: Prisma.RobotUncheckedUpdateManyWithoutUserNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutUserNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserCreateManyInput = {
@@ -465,6 +486,7 @@ export type UserUpdateOneRequiredWithoutEventsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutEventsInput, Prisma.UserUpdateWithoutEventsInput>, Prisma.UserUncheckedUpdateWithoutEventsInput>
 }
 
+<<<<<<< HEAD
 export type UserCreateNestedOneWithoutModuleControlLogsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutModuleControlLogsInput, Prisma.UserUncheckedCreateWithoutModuleControlLogsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutModuleControlLogsInput
@@ -479,6 +501,8 @@ export type UserUpdateOneRequiredWithoutModuleControlLogsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutModuleControlLogsInput, Prisma.UserUpdateWithoutModuleControlLogsInput>, Prisma.UserUncheckedUpdateWithoutModuleControlLogsInput>
 }
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 export type UserCreateWithoutRoomsInput = {
   email: string
   passwordHash: string
@@ -487,7 +511,10 @@ export type UserCreateWithoutRoomsInput = {
   robots?: Prisma.RobotCreateNestedManyWithoutUserInput
   schedules?: Prisma.ScheduleCreateNestedManyWithoutUserInput
   events?: Prisma.EventCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedCreateWithoutRoomsInput = {
@@ -499,7 +526,10 @@ export type UserUncheckedCreateWithoutRoomsInput = {
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutUserInput
   schedules?: Prisma.ScheduleUncheckedCreateNestedManyWithoutUserInput
   events?: Prisma.EventUncheckedCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserCreateOrConnectWithoutRoomsInput = {
@@ -526,7 +556,10 @@ export type UserUpdateWithoutRoomsInput = {
   robots?: Prisma.RobotUpdateManyWithoutUserNestedInput
   schedules?: Prisma.ScheduleUpdateManyWithoutUserNestedInput
   events?: Prisma.EventUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedUpdateWithoutRoomsInput = {
@@ -538,7 +571,10 @@ export type UserUncheckedUpdateWithoutRoomsInput = {
   robots?: Prisma.RobotUncheckedUpdateManyWithoutUserNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutUserNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserCreateWithoutRobotsInput = {
@@ -549,7 +585,10 @@ export type UserCreateWithoutRobotsInput = {
   rooms?: Prisma.RoomCreateNestedManyWithoutUserInput
   schedules?: Prisma.ScheduleCreateNestedManyWithoutUserInput
   events?: Prisma.EventCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedCreateWithoutRobotsInput = {
@@ -561,7 +600,10 @@ export type UserUncheckedCreateWithoutRobotsInput = {
   rooms?: Prisma.RoomUncheckedCreateNestedManyWithoutUserInput
   schedules?: Prisma.ScheduleUncheckedCreateNestedManyWithoutUserInput
   events?: Prisma.EventUncheckedCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserCreateOrConnectWithoutRobotsInput = {
@@ -588,7 +630,10 @@ export type UserUpdateWithoutRobotsInput = {
   rooms?: Prisma.RoomUpdateManyWithoutUserNestedInput
   schedules?: Prisma.ScheduleUpdateManyWithoutUserNestedInput
   events?: Prisma.EventUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedUpdateWithoutRobotsInput = {
@@ -600,7 +645,10 @@ export type UserUncheckedUpdateWithoutRobotsInput = {
   rooms?: Prisma.RoomUncheckedUpdateManyWithoutUserNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutUserNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserCreateWithoutSchedulesInput = {
@@ -611,7 +659,10 @@ export type UserCreateWithoutSchedulesInput = {
   rooms?: Prisma.RoomCreateNestedManyWithoutUserInput
   robots?: Prisma.RobotCreateNestedManyWithoutUserInput
   events?: Prisma.EventCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedCreateWithoutSchedulesInput = {
@@ -623,7 +674,10 @@ export type UserUncheckedCreateWithoutSchedulesInput = {
   rooms?: Prisma.RoomUncheckedCreateNestedManyWithoutUserInput
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutUserInput
   events?: Prisma.EventUncheckedCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserCreateOrConnectWithoutSchedulesInput = {
@@ -650,7 +704,10 @@ export type UserUpdateWithoutSchedulesInput = {
   rooms?: Prisma.RoomUpdateManyWithoutUserNestedInput
   robots?: Prisma.RobotUpdateManyWithoutUserNestedInput
   events?: Prisma.EventUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedUpdateWithoutSchedulesInput = {
@@ -662,7 +719,10 @@ export type UserUncheckedUpdateWithoutSchedulesInput = {
   rooms?: Prisma.RoomUncheckedUpdateManyWithoutUserNestedInput
   robots?: Prisma.RobotUncheckedUpdateManyWithoutUserNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserCreateWithoutEventsInput = {
@@ -673,7 +733,10 @@ export type UserCreateWithoutEventsInput = {
   rooms?: Prisma.RoomCreateNestedManyWithoutUserInput
   robots?: Prisma.RobotCreateNestedManyWithoutUserInput
   schedules?: Prisma.ScheduleCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedCreateWithoutEventsInput = {
@@ -685,7 +748,10 @@ export type UserUncheckedCreateWithoutEventsInput = {
   rooms?: Prisma.RoomUncheckedCreateNestedManyWithoutUserInput
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutUserInput
   schedules?: Prisma.ScheduleUncheckedCreateNestedManyWithoutUserInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutUserInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserCreateOrConnectWithoutEventsInput = {
@@ -712,7 +778,10 @@ export type UserUpdateWithoutEventsInput = {
   rooms?: Prisma.RoomUpdateManyWithoutUserNestedInput
   robots?: Prisma.RobotUpdateManyWithoutUserNestedInput
   schedules?: Prisma.ScheduleUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserUncheckedUpdateWithoutEventsInput = {
@@ -724,6 +793,7 @@ export type UserUncheckedUpdateWithoutEventsInput = {
   rooms?: Prisma.RoomUncheckedUpdateManyWithoutUserNestedInput
   robots?: Prisma.RobotUncheckedUpdateManyWithoutUserNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutUserNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
@@ -787,6 +857,8 @@ export type UserUncheckedUpdateWithoutModuleControlLogsInput = {
   robots?: Prisma.RobotUncheckedUpdateManyWithoutUserNestedInput
   schedules?: Prisma.ScheduleUncheckedUpdateManyWithoutUserNestedInput
   events?: Prisma.EventUncheckedUpdateManyWithoutUserNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 
@@ -799,7 +871,10 @@ export type UserCountOutputType = {
   robots: number
   schedules: number
   events: number
+<<<<<<< HEAD
   moduleControlLogs: number
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -807,7 +882,10 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   robots?: boolean | UserCountOutputTypeCountRobotsArgs
   schedules?: boolean | UserCountOutputTypeCountSchedulesArgs
   events?: boolean | UserCountOutputTypeCountEventsArgs
+<<<<<<< HEAD
   moduleControlLogs?: boolean | UserCountOutputTypeCountModuleControlLogsArgs
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 /**
@@ -848,6 +926,7 @@ export type UserCountOutputTypeCountEventsArgs<ExtArgs extends runtime.Types.Ext
   where?: Prisma.EventWhereInput
 }
 
+<<<<<<< HEAD
 /**
  * UserCountOutputType without action
  */
@@ -855,6 +934,8 @@ export type UserCountOutputTypeCountModuleControlLogsArgs<ExtArgs extends runtim
   where?: Prisma.ModuleControlLogWhereInput
 }
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   userId?: boolean
@@ -866,7 +947,10 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   robots?: boolean | Prisma.User$robotsArgs<ExtArgs>
   schedules?: boolean | Prisma.User$schedulesArgs<ExtArgs>
   events?: boolean | Prisma.User$eventsArgs<ExtArgs>
+<<<<<<< HEAD
   moduleControlLogs?: boolean | Prisma.User$moduleControlLogsArgs<ExtArgs>
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -886,7 +970,10 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   robots?: boolean | Prisma.User$robotsArgs<ExtArgs>
   schedules?: boolean | Prisma.User$schedulesArgs<ExtArgs>
   events?: boolean | Prisma.User$eventsArgs<ExtArgs>
+<<<<<<< HEAD
   moduleControlLogs?: boolean | Prisma.User$moduleControlLogsArgs<ExtArgs>
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 
@@ -897,7 +984,10 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     robots: Prisma.$RobotPayload<ExtArgs>[]
     schedules: Prisma.$SchedulePayload<ExtArgs>[]
     events: Prisma.$EventPayload<ExtArgs>[]
+<<<<<<< HEAD
     moduleControlLogs: Prisma.$ModuleControlLogPayload<ExtArgs>[]
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     userId: number
@@ -1249,7 +1339,10 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   robots<T extends Prisma.User$robotsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$robotsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RobotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   schedules<T extends Prisma.User$schedulesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$schedulesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SchedulePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   events<T extends Prisma.User$eventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$eventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+<<<<<<< HEAD
   moduleControlLogs<T extends Prisma.User$moduleControlLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$moduleControlLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ModuleControlLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1728,6 +1821,7 @@ export type User$eventsArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
 }
 
 /**
+<<<<<<< HEAD
  * User.moduleControlLogs
  */
 export type User$moduleControlLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1752,6 +1846,8 @@ export type User$moduleControlLogsArgs<ExtArgs extends runtime.Types.Extensions.
 }
 
 /**
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
  * User without action
  */
 export type UserDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {

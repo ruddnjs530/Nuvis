@@ -201,7 +201,10 @@ export type ModuleWhereInput = {
   type?: Prisma.StringFilter<"Module"> | string
   status?: Prisma.StringFilter<"Module"> | string
   robots?: Prisma.RobotListRelationFilter
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogListRelationFilter
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type ModuleOrderByWithRelationInput = {
@@ -209,7 +212,10 @@ export type ModuleOrderByWithRelationInput = {
   type?: Prisma.SortOrder
   status?: Prisma.SortOrder
   robots?: Prisma.RobotOrderByRelationAggregateInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogOrderByRelationAggregateInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   _relevance?: Prisma.ModuleOrderByRelevanceInput
 }
 
@@ -221,7 +227,10 @@ export type ModuleWhereUniqueInput = Prisma.AtLeast<{
   type?: Prisma.StringFilter<"Module"> | string
   status?: Prisma.StringFilter<"Module"> | string
   robots?: Prisma.RobotListRelationFilter
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogListRelationFilter
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }, "moduleId">
 
 export type ModuleOrderByWithAggregationInput = {
@@ -248,7 +257,10 @@ export type ModuleCreateInput = {
   type: string
   status: string
   robots?: Prisma.RobotCreateNestedManyWithoutCurrentModuleInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutModuleInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type ModuleUncheckedCreateInput = {
@@ -256,14 +268,20 @@ export type ModuleUncheckedCreateInput = {
   type: string
   status: string
   robots?: Prisma.RobotUncheckedCreateNestedManyWithoutCurrentModuleInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutModuleInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type ModuleUpdateInput = {
   type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   robots?: Prisma.RobotUpdateManyWithoutCurrentModuleNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutModuleNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type ModuleUncheckedUpdateInput = {
@@ -271,7 +289,10 @@ export type ModuleUncheckedUpdateInput = {
   type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   robots?: Prisma.RobotUncheckedUpdateManyWithoutCurrentModuleNestedInput
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutModuleNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type ModuleCreateManyInput = {
@@ -328,11 +349,14 @@ export type ModuleNullableScalarRelationFilter = {
   isNot?: Prisma.ModuleWhereInput | null
 }
 
+<<<<<<< HEAD
 export type ModuleScalarRelationFilter = {
   is?: Prisma.ModuleWhereInput
   isNot?: Prisma.ModuleWhereInput
 }
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 export type ModuleCreateNestedOneWithoutRobotsInput = {
   create?: Prisma.XOR<Prisma.ModuleCreateWithoutRobotsInput, Prisma.ModuleUncheckedCreateWithoutRobotsInput>
   connectOrCreate?: Prisma.ModuleCreateOrConnectWithoutRobotsInput
@@ -349,6 +373,7 @@ export type ModuleUpdateOneWithoutRobotsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ModuleUpdateToOneWithWhereWithoutRobotsInput, Prisma.ModuleUpdateWithoutRobotsInput>, Prisma.ModuleUncheckedUpdateWithoutRobotsInput>
 }
 
+<<<<<<< HEAD
 export type ModuleCreateNestedOneWithoutModuleControlLogsInput = {
   create?: Prisma.XOR<Prisma.ModuleCreateWithoutModuleControlLogsInput, Prisma.ModuleUncheckedCreateWithoutModuleControlLogsInput>
   connectOrCreate?: Prisma.ModuleCreateOrConnectWithoutModuleControlLogsInput
@@ -367,13 +392,21 @@ export type ModuleCreateWithoutRobotsInput = {
   type: string
   status: string
   moduleControlLogs?: Prisma.ModuleControlLogCreateNestedManyWithoutModuleInput
+=======
+export type ModuleCreateWithoutRobotsInput = {
+  type: string
+  status: string
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type ModuleUncheckedCreateWithoutRobotsInput = {
   moduleId?: number
   type: string
   status: string
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedCreateNestedManyWithoutModuleInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type ModuleCreateOrConnectWithoutRobotsInput = {
@@ -395,13 +428,17 @@ export type ModuleUpdateToOneWithWhereWithoutRobotsInput = {
 export type ModuleUpdateWithoutRobotsInput = {
   type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUpdateManyWithoutModuleNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type ModuleUncheckedUpdateWithoutRobotsInput = {
   moduleId?: Prisma.IntFieldUpdateOperationsInput | number
   type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
+<<<<<<< HEAD
   moduleControlLogs?: Prisma.ModuleControlLogUncheckedUpdateManyWithoutModuleNestedInput
 }
 
@@ -445,6 +482,8 @@ export type ModuleUncheckedUpdateWithoutModuleControlLogsInput = {
   type?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   robots?: Prisma.RobotUncheckedUpdateManyWithoutCurrentModuleNestedInput
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 
@@ -454,12 +493,18 @@ export type ModuleUncheckedUpdateWithoutModuleControlLogsInput = {
 
 export type ModuleCountOutputType = {
   robots: number
+<<<<<<< HEAD
   moduleControlLogs: number
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 export type ModuleCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   robots?: boolean | ModuleCountOutputTypeCountRobotsArgs
+<<<<<<< HEAD
   moduleControlLogs?: boolean | ModuleCountOutputTypeCountModuleControlLogsArgs
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 }
 
 /**
@@ -479,6 +524,7 @@ export type ModuleCountOutputTypeCountRobotsArgs<ExtArgs extends runtime.Types.E
   where?: Prisma.RobotWhereInput
 }
 
+<<<<<<< HEAD
 /**
  * ModuleCountOutputType without action
  */
@@ -486,13 +532,18 @@ export type ModuleCountOutputTypeCountModuleControlLogsArgs<ExtArgs extends runt
   where?: Prisma.ModuleControlLogWhereInput
 }
 
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
 
 export type ModuleSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   moduleId?: boolean
   type?: boolean
   status?: boolean
   robots?: boolean | Prisma.Module$robotsArgs<ExtArgs>
+<<<<<<< HEAD
   moduleControlLogs?: boolean | Prisma.Module$moduleControlLogsArgs<ExtArgs>
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   _count?: boolean | Prisma.ModuleCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["module"]>
 
@@ -507,7 +558,10 @@ export type ModuleSelectScalar = {
 export type ModuleOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"moduleId" | "type" | "status", ExtArgs["result"]["module"]>
 export type ModuleInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   robots?: boolean | Prisma.Module$robotsArgs<ExtArgs>
+<<<<<<< HEAD
   moduleControlLogs?: boolean | Prisma.Module$moduleControlLogsArgs<ExtArgs>
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   _count?: boolean | Prisma.ModuleCountOutputTypeDefaultArgs<ExtArgs>
 }
 
@@ -515,7 +569,10 @@ export type $ModulePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   name: "Module"
   objects: {
     robots: Prisma.$RobotPayload<ExtArgs>[]
+<<<<<<< HEAD
     moduleControlLogs: Prisma.$ModuleControlLogPayload<ExtArgs>[]
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     moduleId: number
@@ -862,7 +919,10 @@ readonly fields: ModuleFieldRefs;
 export interface Prisma__ModuleClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   robots<T extends Prisma.Module$robotsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Module$robotsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$RobotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+<<<<<<< HEAD
   moduleControlLogs<T extends Prisma.Module$moduleControlLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Module$moduleControlLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ModuleControlLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1267,6 +1327,7 @@ export type Module$robotsArgs<ExtArgs extends runtime.Types.Extensions.InternalA
 }
 
 /**
+<<<<<<< HEAD
  * Module.moduleControlLogs
  */
 export type Module$moduleControlLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1291,6 +1352,8 @@ export type Module$moduleControlLogsArgs<ExtArgs extends runtime.Types.Extension
 }
 
 /**
+=======
+>>>>>>> origin/infra/task/ci-cd-setup
  * Module without action
  */
 export type ModuleDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {

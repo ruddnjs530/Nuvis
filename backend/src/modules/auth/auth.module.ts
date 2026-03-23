@@ -7,6 +7,10 @@ import { PrismaModule } from 'src/common/prisma/prisma.module';
 import jwtConfig from './config/jwt.config';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TokenService } from './services/token.service';
+<<<<<<< HEAD
+=======
+import { AuthRepository } from './repositories/auth.repository';
+>>>>>>> origin/infra/task/ci-cd-setup
 
 @Global()
 @Module({
@@ -18,7 +22,11 @@ import { TokenService } from './services/token.service';
     }),
     PrismaModule,
   ],
+<<<<<<< HEAD
   providers: [AuthService, TokenService],
+=======
+  providers: [AuthService, TokenService, AuthRepository],
+>>>>>>> origin/infra/task/ci-cd-setup
   controllers: [AuthController],
   exports: [TokenService],
 })

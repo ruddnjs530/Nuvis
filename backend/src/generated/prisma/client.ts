@@ -79,6 +79,7 @@ export type Event = Prisma.EventModel
  * 
  */
 export type AiSuggestion = Prisma.AiSuggestionModel
+<<<<<<< HEAD
 /**
  * Model RoomConditionHistory
  * 
@@ -89,3 +90,5 @@ export type RoomConditionHistory = Prisma.RoomConditionHistoryModel
  * 
  */
 export type ModuleControlLog = Prisma.ModuleControlLogModel
+=======
+>>>>>>> origin/infra/task/ci-cd-setup

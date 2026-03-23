@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+<<<<<<< HEAD
 package robot;
 
 // 로봇과 통신하기 위한 gRPC 서비스 (양방향 및 단방향 예시)
@@ -46,4 +47,130 @@ message ServerMessage {
   string id = 1;
   string type = 2; // 예: "LIDAR_DATA"
   string payload = 3; // JSON 형태의 데이터
+=======
+package robot.gateway.v1;
+
+// gRPC Gateway API 서비스
+service RobotGateway {
+  // 1. ExecuteTask — 작업 실행 (Action)
+  rpc ExecuteTask (ExecuteTaskRequest) returns (ExecuteTaskResponse) {}
+
+  // 2. CancelTask — 작업 취소
+  rpc CancelTask (CancelTaskRequest) returns (CancelTaskResponse) {}
+
+  // 3. EmergencyStop — 긴급 정지
+  rpc EmergencyStop (EmergencyStopRequest) returns (EmergencyStopResponse) {}
+
+  // 4. ManualControl — 수동 제어
+  rpc ManualControl (ManualControlRequest) returns (ManualControlResponse) {}
+
+  // 5. GetStatus — 상태 조회 (단건)
+  rpc GetStatus (GetStatusRequest) returns (RobotStatusResponse) {}
+
+  // 6. StreamStatus — 상태 스트림 (Server Streaming)
+  rpc StreamStatus (StreamStatusRequest) returns (stream RobotStatusResponse) {}
+}
+
+// --- Enums ---
+
+enum TaskType {
+  TASK_MOVE_AND_EXECUTE = 0;
+  TASK_MOVE_ONLY = 1;
+  TASK_MODULE_ONLY = 2;
+  TASK_RETURN_HOME = 3;
+}
+
+enum FinalState {
+  FINAL_COMPLETED = 0;
+  FINAL_FAILED = 1;
+  FINAL_CANCELED = 2;
+  FINAL_REJECTED = 3;
+}
+
+// --- Messages ---
+
+// 1. ExecuteTask
+message ExecuteTaskRequest {
+  string command_id = 1;
+  string task_id = 2;
+  TaskType task_type = 3;
+  string target_zone = 4;
+  double target_x = 5;
+  double target_y = 6;
+  double target_yaw = 7;
+  int32 module_type = 8;
+  bool module_power = 9;
+  int32 module_level = 10;
+  uint32 max_exec_sec = 11;
+}
+
+message ExecuteTaskResponse {
+  bool accepted = 1;
+  string task_id = 2;
+  int32 final_state = 3; // FinalState enum 값
+  uint32 result_code = 4;
+  string result_message = 5;
+  uint32 error_code = 6;
+}
+
+// 2. CancelTask
+message CancelTaskRequest {
+  string command_id = 1;
+  string task_id = 2;
+}
+
+message CancelTaskResponse {
+  bool accepted = 1;
+  int32 state = 2;
+  string message = 3;
+}
+
+// 3. EmergencyStop
+message EmergencyStopRequest {
+  string command_id = 1;
+  string reason = 2;
+}
+
+message EmergencyStopResponse {
+  bool accepted = 1;
+  string applied_at = 2;
+  string message = 3;
+}
+
+// 4. ManualControl
+message ManualControlRequest {
+  string command_id = 1;
+  float vx = 2;
+  float wz = 3;
+  uint32 duration_ms = 4;
+}
+
+message ManualControlResponse {
+  bool accepted = 1;
+  string message = 2;
+}
+
+// 5 & 6. Status
+message GetStatusRequest {
+  // Empty
+}
+
+message StreamStatusRequest {
+  uint32 interval_ms = 1;
+}
+
+message RobotStatusResponse {
+  string robot_id = 1;
+  int32 mode = 2; // IDLE, MANUAL 등
+  int32 task_state = 3;
+  string active_task_id = 4;
+  float battery_pct = 5;
+  bool is_charging = 6;
+  int32 safety_state = 7;
+  uint32 last_error_code = 8;
+  double pose_x = 9;
+  double pose_y = 10;
+  double pose_yaw = 11;
+  string stamp = 12;
+>>>>>>> origin/infra/task/ci-cd-setup
 }
