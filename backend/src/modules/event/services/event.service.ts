@@ -9,6 +9,10 @@ export class EventService {
     private readonly robotService: RobotService,
   ) {}
 
+  create(data: any) {
+    return { ...data, id: Date.now() };
+  }
+
   async getEventSuggestions(userId: number) {
     try {
       const payload = await this.robotService.getAiDataset(userId, 14);

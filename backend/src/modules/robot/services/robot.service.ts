@@ -8,6 +8,10 @@ export class RobotService {
 
   constructor(private readonly robotRepository: RobotRepository) {}
 
+  async getAiDataset(userId: number, days: number) {
+    return { userId, days, data: [] };
+  }
+
   create(data: any) {
     // TODO: Implement robot creation logic
     return { ...data, createdAt: new Date() };

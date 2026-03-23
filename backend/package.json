@@ -22,28 +22,17 @@
   "dependencies": {
     "@grpc/grpc-js": "^1.14.3",
     "@grpc/proto-loader": "^0.8.0",
-<<<<<<< HEAD
-=======
-    "@nestjs/microservices": "^11.0.1",
->>>>>>> origin/infra/task/ci-cd-setup
+
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.3",
     "@nestjs/core": "^11.0.1",
     "@nestjs/jwt": "^11.0.2",
-<<<<<<< HEAD
     "@nestjs/microservices": "^11.1.17",
-=======
->>>>>>> origin/infra/task/ci-cd-setup
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/platform-socket.io": "^11.1.17",
     "@nestjs/swagger": "^11.2.6",
     "@nestjs/websockets": "^11.1.17",
-<<<<<<< HEAD
-    "@prisma/adapter-mariadb": "^7.5.0",
-    "@prisma/client": "^7.5.0",
-=======
     "@prisma/client": "^6.14.2",
->>>>>>> origin/infra/task/ci-cd-setup
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
@@ -73,11 +62,7 @@
     "globals": "^16.0.0",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
-<<<<<<< HEAD
-    "prisma": "^7.5.0",
-=======
     "prisma": "^6.14.2",
->>>>>>> origin/infra/task/ci-cd-setup
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
