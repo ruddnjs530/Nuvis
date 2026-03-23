@@ -13,6 +13,9 @@ using UnityEngine;
 public class ROSTransformTreePublisher : MonoBehaviour
 {
     const string k_TfTopic = "/tf";
+
+    [SerializeField]
+    bool m_EnablePublish = false;
     
     [SerializeField]
     double m_PublishRateHz = 20f;
@@ -33,6 +36,12 @@ public class ROSTransformTreePublisher : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        if (!m_EnablePublish)
+        {
+            Debug.Log("ROSTransformTreePublisher disabled by default. ROS side owns odom->base_link TF.");
+            return;
+        }
+
         if (m_RootGameObject == null)
         {
             Debug.LogWarning($"No GameObject explicitly defined as {nameof(m_RootGameObject)}, so using {name} as root.");
@@ -98,6 +107,11 @@ public class ROSTransformTreePublisher : MonoBehaviour
 
     void Update()
     {
+        if (!m_EnablePublish)
+        {
+            return;
+        }
+
         if (ShouldPublishMessage)
         {
             PublishMessage();

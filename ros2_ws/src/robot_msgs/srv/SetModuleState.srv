@@ -1,0 +1,8 @@
+uint8 module_type
+bool power_on
+uint8 level
+string command_id
+---
+bool accepted
+robot_msgs/ModuleState module_state
+string message

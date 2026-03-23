@@ -10,16 +10,16 @@ using UnityEngine.Serialization;
 
 public class LaserScanSensor : MonoBehaviour
 {
-    public string topic;
+    public string topic = "/scan";
     [FormerlySerializedAs("TimeBetweenScansSeconds")]
     public double PublishPeriodSeconds = 0.1;
     public float RangeMetersMin = 0;
     public float RangeMetersMax = 1000;
-    public float ScanAngleStartDegrees = -45;
-    public float ScanAngleEndDegrees = 45;
+    public float ScanAngleStartDegrees = -180;
+    public float ScanAngleEndDegrees = 180;
     // Change the scan start and end by this amount after every publish
     public float ScanOffsetAfterPublish = 0f;
-    public int NumMeasurementsPerScan = 10;
+    public int NumMeasurementsPerScan = 180;
     public float TimeBetweenMeasurementsSeconds = 0.01f;
     public string LayerMaskName = "TurtleBot3Manual";
     public string FrameId = "base_scan";

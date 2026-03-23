@@ -1,0 +1,7 @@
+unity_bridge_node:
+  ros__parameters:
+    unity_host: "127.0.0.1"
+    unity_tx_port: 9001
+    unity_rx_port: 9002
+    poll_rate_hz: 30.0
+    default_timeout_sec: 5.0

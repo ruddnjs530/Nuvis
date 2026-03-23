@@ -1,0 +1,6 @@
+string task_id
+string command_id
+---
+bool accepted
+uint8 state
+string message
