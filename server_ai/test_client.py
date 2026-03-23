@@ -1,14 +1,36 @@
 import requests
 import json
 import time
+from pathlib import Path
 
 # GPU 서버의 IP 주소와 포트를 입력하세요. (현재는 로컬호스트로 설정)
 # 실제 테스트 시에는 '127.0.0.1' 대신 '192.168.x.x' 등 GPU 서버의 IP로 변경해야 합니다.
 SERVER_IP = "127.0.0.1" 
 REC_SERVER_PORT = "8000"
-STT_SERVER_PORT = "8001"
+STT_SERVER_PORT = "9001"
 
 import os
+
+PROJECT_DIR = Path(__file__).resolve().parent
+
+
+def resolve_stt_test_audio() -> tuple[str | None, str | None]:
+    candidates = [
+        PROJECT_DIR / "stt" / "test_audio" / "test_00.mp3",
+        PROJECT_DIR / "test_audio" / "test_00.mp3",
+        PROJECT_DIR / "test_command.wav",
+    ]
+
+    mime_types = {
+        ".mp3": "audio/mpeg",
+        ".wav": "audio/wav",
+    }
+
+    for path in candidates:
+        if path.exists():
+            return str(path), mime_types.get(path.suffix.lower(), "application/octet-stream")
+
+    return None, None
 
 def test_recommendation_api():
     """
@@ -63,20 +85,22 @@ def test_stt_api():
     녹음된 음성 파일을 POST 방식으로 GPU 서버에 전송합니다.
     """
     url = f"http://{SERVER_IP}:{STT_SERVER_PORT}/api/stt/transcribe"
-    dummy_audio_file = "test_command.wav"
-    
-    # 더미 파일 생성 (테스트용)
-    if not os.path.exists(dummy_audio_file):
-        with open(dummy_audio_file, "w") as f:
-            f.write("dummy audio content")
+    audio_file_path, mime_type = resolve_stt_test_audio()
+
+    if not audio_file_path:
+        print("\n❌ STT 테스트용 오디오 파일을 찾지 못했습니다.")
+        print("-> 우선순위: stt/test_audio/test_00.mp3 -> test_audio/test_00.mp3 -> test_command.wav")
+        print("-> 팁: GPU 서버에서 `python stt/stt_benchmark.py --model v2`를 한 번 실행하면 테스트 음성이 생성됩니다.")
+        return
     
     print(f"\n📡 [STT 시스템] GPU 서버로 음성 텍스트 변환 및 파싱 명령 요청 중... ({url})")
+    print(f"   - 사용 파일: {audio_file_path}")
     start_time = time.time()
     
     try:
         # 파일을 multipart/form-data 형식으로 전송
-        with open(dummy_audio_file, "rb") as f:
-            files = {"audio": (dummy_audio_file, f, "audio/wav")}
+        with open(audio_file_path, "rb") as f:
+            files = {"audio": (os.path.basename(audio_file_path), f, mime_type)}
             # Whisper 모델 크기에 따라 시간이 걸릴 수 있어 timeout을 넉넉히 줍니다.
             response = requests.post(url, files=files, timeout=10)
         

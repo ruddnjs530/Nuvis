@@ -72,5 +72,6 @@ stt/data/*
 !stt/data/.gitkeep
 stt/model/
 stt/test_audio/
+stt/artifacts/
 *.mp3
 .gravityignore

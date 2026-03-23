@@ -1,13 +1,17 @@
 import os
-import shutil
+import tempfile
+from io import BytesIO
+from contextlib import asynccontextmanager
+from pathlib import Path
+
 import torch
 import numpy as np
 import librosa
+import soundfile as sf
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from stt_parser import DEFAULT_ROOM_MAP, get_room_map, parse_voice_command, set_room_map
 import json
-from pathlib import Path
 import requests
 
 # GPU 설정
@@ -25,6 +29,7 @@ MODEL_V2 = BASE_DIR / "model" / "v2_full"
 MODEL_V1 = BASE_DIR / "model" / "whisper-smarthome"
 BASE_MODEL = "openai/whisper-small"
 ROOM_NAME_ENDPOINT = "/api/room/name"
+ROOM_MAP_SOURCE = "uninitialized"
 
 # 우선순위: v2_full -> whisper-smarthome -> base
 if MODEL_V2.exists():
@@ -41,7 +46,9 @@ else:
 try:
     processor = WhisperProcessor.from_pretrained(MODEL_PATH)
     model = WhisperForConditionalGeneration.from_pretrained(MODEL_PATH).to(device)
-    model.config.forced_decoder_ids = None
+    model.generation_config.language = "korean"
+    model.generation_config.task = "transcribe"
+    model.generation_config.forced_decoder_ids = None
     print("✅ Model & Processor loaded successfully!")
 except Exception as e:
     print(f"❌ Model load failed: {e}")
@@ -117,51 +124,112 @@ def fetch_room_map_from_backend() -> dict:
 
 
 def initialize_room_map() -> None:
+    global ROOM_MAP_SOURCE
     try:
         room_map = fetch_room_map_from_backend()
         set_room_map(room_map)
+        ROOM_MAP_SOURCE = "backend"
         print(f"✅ Room map loaded from backend: {get_room_map()}")
     except Exception as e:
         set_room_map(DEFAULT_ROOM_MAP)
+        ROOM_MAP_SOURCE = "fallback"
         print(f"⚠️ Failed to load room map from backend: {e}")
         print(f"⚠️ Falling back to default room map: {get_room_map()}")
 
 
-app = FastAPI(title="Smart Home AI STT API (Fine-tuned)")
+def remove_temp_file(temp_file_path: str | None) -> None:
+    if temp_file_path and os.path.exists(temp_file_path):
+        os.remove(temp_file_path)
 
 
-@app.on_event("startup")
-async def on_startup() -> None:
+def load_audio_from_temp_file(temp_file_path: str) -> np.ndarray:
+    audio_input, _ = librosa.load(temp_file_path, sr=16000)
+    return audio_input
+
+
+def load_audio_from_upload_bytes(audio_bytes: bytes, filename: str | None = None) -> np.ndarray:
+    try:
+        audio_buffer = BytesIO(audio_bytes)
+        audio_array, sample_rate = sf.read(audio_buffer, dtype="float32")
+        if getattr(audio_array, "ndim", 1) > 1:
+            audio_array = audio_array.mean(axis=1)
+
+        if sample_rate != 16000:
+            audio_array = librosa.resample(audio_array, orig_sr=sample_rate, target_sr=16000)
+
+        return np.asarray(audio_array, dtype=np.float32)
+    except Exception:
+        suffix = Path(filename or "").suffix or ".bin"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            temp_file_path = temp_file.name
+            temp_file.write(audio_bytes)
+
+        try:
+            return load_audio_from_temp_file(temp_file_path)
+        finally:
+            remove_temp_file(temp_file_path)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     initialize_room_map()
+    yield
+
+
+app = FastAPI(
+    title="Smart Home AI STT API (Fine-tuned)",
+    lifespan=lifespan,
+)
+
+
+@app.get("/api/stt/health")
+async def stt_health():
+    room_map = get_room_map()
+    return {
+        "status": "ok",
+        "device": device,
+        "model_path": MODEL_PATH,
+        "room_map_source": ROOM_MAP_SOURCE,
+        "room_map_count": len(room_map),
+        "room_map_preview": room_map,
+    }
+
 
 @app.post("/api/stt/transcribe")
 async def transcribe_audio_api(audio: UploadFile = File(...)):
-    temp_file_path = None
-
     try:
-        # 1. 파일 임시 저장
-        temp_file_path = f"temp_{audio.filename}"
-        with open(temp_file_path, "wb") as buffer:
-            shutil.copyfileobj(audio.file, buffer)
-            
+        # 1. 업로드 오디오를 메모리에서 우선 디코딩하고, 필요 시에만 임시 파일로 fallback
+        audio_bytes = await audio.read()
+        if not audio_bytes:
+            raise HTTPException(status_code=400, detail="audio file is empty")
+
         # 2. 오디오 로드 및 전처리 (16kHz 변환 포함)
-        audio_input, _ = librosa.load(temp_file_path, sr=16000)
+        audio_input = load_audio_from_upload_bytes(audio_bytes, audio.filename)
         
         # 3. Whisper 추론
-        input_features = processor(audio_input, sampling_rate=16000, return_tensors="pt").input_features.to(device)
+        inputs = processor(
+            audio_input,
+            sampling_rate=16000,
+            return_tensors="pt",
+            return_attention_mask=True,
+        )
+        input_features = inputs.input_features.to(device)
+        attention_mask = getattr(inputs, "attention_mask", None)
+        if attention_mask is not None:
+            attention_mask = attention_mask.to(device)
         
         # 모델 생성 (힌트 주입 대신 파인튜닝 자체의 성능 활용)
-        predicted_ids = model.generate(input_features, language="korean", task="transcribe")
+        with torch.inference_mode():
+            predicted_ids = model.generate(
+                input_features=input_features,
+                attention_mask=attention_mask,
+            )
         recognized_text = processor.batch_decode(predicted_ids, skip_special_tokens=True)[0].strip()
         
         print(f"📡 [STT API] 인식 결과: '{recognized_text}'")
         
         # 4. 명령어 파싱
         parsed_json_str = parse_voice_command(recognized_text)
-        
-        # 임시 파일 삭제
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
             
         return {
             "status": "success",
@@ -170,8 +238,8 @@ async def transcribe_audio_api(audio: UploadFile = File(...)):
         }
 
     except Exception as e:
-        if temp_file_path and os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":

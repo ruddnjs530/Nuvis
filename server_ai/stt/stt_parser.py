@@ -38,6 +38,14 @@ MODULE_MAP = {
     "제습기": "dehumidifier"
 }
 
+MODULE_ALIAS_MAP = {
+    "공기청소기": "공기청정기",
+    "공기천장기": "공기청정기",
+    "공기천천히": "공기청정기",
+    "가스기": "가습기",
+    "가스불": "가습기",
+}
+
 
 def set_room_map(room_map: dict) -> dict:
     global ROOM_MAP
@@ -47,6 +55,23 @@ def set_room_map(room_map: dict) -> dict:
 
 def get_room_map() -> dict:
     return dict(ROOM_MAP)
+
+
+def normalize_text(text: str) -> str:
+    return re.sub(r"[^가-힣a-zA-Z0-9]", "", text)
+
+
+def detect_module(filtered_text: str, normalized_text: str) -> str | None:
+    for kor_module, eng_module in MODULE_MAP.items():
+        if kor_module in filtered_text or normalize_text(kor_module) in normalized_text:
+            return eng_module
+
+    for alias_text, canonical_module in MODULE_ALIAS_MAP.items():
+        if alias_text in normalized_text:
+            return MODULE_MAP[canonical_module]
+
+    return None
+
 
 def parse_voice_command(stt_text: str) -> str:
     """
@@ -65,7 +90,7 @@ def parse_voice_command(stt_text: str) -> str:
     filtered_text = re.sub(r'([가-힣]+)\s*(말고|아니고|가지마)', '', stt_text)
     
     # 띄어쓰기 문제("내 방" vs "내방")를 해결하기 위해 공백을 모두 제거한 문자열도 검색용으로 준비
-    no_space_text = filtered_text.replace(" ", "")
+    no_space_text = normalize_text(filtered_text)
 
     # 1. 대상 위치 파악 (공백 제거된 텍스트와 원본 필터링 텍스트 모두 고려)
     for kor_room, room_id in ROOM_MAP.items():
@@ -75,17 +100,16 @@ def parse_voice_command(stt_text: str) -> str:
             break
 
     # 2. 제어할 모듈 파악
-    for kor_module, eng_module in MODULE_MAP.items():
-        if kor_module in filtered_text:
-            command["module"] = eng_module
-            # 방 이름이 있으면 이동 후 제어, 없으면 현재 위치에서 모듈만 제어
-            command["action"] = "move_and_operate" if command["roomId"] else "operate_module"
-            break
+    detected_module = detect_module(filtered_text, no_space_text)
+    if detected_module:
+        command["module"] = detected_module
+        # 방 이름이 있으면 이동 후 제어, 없으면 현재 위치에서 모듈만 제어
+        command["action"] = "move_and_operate" if command["roomId"] else "operate_module"
 
     # 3. ON/OFF 상태 제어 파악
     # 부정어 결합 형태 인지 (예: 안 켜도 돼, 켜지마, 끄지마)
-    on_pattern = r"(켜|작동|틀어|시작)(?!.*(지마|안|말고|취소))"
-    off_pattern = r"(꺼|중지|멈춰|종료|그만)(?!.*(지마|안|말고|취소))"
+    on_pattern = r"(켜|작동|틀어|시작)(?!.*(지\s*마|안|말고|취소))"
+    off_pattern = r"(꺼|중지|멈춰|종료|그만)(?!.*(지\s*마|안|말고|취소))"
     
     # 예: "켜지마" -> 끄는 것과 같음. 혹은 동작 안함.
     # 단순화하여 긍정적인 '켜/꺼' 추출
@@ -95,7 +119,7 @@ def parse_voice_command(stt_text: str) -> str:
         command["state"] = "off"
     elif re.search(r"(꺼지지마|멈추지마)", filtered_text):
         command["state"] = "on"
-    elif re.search(r"(켜지마|작동하지마|안\s*켜|안\s*틀)", filtered_text):
+    elif re.search(r"(켜\s*지\s*마|작동\s*하\s*지\s*마|안\s*켜|안\s*틀)", filtered_text):
         command["state"] = "off"
 
     # 파싱 실패 처리

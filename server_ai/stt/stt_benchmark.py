@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import argparse
 from pathlib import Path
 
 try:
@@ -23,6 +24,13 @@ BASE_DIR = Path(__file__).parent
 MODEL_V2 = BASE_DIR / "model" / "v2_full"
 MODEL_V1 = BASE_DIR / "model" / "whisper-smarthome"
 BASE_MODEL = "openai/whisper-small"
+
+MODEL_CHOICES = {
+    "auto": "auto",
+    "base": BASE_MODEL,
+    "v1": str(MODEL_V1),
+    "v2": str(MODEL_V2),
+}
 
 # 1. 평가할 테스트 데이터셋 정의
 # 형식: {"text": "발화 문장", "expected": { "action": "", "roomId": "", "module": "", "state": "" }}
@@ -90,48 +98,75 @@ def generate_test_audios():
     
     print("✅ 오디오 생성 완료!\n")
 
-def resolve_model_path() -> str:
+def resolve_model_path(model_choice: str = "auto") -> tuple[str, str]:
+    if model_choice == "base":
+        print(f"📡 Loading Base Model: {BASE_MODEL}")
+        return BASE_MODEL, "base"
+
+    if model_choice == "v2":
+        if not MODEL_V2.exists():
+            raise FileNotFoundError(f"Model path not found: {MODEL_V2}")
+        print(f"🔥 Loading Fine-tuned Model V2: {MODEL_V2}")
+        return str(MODEL_V2), "v2"
+
+    if model_choice == "v1":
+        if not MODEL_V1.exists():
+            raise FileNotFoundError(f"Model path not found: {MODEL_V1}")
+        print(f"🔥 Loading Fine-tuned Model V1: {MODEL_V1}")
+        return str(MODEL_V1), "v1"
+
     if MODEL_V2.exists():
         print(f"🔥 Loading Fine-tuned Model V2: {MODEL_V2}")
-        return str(MODEL_V2)
+        return str(MODEL_V2), "v2"
 
     if MODEL_V1.exists():
         print(f"🔥 Loading Fine-tuned Model V1: {MODEL_V1}")
-        return str(MODEL_V1)
+        return str(MODEL_V1), "v1"
 
     print(f"📡 Loading Base Model: {BASE_MODEL}")
-    return BASE_MODEL
+    return BASE_MODEL, "base"
 
 
-def load_stt_model():
+def load_stt_model(model_choice: str = "auto"):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     if device == "cpu":
         print("⚠️ GPU를 찾을 수 없어 CPU 환경에서 실행합니다. 속도가 느릴 수 있습니다.")
     else:
         print(f"✅ GPU 환경 감지됨. (장치: {device})")
 
-    model_path = resolve_model_path()
+    model_path, resolved_choice = resolve_model_path(model_choice)
     processor = WhisperProcessor.from_pretrained(model_path)
     model = WhisperForConditionalGeneration.from_pretrained(model_path).to(device)
-    model.config.forced_decoder_ids = None
+    model.generation_config.language = "korean"
+    model.generation_config.task = "transcribe"
+    model.generation_config.forced_decoder_ids = None
 
     print("✅ Model loaded!\n")
-    return processor, model, device
+    return processor, model, device, resolved_choice
 
 
 def transcribe_audio(processor, model, device: str, audio_path: str) -> str:
     audio_input, _ = librosa.load(audio_path, sr=16000)
-    input_features = processor(
+    inputs = processor(
         audio_input,
         sampling_rate=16000,
         return_tensors="pt",
-    ).input_features.to(device)
+        return_attention_mask=True,
+    )
+    input_features = inputs.input_features.to(device)
+    attention_mask = getattr(inputs, "attention_mask", None)
+    if attention_mask is not None:
+        attention_mask = attention_mask.to(device)
 
-    predicted_ids = model.generate(input_features, language="korean", task="transcribe")
+    with torch.inference_mode():
+        predicted_ids = model.generate(
+            input_features=input_features,
+            attention_mask=attention_mask,
+        )
     return processor.batch_decode(predicted_ids, skip_special_tokens=True)[0].strip()
 
 
-def run_benchmark():
+def run_benchmark(model_choice: str = "auto") -> float:
     """
     Whisper 모델로 텍스트를 인식하고, 파서로 파싱한 뒤 정확도(Accuracy)를 측정합니다.
     """
@@ -139,9 +174,9 @@ def run_benchmark():
     generate_test_audios()
     
     # 2. 모델 로드
-    processor, model, device = load_stt_model()
+    processor, model, device, resolved_choice = load_stt_model(model_choice)
     
-    print("=== 정확도 테스트 시작 ===")
+    print(f"=== 정확도 테스트 시작 ({resolved_choice}) ===")
     total_cases = len(TEST_CASES)
     parsing_success_count = 0
     
@@ -203,6 +238,39 @@ def run_benchmark():
     print("💡 만약 불일치(❌)가 있다면:")
     print(" 1. STT가 글자를 잘못 인식했는지 확인 (예: '켜줘'를 '꺼줘'로 인식)")
     print(" 2. STT는 맞았는데 stt_parser.py 규칙이 부족한지 확인 (새로운 예외 처리 필요)")
+    return accuracy
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Benchmark smart-home STT models.")
+    parser.add_argument(
+        "--model",
+        choices=MODEL_CHOICES.keys(),
+        default="auto",
+        help="Single model to benchmark. default: auto",
+    )
+    parser.add_argument(
+        "--compare",
+        action="store_true",
+        help="Run the same benchmark on both base and v2 models for direct comparison.",
+    )
+    return parser.parse_args()
 
 if __name__ == "__main__":
-    run_benchmark()
+    args = parse_args()
+
+    if args.compare:
+        results = {}
+        for model_choice in ("base", "v2"):
+            print("\n" + "#" * 60)
+            print(f"[비교 실행] model={model_choice}")
+            print("#" * 60)
+            results[model_choice] = run_benchmark(model_choice=model_choice)
+
+        print("\n" + "=" * 60)
+        print("📊 비교 요약")
+        for model_choice, accuracy in results.items():
+            print(f"- {model_choice}: {accuracy:.1f}%")
+        print("=" * 60)
+    else:
+        run_benchmark(model_choice=args.model)
