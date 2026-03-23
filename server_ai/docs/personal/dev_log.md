@@ -452,4 +452,104 @@
 
 ---
 
+### 2026-03-23 - [fix][stt] 20GB 학습 완료 후 `v2_full` 우위 검증과 parser 복원 로직 확정
+- 브랜치
+  - 작업 브랜치: `ai/feat/recomendation`
+  - 대상 브랜치: `master`
+- 작업 배경
+  - GPU 서버에서 20GB 재학습이 완료되었고, 시연에 실제로 어떤 모델을 써야 하는지 확정이 필요했습니다.
+  - 첫 번째 `v2_full` 벤치마크에서는 기기명 오인식 때문에 정확도가 `44.4%`까지 떨어졌지만, 원인이 모델 자체인지 parser 복원 부족인지 분리해서 봐야 했습니다.
+- 목표(DoD)
+  - 20GB 학습 최종 수치를 확인할 것
+  - `base`와 `v2_full`을 동일 조건으로 비교할 것
+  - 시연 기준 모델을 하나로 확정할 것
+  - 실제 `/api/stt/transcribe` 응답까지 확인할 것
+  - 운영 점검용 헬스체크와 startup 경고를 정리할 것
+- 결정 사항
+  - `stt_benchmark.py`에 `--model`, `--compare` 옵션을 추가해 `base`와 `v2_full`을 같은 테스트셋에서 직접 비교
+  - `stt_parser.py`에는 실제 오인식 기반 alias 보정 로직을 추가
+  - 시연 운영 모델은 `v2_full + 보정된 parser` 조합으로 확정
+  - 남아 있는 `SuppressTokens...` warning은 현재 단계에서 기능상 치명 문제로 보지 않고 보류
+  - 운영 점검은 `GET /api/stt/health`를 표준 체크 포인트로 사용
+- 선택 근거
+  - 20GB 학습 모델이 방 이름은 잘 맞추지만 기기명에서 `공기청소기`, `가스 불`처럼 어긋나는 케이스가 있어, 순수 STT 모델 성능과 서비스 최종 성능을 함께 봐야 했습니다.
+  - 시연에서는 "모델 단독 정답률"보다 "최종 파이프라인이 명령을 제대로 해석하는지"가 더 중요했습니다.
+  - 현재 로그 형태상 `SuppressTokens...` warning은 generation config에서 자동 생성되는 processor와 관련된 중복 경고에 가깝고, 곧바로 decoding 정책을 바꿔 제거하는 것은 정확도 리스크가 있습니다.
+- 대안 비교
+  - 대안 1: `v2_full`을 그대로 쓰고 결과만 수용
+    - 장점: 추가 수정 없음
+    - 기각 이유: 실제 시연 파이프라인 정확도가 너무 낮았음
+  - 대안 2: 다시 `base` 모델로 회귀
+    - 장점: 익숙한 기준 유지
+    - 기각 이유: 동일 조건 비교에서 `base 77.8%`, `v2_full 100.0%`로 `v2_full`이 더 우수했음
+- 트레이드오프
+  - 파서 alias 규칙이 늘어나 코드 복잡도는 조금 증가했지만, 시연에서 중요한 도메인 강인성과 복원력은 크게 올라갔습니다.
+  - 구현 상세
+  - STT
+    - `stt_parser.py`: `공기청소기`, `공기천장기`, `공기천천히`, `가스불`, `가스기` alias 추가
+    - `stt_parser.py`: `켜지 마` 같은 띄어진 부정 표현까지 `off` 처리
+    - `stt_benchmark.py`: `--model`, `--compare` 옵션 추가로 동일 조건 비교 가능하게 변경
+    - `main.py`: `generation_config` 기준 추론 경로 정리, 실제 API 추론과 벤치마크 경로 정렬
+    - `main.py`: `startup` 이벤트를 `lifespan`으로 전환
+    - `main.py`: 업로드 오디오를 메모리에서 먼저 디코딩하고, 미지원 포맷만 임시 파일로 fallback 하도록 변경
+    - `main.py`: `GET /api/stt/health` 추가
+    - `test_client.py`: 실제 샘플 음성 파일을 우선 업로드하도록 수정하고 STT 포트를 `9001`로 정렬
+  - 문서
+    - `docs/shared/stt_benchmark_results.md`: 1GB/20GB 결과와 `base` vs `v2_full` 비교 결과 반영
+    - `docs/shared/stt_training_operations_guide.md`: `v2_full` 보존 대상 산출물, GPU 서버 후속 절차, 브랜치 재정렬 순서 정리
+    - `stt/package_stt_artifacts.sh`: GPU 서버에서 모델/로그/메타데이터/문서를 한 번에 tarball로 묶는 백업 패키징 스크립트 추가
+    - 개인 문서들: 최종 시연 기준과 후속 과제 반영
+  - 운영
+    - GPU 서버에서 `python stt/stt_benchmark.py --compare` 실행
+    - GPU 서버에서 `git fetch origin && git reset --hard origin/ai/feat/recomendation`으로 최신 브랜치 재정렬
+    - 최신 브랜치 반영 후 `curl http://127.0.0.1:9001/api/stt/health`, `python test_client.py`로 재검증
+    - `bash stt/package_stt_artifacts.sh`로 최신 기준 백업 패키지 재생성
+- 변경 파일
+  - `server_ai/stt/stt_parser.py`
+  - `server_ai/stt/stt_benchmark.py`
+  - `server_ai/docs/shared/stt_benchmark_results.md`
+  - `server_ai/docs/personal/dev_log.md`
+  - `server_ai/docs/personal/daily_todo.md`
+  - `server_ai/docs/personal/ai_roadmap.md`
+  - `server_ai/docs/personal/portfolio.md`
+- 테스트 및 검증
+  - 실행 환경
+    - SSAFY GPU 서버, Tesla V100 5번
+  - 명령
+    - `tail -n 50 stt_train.log`
+    - `python stt/stt_benchmark.py --compare`
+    - `python stt/main.py`
+    - `python test_client.py`
+    - `curl http://127.0.0.1:9001/api/stt/health`
+  - 결과
+    - 20GB 학습 최종 수치: `eval_cer 1.02%`, `eval_loss 0.0146`, `train_loss 0.03998`
+    - 동일 조건 비교: `base 77.8% (7/9)`, `v2_full 100.0% (9/9)`
+    - 시연 기준으로 `v2_full` 채택
+    - 실제 `/api/stt/transcribe` 응답에서 `roomId=1`, `module=air_purifier`, `state=on` 확인
+    - `GET /api/stt/health` 응답에서 `device=cuda`, `model_path=v2_full`, `room_map_source=fallback` 확인
+    - 학습 산출물 운영 기준을 별도 문서로 정리해, 모델/로그/메타데이터 보존 범위와 GPU 서버 후속 정리 절차를 문서화
+    - GPU 서버에서 `bash stt/package_stt_artifacts.sh`로 백업 패키지를 생성할 수 있게 됨
+    - 최신 브랜치 반영 후 재검증에서도 동일 응답 유지 확인
+    - 최신 백업 패키지 `stt/artifacts/stt_backup_20260323_111736.tar.gz` 생성 완료
+  - 실패/제약
+    - 초기 `v2_full` 벤치마크는 parser 복원 로직이 부족해 `44.4%`까지 하락
+    - 오인식 alias 보정 후 동일 테스트셋에서 전 케이스 통과
+- 리스크 및 롤백
+  - 리스크
+    - 현재 parser alias는 시연용 핵심 케이스 중심이라, 완전히 새로운 발화에는 추가 보정이 필요할 수 있음
+  - 롤백 방법
+    - 벤치마크 기준 퇴행이 생기면 `stt_benchmark.py --compare`로 즉시 `base`와 재비교 가능
+- 이슈/메모
+  - 학습 중 `eval_cer`만 보면 충분히 좋아 보였지만, 실제 시연형 synthetic audio와 parser 결합 조건까지 봐야 최종 품질 판단이 가능하다는 점이 확인됨
+  - 실서버 추론 병목은 현재 코드 기준으로 모델 로드보다 `업로드 파일 저장 -> librosa.load -> feature extraction` 구간에 더 가까웠고, 1차로 메모리 우선 디코딩 최적화를 적용함
+  - 백엔드 MR(`be/ai-connect` -> `be-main`) 코드 확인 결과, `origin/be-main`에는 `GET /api/room/name`, dataset 조회, 추천 호출 서비스 로직 흔적이 들어가 있었음
+  - 다만 해당 변경은 `origin/master`에는 아직 미반영이어서, AI 서버 입장에서는 실제 공통 기준 브랜치 반영 후 다시 연동 판단이 필요함
+- 다음 작업
+  - 백엔드 `GET /api/room/name` 실제 응답 기준 roomId 연동 테스트
+  - 파인튜닝 모델 외부 백업 위치(HuggingFace Hub, 드라이브 등) 확정
+  - 단일 GPU 학습 효율 최적화 실험
+  - 실서버 추론 최적화는 전처리 경량화와 동시 요청 정책 정리 중심으로 이어가기
+
+---
+
 <!-- 아래에 날짜별로 계속 추가하세요 -->

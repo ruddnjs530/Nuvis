@@ -50,9 +50,16 @@
 - [x] **[완료]** STT 응답을 백엔드 계약에 맞춰 `roomId` 기반으로 변환하는 구조 구현
   - startup 시 `GET /api/room/name` 호출 → 방 이름 맵 캐싱
   - 백엔드 미연동 시 시연용 fallback 맵 유지
-- [~] **[진행 중]** 20GB급 full raw 재학습 및 `v2_full` 검증 환경 구축
-  - GPU 서버 `metadata.csv` 기준 128,468개 샘플 학습 중
-  - `stt_benchmark.py`는 `v2_full -> whisper-smarthome -> base` 순서로 검증하도록 업데이트
+- [x] **[완료]** GPU 서버에서 실제 `/api/stt/transcribe` 응답 검증
+  - `test_client.py` 기준 샘플 음성 업로드 결과 `roomId=1`, `module=air_purifier`, `state=on` 확인
+- [x] **[완료]** STT 운영 점검용 헬스체크 추가
+  - `GET /api/stt/health`에서 `device`, `model_path`, `room_map_source` 확인 가능
+- [x] **[완료]** FastAPI `startup` -> `lifespan` 전환 및 임시 파일 처리 안정화
+- [x] **[완료]** 20GB급 full raw 재학습 및 `v2_full` 검증 완료
+  - GPU 서버 `metadata.csv` 기준 **128,468개 샘플** 학습 완료
+  - 최종 학습 결과: `eval_cer 1.02%`, `eval_loss 0.0146`
+  - 동일 조건 비교 벤치마크 결과: `base 77.8% (7/9)` vs `v2_full 100.0% (9/9)`
+  - `stt_benchmark.py --compare` 기준으로 시연 모델을 `v2_full`로 확정
 - [ ] **[Next]** 파인튜닝 모델 백업 (HuggingFace Hub 등) 및 최종 모델 보존 전략 정리
 - [ ] **[Next]** 백엔드 `GET /api/room/name` 응답 기준 실제 roomId 연동 테스트
 - [ ] 치환된 JSON 명령어가 실제 주행 파트 노드로 흘러가 로봇이 동작하는지 실증 테스트

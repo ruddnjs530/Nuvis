@@ -167,6 +167,22 @@ Jenkins가 GPU 서버에 SSH로 접속해서 아래 흐름을 수행합니다.
 2. `server_ai/` 최신화
 3. 가상환경 활성화 또는 의존성 반영
 4. PM2로 AI 서비스 재시작 (`pm2 restart ai-rec ai-stt`)
+5. STT 헬스체크로 기동 상태 확인 (`curl http://127.0.0.1:9001/api/stt/health`)
+
+### 5.4 STT 운영 확인 포인트
+
+배포 후 최소 확인 기준:
+
+```sh
+curl http://127.0.0.1:9001/api/stt/health
+```
+
+응답에서 아래를 확인합니다.
+
+- `status=ok`
+- `device=cuda`
+- `model_path`가 기대한 모델 경로인지
+- `room_map_source`가 환경에 따라 `fallback` 또는 `backend`인지
 
 ---
 
@@ -193,8 +209,8 @@ GPU 서버에는 모노레포 전체가 아니라 **`server_ai/`만 부분 복�
 예시:
 
 ```env
-AI_RECOMMENDATION_BASE_URL=http://GPU_SERVER_IP:8000
-AI_STT_BASE_URL=http://GPU_SERVER_IP:8001
+AI_RECOMMENDATION_BASE_URL=http://GPU_SERVER_IP:9000
+AI_STT_BASE_URL=http://GPU_SERVER_IP:9001
 ```
 
 ### 7.2 AI 호출 시 필수 처리

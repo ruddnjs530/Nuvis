@@ -90,10 +90,27 @@ pip install -r requirements.txt
     4.  `GET http://localhost:8000/api/event/ai-suggestions` 로 결과 확인 가능.
 
 #### 🎙️ 음성 인식 제어 (STT Pipeline)
-*   **경로:** `stt/whisper_test.py`, `stt/stt_parser.py`
-*   **설명:** 사람의 녹음된 목소리 `.wav` 파일을 입력받아 텍스트로 바꾸고(OpenAI Whisper), 자연어 텍스트 문맥과 의도를 파악하여 `{대상, 모듈, 전원_상태}` 구조화된 JSON 로봇 제어 명령어 객체로 만듭니다.
+*   **경로:** `stt/main.py`, `stt/stt_parser.py`, `stt/stt_benchmark.py`
+*   **설명:** 업로드된 음성 파일을 텍스트로 변환하고(OpenAI Whisper / transformers), 자연어 텍스트 문맥과 의도를 파악하여 `roomId`, `module`, `state` 중심의 구조화된 로봇 제어 명령으로 반환합니다.
 *   **의존성 구분:** 이 모듈도 ROS2 없이 `pip install -r requirements.txt` 만으로 시작할 수 있습니다. 단, Whisper 추론 성능을 위해 GPU 환경 권장.
-*   **실행:** `python whisper_test.py` (동일 폴더 내에 음성 파일 구비 필요)
+*   **실행:**
+    1. `python stt/main.py` : STT API 서버 실행 (기본 포트 `9001`)
+    2. `python test_client.py` : 샘플 음성 기준 API 스모크 테스트
+    3. `python stt/stt_benchmark.py --compare` : `base` vs `v2_full` 동일 조건 비교
+
+#### 🩺 STT 운영 점검 (Health Check)
+*   **엔드포인트:** `GET /api/stt/health`
+*   **용도:** 현재 추론 장치, 실제 로드 모델 경로, 방 이름 맵 소스(`backend`/`fallback`)를 빠르게 점검합니다.
+*   **예시:**
+
+```sh
+curl http://127.0.0.1:9001/api/stt/health
+```
+
+*   **확인 포인트:**
+    - `device`: `cuda`면 GPU 추론 상태
+    - `model_path`: 실제 서비스 중인 모델 경로
+    - `room_map_source`: 백엔드 연동 전에는 `fallback`, 연동 후에는 `backend` 기대
 
 ## 📌 비고 (관련 문서)
 본 프로젝트에 대한 더 자세한 내용은 아래의 문서들을 참고해 주시기 바랍니다.
@@ -107,6 +124,8 @@ pip install -r requirements.txt
 - [🐳 Docker 배포 가이드](docs/shared/docker_deployment_guide.md): 멀티 컨테이너 배포 및 운영 기준
 - [🤖 자동화 연동 논의](docs/shared/automation_discussion_guide.md): AI ↔ 백엔드 Push/Polling 방식 의사결정 가이드
 - [🔄 GPU 서버 연동](docs/shared/git_sparse_guide.md): GPU 환경에서 AI 파트만 부분 복제하는 방법 안내
+- [🧪 STT 벤치마크 결과](docs/shared/stt_benchmark_results.md): 1GB/20GB 학습 결과 및 `base` vs `v2_full` 비교
+- [🗃️ STT 학습 운영 정리](docs/shared/stt_training_operations_guide.md): `v2_full` 산출물 보존, GPU 서버 후속 절차, 백업 기준
 
 ### 👤 개인 문서 (`docs/personal/`)
 - [🏅 포트폴리오](docs/personal/portfolio.md): 프로젝트 개요, 주요 성과, 기술 스택, 팀 회고
