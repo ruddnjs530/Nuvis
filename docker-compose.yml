@@ -13,9 +13,9 @@ services:
       RMW_IMPLEMENTATION: "rmw_fastrtps_cpp"
       PYTHONUNBUFFERED: "1"
       ROS_TCP_ENDPOINT_PORT: "10000"
-    ports:
-      - "50051:50051"
-      - "10000:10000"
+#    ports:
+#      - "50051:50051"
+#      - "10000:10000"
     volumes:
       - ./ros2_ws:/workspace/ros2_ws
       - ./scripts:/workspace/scripts
@@ -96,3 +96,49 @@ services:
        [ -f install/setup.bash ] &&
        source install/setup.bash &&
        rviz2 -d /workspace/ros2_ws/src/robot_nav/config/nav_debug.rviz"
+
+  # 1. 프론트엔드
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: smarthome_frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/nginx/ssl:ro
+    restart: always
+
+  # 2. 백엔드
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smarthome_backend
+    environment:
+      # .env 파일의 값을 불러옵니다.
+      - DATABASE_URL=${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+
+  # 3. 데이터베이스
+  db:
+    image: mysql:8
+    container_name: smarthome_db
+    restart: always
+    environment:
+      # .env 에서 불러옵니다.
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+
+volumes:
+  db_data:

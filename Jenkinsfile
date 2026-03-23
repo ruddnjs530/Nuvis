@@ -18,6 +18,12 @@ pipeline {
         stage('Build docker-compose') {
             steps {
                 script {
+                    echo "Provisioning .env configuration securely..."
+                    sh '''
+                    # 기존처럼 하드코딩하지 않고, 젠킨스 서버 내부에 안전하게 격리된 .env 파일을 복사해옵니다.
+                    cp /var/jenkins_home/secrets_safe/.env ./.env
+                    '''
+                    
                     echo "Building Docker Images..."
                     sh '''
                     # Dockerfile(프론트, 백, AI) 이미지 빌드

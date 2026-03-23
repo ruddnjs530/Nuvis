@@ -6,11 +6,6 @@ import { RobotService } from '../services/robot.service';
 export class RobotGrpcController {
   constructor(private readonly service: RobotService) {}
 
-<<<<<<< HEAD
-  @GrpcMethod('RobotService', 'CreateRobot')
-  create(data: any) {
-    return this.service.create(data);
-=======
   @GrpcMethod('RobotGateway', 'ExecuteTask')
   executeTask(data: any) {
     return this.service.executeTask(data);
@@ -39,6 +34,5 @@ export class RobotGrpcController {
   @GrpcMethod('RobotGateway', 'StreamStatus')
   streamStatus(data: { interval_ms: number }) {
     return this.service.streamStatus(data.interval_ms);
->>>>>>> origin/infra/task/ci-cd-setup
   }
 }

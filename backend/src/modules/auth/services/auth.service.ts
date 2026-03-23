@@ -34,12 +34,9 @@ export class AuthService {
 
 
 
-<<<<<<< HEAD
-=======
 
   create(data: any) {
     // Skeleton method added to pass compilation
     return { ...data, createdAt: new Date() };
   }
->>>>>>> origin/infra/task/ci-cd-setup
 }

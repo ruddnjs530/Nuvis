@@ -15,6 +15,10 @@ export class RoomService {
 
   constructor(private readonly roomRepository: RoomRepository) {}
 
+  create(data: any) {
+    return { ...data, roomId: Date.now() };
+  }
+
   async getAllRoomNames(userId: number): Promise<RoomNameListResponseDto> {
     const rooms = await this.roomRepository.findAllNames(userId);
     return { data: rooms };
