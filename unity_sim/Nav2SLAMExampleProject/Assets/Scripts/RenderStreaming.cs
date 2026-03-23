@@ -25,7 +25,7 @@ namespace Unity.RenderStreaming
 
     public class RenderStreaming : MonoBehaviour
     {
-        #pragma warning disable 0649
+#pragma warning disable 0649
         [SerializeField, Tooltip("Signaling server url")]
         private string urlSignaling = "http://localhost";
 
@@ -49,6 +49,9 @@ namespace Unity.RenderStreaming
 
         [SerializeField, Tooltip("Array to set your own click event")]
         private ButtonClickElement[] arrayButtonClickEvent;
+
+        [SerializeField, Tooltip("Enable or disable audio streaming")]
+        private bool enableAudioStream = false;
 
 #pragma warning restore 0649
 
@@ -94,6 +97,7 @@ namespace Unity.RenderStreaming
             Unity.WebRTC.Audio.Stop();
             m_mainThreadContext = null;
         }
+
         public void Start()
         {
             m_audioStream = Unity.WebRTC.Audio.CaptureStream();
@@ -173,7 +177,7 @@ namespace Unity.RenderStreaming
                 RTCRtpSendParameters parameters = sender.GetParameters();
                 foreach (var encoding in parameters.Encodings)
                 {
-                    if(bitrate != null) encoding.maxBitrate = bitrate;
+                    if (bitrate != null) encoding.maxBitrate = bitrate;
                     if (framerate != null) encoding.maxFramerate = framerate;
                 }
                 sender.SetParameters(parameters);
@@ -296,7 +300,7 @@ namespace Unity.RenderStreaming
             });
             pc.OnIceConnectionChange = new DelegateOnIceConnectionChange(state =>
             {
-                if(state == RTCIceConnectionState.Disconnected)
+                if (state == RTCIceConnectionState.Disconnected)
                 {
                     pc.Close();
                     m_mapConnectionIdAndPeer.Remove(connectionId);
@@ -333,6 +337,7 @@ namespace Unity.RenderStreaming
                 offerToReceiveAudio = true,
                 offerToReceiveVideo = true
             };
+
             var offerOp = pc.CreateOffer(ref option);
             yield return offerOp;
 
@@ -425,13 +430,13 @@ namespace Unity.RenderStreaming
             SimpleCameraController controller = m_listController
                 .FirstOrDefault(_controller => !m_remoteInputAndCameraController.ContainsValue(_controller));
 
-            if(controller != null)
+            if (controller != null)
             {
                 controller.SetInput(input);
                 m_remoteInputAndCameraController.Add(input, controller);
 
                 byte index = (byte)m_listController.IndexOf(controller);
-                byte[] bytes = {(byte)UnityEventType.SwitchVideo, index};
+                byte[] bytes = { (byte)UnityEventType.SwitchVideo, index };
                 channel.Send(bytes);
             }
         }
