@@ -47,17 +47,17 @@
     "air_purifier": {
       "actionModuleType": "공기청정기",
       "sensor": "fine_dust",
-      "context": "저녁",
-      "threshold_value": 42.7,
-      "condition": "42.7 ㎍/m³ 이상",
-      "reason": "유저님은 주로 '저녁'에 미세먼지가 42.7 ㎍/m³ 이상일 때 공기청정기를 사용하셨습니다. 현재 미세먼지가 높으니 가동할까요?"
+      "context": "저녁 귀가/휴식 (18~23시)",
+      "threshold_value": 29.4,
+      "condition_operator": ">",
+      "reason": "유저님은 주로 '저녁 귀가/휴식 (18~23시)'에 공기청정기을(를) 사용하셨습니다. 이 시간대 평균 fine_dust 수치는 31.0㎍/m³입니다. 해당 상황에 맞춰 29.4 ㎍/m³ 이상일 때 자동 가동을 추천합니다."
     },
     "anomaly_warnings": {
       "status": "warning",
       "actionModuleType": "air_purifier",
-      "fine_dust": 43.1,
-      "anomaly_data_points_analyzed": 4,
-      "reason": "최근 데이터의 이상치 분석 결과, 비정상적일 때의 평균 미세먼지가 약 45.4㎍/m³ 입니다. 급격한 미세먼지 증가로 인한 위기 상황을 사전에 알릴 수 있도록, 43.1㎍/m³ 도달 시 스마트 알림 전송을 추천합니다."
+      "fine_dust": 61.4,
+      "anomaly_data_points_analyzed": 25,
+      "reason": "최근 데이터의 이상치 분석 결과, 비정상적일 때의 평균 미세먼지가 약 64.6㎍/m³ 입니다. 급격한 미세먼지 증가로 인한 위기 상황을 사전에 알릴 수 있도록, 61.4㎍/m³ 도달 시 스마트 알림 전송을 추천합니다."
     }
   }
 }
@@ -97,22 +97,22 @@
 ```json
 {
   "status": "success",
-  "recognized_text": "거실 공기청정기 켜줘",
+  "recognized_text": "거실에 가서 공기청소기 켜 줘.",
   "robot_command": {
     "action": "move_and_operate",
-    "target_room": "living_room",
+    "roomId": 1,
     "module": "air_purifier",
     "state": "on"
   }
 }
 ```
 
-> **action 필드 값 설명:**
-> - `move_and_operate`: 특정 방으로 이동 후 기기 제어
-> - `operate_module`: 현재 위치에서 기기만 제어 (방 이름 미포함 시)
-> - `move`: 이동만 (기기 제어 없이)
-> - `none` (error): 명령 파싱 실패
-
+> **STT 처리 로직 가이드:**
+> - `recognized_text`: Whisper-v2-full 모델이 인식한 날선 텍스트
+> - `robot_command.action`: `move_and_operate` (이동 제어), `operate_module` (기기만), `move` (이동만), `none` (오류)
+> - `robot_command.roomId`: 백엔드 `roomId` (방 이름 매핑 결과)
+> - `robot_command.module`: 파싱된 기기 식별자 (`air_purifier`, `humidifier`, `dehumidifier`)
+> - `robot_command.state`: 목표 상태 (`on`, `off`)
 > **⚠️ 안전장치 (AI 서버 자체 적용 완료):**
 > - 전달 데이터가 500건을 초과하면 **최신 500건만** 분석에 사용합니다.
 > - 기기 1개당 분석 시간이 **5초를 초과**하면 해당 기기만 timeout 처리하고 나머지 기기는 정상 반환합니다.

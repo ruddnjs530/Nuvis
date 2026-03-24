@@ -17,7 +17,7 @@
 - **GPU 서버**
   - `server_ai` (추천 AI + STT)
   - GPU가 필요한 추론을 담당
-  - PM2로 백그라운드 프로세스 관리
+  - `start_all_servers.sh` (nohup 기반) 통합 런북으로 백그라운드 프로세스 관리 (PM2/Sudo 차단 환경 대응)
 - **Jenkins**
   - 배포 자동화 오케스트레이션 담당
   - 일반 서버와 GPU 서버에 각각 다른 방식으로 배포 가능
@@ -88,48 +88,37 @@
 
 ### 4.2 GPU 서버
 
-GPU 서버의 `server_ai`는 PM2 프로세스 관리자로 운영합니다.
+#### 통합 구동 스크립트(`start_all_servers.sh`)로 운영
 
-#### PM2 프로세스 관리자로 실행
-
-PM2를 사용하여 각 AI 서비스를 백그라운드에서 안정적으로 운영하는 방식입니다.
-
-**사전 준비 (최초 1회)**
-
-```bash
-# Node.js 설치 후 PM2 글로벌 설치
-npm install -g pm2
-```
+GPU 컨테이너 환경의 `npm/sudo` 및 권한 제약을 고려하여, 의존성 없는 순수 쉘 스크립트 기반 백그라운드 관리를 수행합니다.
 
 **서비스 실행**
 
 ```bash
-# 추천 AI 서비스 실행
-cd my_project/server_ai/recommendation
-pm2 start main.py --name "ai-rec" --interpreter python
+# 프로젝트 루트 이동
+cd server_ai
 
-# STT 서비스 실행
-cd my_project/server_ai/stt
-pm2 start main.py --name "ai-stt" --interpreter python
+# 추천 API(9000), STT API(9001), 재학습 데몬 한 번에 기동
+bash start_all_servers.sh
 ```
 
-**유용한 PM2 명령어**
+**프로세스 관리 및 로그 확인**
 
 ```bash
-pm2 list          # 실행 중인 프로세스 목록 확인
-pm2 logs          # 실시간 로그 확인
-pm2 restart all   # 전체 재시작
-pm2 stop all      # 전체 중지
-pm2 save          # 현재 프로세스 목록 저장 (재부팅 대응)
-pm2 startup       # 서버 재부팅 시 자동 시작 등록
+# 실시간 로그 확인
+tail -f recommendation/rec_server.log
+tail -f stt/stt_server.log
+
+# 서비스 중지 (강제 종료)
+pkill -f stt/api/main.py
+pkill -f recommendation/api/main.py
 ```
 
 장점:
 
-- 터미널 창 없이 백그라운드 실행 가능
-- 오류 발생 시 자동 재시작
-- 서버 재부팅 시에도 자동 복구 가능 (`pm2 startup` + `pm2 save`)
-- 여러 서비스의 로그를 한곳에서 관리 가능
+- 외부 의존성(Node/PM2) 없이 리눅스 표준 기능만으로 백그라운드 유지 가능
+- GPU 컨테이너와 같이 `sudo`가 차단된 폐쇄적 환경에서도 즉시 배포 가능
+- `start_all_servers.sh` 하나로 전체 서비스 인벤토리 관리 일원화
 
 ---
 
@@ -163,10 +152,10 @@ Jenkins Pipeline
 
 Jenkins가 GPU 서버에 SSH로 접속해서 아래 흐름을 수행합니다.
 
-1. 지정 브랜치 pull
+1. 지정 브랜치 pull (또는 sparse-checkout)
 2. `server_ai/` 최신화
-3. 가상환경 활성화 또는 의존성 반영
-4. PM2로 AI 서비스 재시작 (`pm2 restart ai-rec ai-stt`)
+3. 가상환경 활성화 및 의존성 반영
+4. 통합 스크립트 실행 (`bash start_all_servers.sh`)
 5. STT 헬스체크로 기동 상태 확인 (`curl http://127.0.0.1:9001/api/stt/health`)
 
 ### 5.4 STT 운영 확인 포인트
@@ -254,19 +243,18 @@ AI 서버는 DB에 직접 접근하지 않고,
 
 ### 8.2 프로세스 유지
 
-GPU 서버에서 AI 서버가 꺼지지 않도록 **PM2**를 사용하여 프로세스를 관리합니다.
+GPU 서버에서 AI 서버가 꺼지지 않도록 **nohup 통합 스크립트**를 사용하여 프로세스를 관리합니다.
 
-**권장 도구: PM2**
+**권장 방식: start_all_servers.sh**
 
-- 오류 발생 시 자동 재시작
-- 서버 재부팅 후 자동 복구 (`pm2 startup` + `pm2 save`)
-- 로그 통합 관리
-- GPU Docker 환경 없이도 안정적 운영 가능
+- 컨테이너 환경의 `sudo/npm` 차단 이슈 우회
+- 단일 엔트리포인트로 9000, 9001 포트 및 재학습 데몬 통합 관리
+- 표준 `pkill` 명령어를 통한 프로세스 제어
+- GPU Docker 환경 없이 가상환경(`venv`) 기반 실전 운영 가능
 
 ```bash
-# 최초 설정 (서버 재부팅 시 자동 시작 등록)
-pm2 startup
-pm2 save
+# 서버 재시동 시 수동 또는 Jenkins 트리거로 아래 명령 실행
+bash start_all_servers.sh
 ```
 
 
@@ -338,11 +326,10 @@ Jenkins를 사용할 경우 아래 항목도 함께 준비되어야 합니다.
   - 프론트엔드 / 백엔드 / DB를 Docker Compose로 운영
 - **GPU 서버**
   - `server_ai`만 `sparse-checkout`으로 가져옴
-  - 추천 API / STT API를 **PM2**로 백그라운드 실행 및 관리
-  - `pm2 startup` + `pm2 save`로 서버 재부팅 대응
+  - 추천 API / STT API를 **start_all_servers.sh**로 백그라운드 실행 및 통합 관리
 - **Jenkins**
   - 일반 서버용 배포 Job
-  - GPU 서버용 배포 Job (`pm2 restart`로 AI 서비스 재시작)
+  - GPU 서버용 배포 Job (`bash start_all_servers.sh`로 AI 서비스 재기동)
   - 또는 하나의 Pipeline 안에서 두 서버를 순차 배포
 - **백엔드**
   - GPU 서버 AI API를 HTTP로 호출

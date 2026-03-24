@@ -23,7 +23,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # 모델 경로 설정
 # ─────────────────────────────────────────
 BASE_DIR = Path(__file__).parent
-PROJECT_DIR = BASE_DIR.parent
+PROJECT_DIR = BASE_DIR.parent.parent
 SHARED_ENV_PATH = PROJECT_DIR / "docs" / "shared" / ".env"
 MODEL_V2 = BASE_DIR / "model" / "v2_full"
 MODEL_V1 = BASE_DIR / "model" / "whisper-smarthome"

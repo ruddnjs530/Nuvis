@@ -1,5 +1,0 @@
-﻿Entry Point,Auth,Description,Done,Method,생성 일시,생성자,우선순위
-api/robot/command,,"수동 제어 명령 하달 (특정 방으로 이동, 특정 모듈 기능 작동)",No,POST,2026년 3월 9일 오전 10:48,Jun Hyuk Wang,MVP
-api/robot/status,,"로봇의 현재 위치, 배터리, 현재 장착된 모듈 정보 조회",No,GET,2026년 3월 9일 오전 10:48,Jun Hyuk Wang,MVP
-ws/robot/camera/stream,,로봇 카메라 실시간 영상 스트리밍 연결 (WebRTC WHEP 엔드포인트),No,GET,2026년 3월 9일 오전 10:50,형섭 신,MVP
-api/robot/status,,"로봇의 현재 위치, 배터리, 현재 장착된 모듈 정보 조회",No,POST,2026년 3월 9일 오후 1:25,nowgnoeyk,

@@ -1,11 +1,12 @@
 # Mock data in recommendation server
-recommendation/mock_payload.json
-recommendation/mock_sensor_data.csv
+recommendation/data/mock_payload.json
+recommendation/data/mock_sensor_data.csv
 
 
 # Local environment
 .env
 .env.*
+!.env.example
 .python-version
 .venv/
 venv/
@@ -68,10 +69,10 @@ install/
 log/
 
 # AI Training Data & Model (Exclude from Git - keep folder structure only)
-stt/data/*
-!stt/data/.gitkeep
-stt/model/
-stt/test_audio/
+stt/data/
+stt/api/model/
+recommendation/api/model/
+stt/tests/test_audio/
 stt/artifacts/
 *.mp3
 .gravityignore
