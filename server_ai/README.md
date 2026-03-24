@@ -1,9 +1,7 @@
 # 스마트 홈 로봇 - AI Part (`server_ai`)
 
 스마트 홈 대시보드와 로봇, IoT 모듈을 연동하는 프로젝트의 **AI 전담 파트 작업공간**입니다.  
-현재 기준으로 `server_ai`는 **추천 AI + STT 전용 서비스**를 중심으로 관리하고, YOLO 비전 노드는 프로토타입만 함께 보관한 뒤 추후 `ros2_ws` 측으로 재배치하는 방향으로 정리했습니다.
-
-> 참고: 현재 저장소에는 초기 프로토타입 단계의 `vision/` 코드가 함께 포함되어 있으나, 이는 최종 배치 기준으로는 `server_ai`의 주 책임 범위에 포함하지 않습니다.
+현재 기준으로 `server_ai`는 **추천 AI + STT 전용 서비스**를 중심으로 관리합니다.
 
 ## 📂 폴더 구조
 ```text
@@ -21,7 +19,6 @@
  ┃     ┗ 📄 portfolio.md
  ┣ 📂 recommendation/             # Phase 2: IoT 데이터 기반 추천 AI API
  ┣ 📂 stt/                        # Phase 3: Whisper 기반 STT / 파서
- ┣ 📂 vision/                     # YOLO ROS2 노드 프로토타입 (추후 ros2_ws 측 분리 예정)
  ┣ 📄 requirements.txt
  ┗ 📄 test_client.py
 ```
