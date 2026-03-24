@@ -495,65 +495,6 @@ MonoBehaviour:
   markerPrefab: {fileID: 7151730531324999659, guid: 6fd54caedc5cc354088d86e85c957664, type: 3}
   LayerMaskName: Default,TurtleBot3Manual
   FrameId: base_scan
-  m_RenderDebugVisuals: 1
-  m_ActiveMarkerGradient:
-    serializedVersion: 2
-    key0: {r: 0, g: 1, b: 0.0579381, a: 1}
-    key1: {r: 0.98465693, g: 1, b: 0, a: 1}
-    key2: {r: 1, g: 0, b: 0.05751419, a: 0}
-    key3: {r: 0, g: 0, b: 0, a: 0}
-    key4: {r: 0, g: 0, b: 0, a: 0}
-    key5: {r: 0, g: 0, b: 0, a: 0}
-    key6: {r: 0, g: 0, b: 0, a: 0}
-    key7: {r: 0, g: 0, b: 0, a: 0}
-    ctime0: 0
-    ctime1: 33539
-    ctime2: 65535
-    ctime3: 0
-    ctime4: 0
-    ctime5: 0
-    ctime6: 0
-    ctime7: 0
-    atime0: 0
-    atime1: 65535
-    atime2: 0
-    atime3: 0
-    atime4: 0
-    atime5: 0
-    atime6: 0
-    atime7: 0
-    m_Mode: 0
-    m_NumColorKeys: 3
-    m_NumAlphaKeys: 2
-  m_InActiveMarkerGradient:
-    serializedVersion: 2
-    key0: {r: 0, g: 0, b: 0, a: 1}
-    key1: {r: 0.7686275, g: 0.7686275, b: 0.7686275, a: 1}
-    key2: {r: 0, g: 0, b: 0, a: 0}
-    key3: {r: 0, g: 0, b: 0, a: 0}
-    key4: {r: 0, g: 0, b: 0, a: 0}
-    key5: {r: 0, g: 0, b: 0, a: 0}
-    key6: {r: 0, g: 0, b: 0, a: 0}
-    key7: {r: 0, g: 0, b: 0, a: 0}
-    ctime0: 0
-    ctime1: 65535
-    ctime2: 0
-    ctime3: 0
-    ctime4: 0
-    ctime5: 0
-    ctime6: 0
-    ctime7: 0
-    atime0: 0
-    atime1: 65535
-    atime2: 0
-    atime3: 0
-    atime4: 0
-    atime5: 0
-    atime6: 0
-    atime7: 0
-    m_Mode: 0
-    m_NumColorKeys: 2
-    m_NumAlphaKeys: 2
 --- !u!1 &1872241788244199460
 GameObject:
   m_ObjectHideFlags: 0
@@ -966,6 +907,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1872241788542568031}
   - component: {fileID: 1872241788542568030}
+  - component: {fileID: 6923848915171691125}
   - component: {fileID: 5948607648823134037}
   m_Layer: 11
   m_Name: TurtleBot3ManualConfig
@@ -1007,6 +949,27 @@ MonoBehaviour:
   choosenAxis: 1
   currentOrientation: 1
   collisionExceptions: []
+--- !u!114 &6923848915171691125
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1872241788542568028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7724eca062eda9544b0b3fe1592410bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moduleChangeTopic: /robot/module_change
+  currentModule: 0
+  moduleVisualList:
+  - moduleType: 0
+    moduleObject: {fileID: 0}
+  - moduleType: 0
+    moduleObject: {fileID: 0}
+  changeDelay: 1
+  changingEffectObject: {fileID: 0}
 --- !u!114 &5948607648823134037
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1028,6 +991,8 @@ MonoBehaviour:
   trackWidth: 0.288
   forceLimit: 200
   damping: 10
+  invertLinearX: 0
+  invertAngularZ: 1
   ROSTimeout: 0.5
 --- !u!1 &1872241788697882711
 GameObject:
@@ -2315,6 +2280,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e68f65278fa404640beeb137ab878606, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_EnablePublish: 0
   m_PublishRateHz: 20
   m_GlobalFrameIds:
   - map
@@ -2670,14 +2636,14 @@ PrefabInstance:
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 5ee186acf30074c9091670dea62ad03b, type: 3}
---- !u!4 &757981941165129322 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 1404961952062453384, guid: 5ee186acf30074c9091670dea62ad03b, type: 3}
-  m_PrefabInstance: {fileID: 1872241788326103266}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &4876519644110652453 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6509787489077546183, guid: 5ee186acf30074c9091670dea62ad03b, type: 3}
+  m_PrefabInstance: {fileID: 1872241788326103266}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &757981941165129322 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1404961952062453384, guid: 5ee186acf30074c9091670dea62ad03b, type: 3}
   m_PrefabInstance: {fileID: 1872241788326103266}
   m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1872241789447549466
