@@ -1,7 +1,0 @@
-﻿Done,Method,Entry Point,Description,우선순위
-No,GET,api/event,등록된 자동화 이벤트 목록 조회,MVP
-No,POST,api/event,새 이벤트 규칙 생성 (예: 미세먼지 > 100 이면 공기청정 실행),MVP
-No,PUT,api/event/{event_id},기존 이벤트 조건 및 실행 명령 수정,MVP
-No,DELETE,api/event/{event_id},이벤트 규칙 삭제,MVP
-No,GET,api/event/ai-suggestions,AI가 사용자 패턴/환경을 분석해 제안하는 이벤트 수치 추천,고도화
-No,GET,api/event/ai-suggestions/{events_id},,고도화

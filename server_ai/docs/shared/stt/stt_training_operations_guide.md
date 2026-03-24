@@ -8,7 +8,7 @@
 ## 1. 현재 기준 결론
 
 - 현재 시연 기준 STT 운영 조합은 `v2_full + parser 보정 + roomId 변환`입니다.
-- 20GB 재학습 결과 기준 최종 모델은 `stt/model/v2_full/`입니다.
+- 20GB 재학습 결과 기준 최종 모델은 `stt/api/model/v2_full/`입니다.
 - 동일 조건 비교 벤치마크 결과는 `base 77.8% (7/9)`, `v2_full 100.0% (9/9)`입니다.
 - GPU 서버 실서버 API 스모크 테스트 기준으로도 `/api/stt/transcribe` 응답이 정상 동작함을 확인했습니다.
 
@@ -31,7 +31,7 @@
 
 ### 2.2 운영 확정 기준
 
-- 시연 기준 모델: `stt/model/v2_full/`
+- 시연 기준 모델: `stt/api/model/v2_full/`
 - 실서버 API 포트: `9001`
 - 현재 room map source: 백엔드 미연동 상태에서는 `fallback`
 - 추후 백엔드 `GET /api/room/name` 연동 후 `room_map_source=backend` 확인 예정
@@ -44,18 +44,18 @@
 
 | 구분 | 경로 | 설명 |
 |---|---|---|
-| 최종 모델 | `stt/model/v2_full/` | 시연 기준 운영 모델 |
-| 학습 로그 | `stt_train.log` | 학습 완료 시점 기록, 장애 추적용 |
+| 최종 모델 | `stt/api/model/v2_full/` | 시연 기준 운영 모델 |
+| 학습 로그 | `stt/api/stt_train.log` | 학습 완료 시점 기록, 장애 추적용 |
 | 전처리 메타데이터 | `stt/data/processed/metadata.csv` | 어떤 데이터로 학습했는지 추적하는 기준 |
-| 벤치마크 결과 | `docs/shared/stt_benchmark_results.md` | `base` vs `v2_full` 비교 결과 |
+| 벤치마크 결과 | `docs/shared/stt/stt_benchmark_results.md` | `base` vs `v2_full` 비교 결과 |
 | 운영 기록 | `docs/personal/dev_log.md` | 작업 흐름과 판단 근거 |
 
 ### 3.2 선택 보존 항목
 
 | 구분 | 경로 | 설명 |
 |---|---|---|
-| 중간 체크포인트 | `stt/model/v2_full/checkpoint-*` | 재시작/재현 목적이면 유지, 용량 절약 시 제거 검토 |
-| 테스트 오디오 | `stt/test_audio/` | 벤치마크 및 API 스모크 테스트 재현용 |
+| 중간 체크포인트 | `stt/api/model/v2_full/checkpoint-*` | 재시작/재현 목적이면 유지, 용량 절약 시 제거 검토 |
+| 테스트 오디오 | `stt/tests/test_audio/` | 벤치마크 및 API 스모크 테스트 재현용 |
 
 ---
 
@@ -66,33 +66,13 @@
 1. 학습 로그 끝부분 확인
 
 ```bash
-tail -n 50 stt_train.log
-```
+# 서버 재배치 후 API 실행 확인
+tail -n 50 stt/api/stt_train.log
+ls stt/api/model/v2_full
+python stt/tests/stt_benchmark.py --compare
 
-2. 최종 모델 디렉터리 확인
-
-```bash
-ls stt/model/v2_full
-```
-
-3. 비교 벤치마크 실행
-
-```bash
-python stt/stt_benchmark.py --compare
-```
-
-4. 실서버 API 확인
-
-터미널 1:
-
-```bash
-python stt/main.py
-```
-
-터미널 2:
-
-```bash
-python test_client.py
+# 실서버 API 기동 상태 확인
+bash start_all_servers.sh
 curl http://127.0.0.1:9001/api/stt/health
 ```
 

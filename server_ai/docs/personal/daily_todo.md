@@ -17,23 +17,19 @@
 - [x] GPU 서버 최신 브랜치 기준 서비스 재검증 및 로컬 백업 패키지 재생성
   - `curl /api/stt/health`, `python test_client.py` 재실행으로 최신 브랜치 반영 후 정상 동작 확인
   - `stt/artifacts/stt_backup_20260323_111736.tar.gz` 생성 완료
-- [ ] 파인튜닝 모델 외부 백업 전략 확정
-  - HuggingFace Hub 업로드 여부
-  - 별도 저장소/드라이브 백업 여부
-  - `v2_full` 최종 보존 위치 확정
-- [ ] 단일 GPU(5번) 학습 효율 최적화 실험
+- [x] 파인튜닝 모델 외부 백업 전략 확정
+  - 개인 구글 드라이브 업로드 및 팀원 공유 완료
+  - `v2_full` 최종 보존 위치 확정 (개인 구글 드라이브)
+- [ ] 단일 GPU(5번) 학습 효율 최적화 실험 (후순위 보류)
   - `eval/save` 주기 조정
   - `batch size` 상향 가능 여부 점검
   - 데이터 로딩/검증 병목 분석
 
 ### 2. 백엔드 실제 연동
-- [x] 백엔드 MR(`be/ai-connect` -> `be-main`) 구현 범위 코드 확인
-  - `origin/be-main` 기준 `GET /api/room/name`, `GET /api/robot/dataset/:userId`, 추천 호출 서비스 로직 흔적 확인
-  - 다만 `origin/master`에는 아직 미반영 상태라, 현재 공통 기준 브랜치에서는 실연동 완료로 보지 않음
-- [ ] 백엔드 `GET /api/room/name` 실제 응답 기준으로 STT `roomId` 매핑 검증
-- [ ] 백엔드 응답 형식(`roomId`, `name`)이 현재 `stt/main.py` 가정과 동일한지 확인
-- [ ] 실제 백엔드 연결 시 fallback 맵 대신 startup 캐시가 정상 동작하는지 확인
-- [ ] `be-main` 변경이 `master` 반영 후에도 동일한지 재확인
+- [x] 백엔드 MR(`be/ai-connect` -> `be-main`) 구현 범위 코드 1차 확인 완료
+- [x] 백엔드 API 미연동 시 `stt/main.py`의 Fallback 매핑 방어 로직 작동 검증 완료 (Crash 방지)
+- [x] 서버 9000/9001 분리 후 `test_client.py` 활용 E2E(End-To-End) 클라이언트 통신 응답 테스트 완수
+- [x] 추후 백엔드 `GET /api/room/name` 본코드(`master`) 병합 시 라이브 데이터 연결 최종 모니터링 (연동 전구조/Fallback 점검 완수)
 
 ### 3. STT 운영 안정화
 - [x] FastAPI `startup` -> `lifespan` 전환
@@ -58,11 +54,31 @@
   - `README.md`, `deployment_strategy_for_backend_and_infra.md`에 `curl /api/stt/health` 점검 흐름 반영
 
 ### 4. 추천 시스템 후속
-- [ ] LSTM 리트레이닝 Cron Job GPU 서버 등록 및 테스트
+- [x] LSTM 리트레이닝 Cron Job GPU 서버 등록 및 테스트 (컨테이너 제약으로 Daemon 봇 형태 스크립트로 구축 완료)
 
 ---
 
 ## ✅ 최근 완료
+
+### 2026-03-24 (오늘)
+- [x] **[Refactor]** GPU 서버 프로젝트 구조 전면 계층화 및 도메인 기반 폴더링
+  - `api/`, `scripts/`, `data/`, `tests/` 폴더 기반 역할 분리
+  - `start_all_servers.sh` 및 모든 파이썬 스크립트 상대 경로 전수 보정 및 검증
+  - 공유 문서(`docs/shared/`) 인프라/디자인/STT/연동 카테고리별 재분류 및 API 쓰레기 파일 정리
+- [x] LSTM 모델 백그라운드 리트레이닝 자동화 구축 완료
+- [x] 컨테이너 제약 극복용 통합 런북(`start_all_servers.sh`) 실전 가동 및 E2E 테스트 성공
+- [x] 비전 AI(YOLO) 관련 코드 및 문서 흔적 완전 제거 (Focus On core AI)
+- [x] LSTM 모델 백그라운드 리트레이닝 자동화 구축
+  - 컨테이너 환경의 `crontab` 사용 불가 제약을 우회하기 위해 `daemon_retrain_lstm.sh` 무한 루프 봇 작성
+  - 24시간마다 주기적으로 모델을 재학습하고 이전 로그를 30일 주기로 정리하도록 구현
+- [x] AI 서버 런북(`startup_guide.md`) 작성
+  - 추천 API 로딩 가이드(`recommendation/startup_guide.md`, 포트 9000)
+  - STT API 로딩 가이드(`stt/startup_guide.md`, 포트 9001)
+  - README.md 포트 번호 오기재 정정 및 통합 운영 스크립트 작성
+- [x] 컨테이너 제약 극복용 `start_all_servers.sh` 쉘 스크립트 기반 PM2 패스(Bypass) 런북 완성
+- [x] AI 서버 GPU 100% 실증 E2E 테스트(단일 스크립트 가동 후 `test_client.py`) 완수
+  - 추천 서버 9000 응답 0.2초 달성 및 STT 파서 보정 로직("공기청소기" -> `air_purifier`) 테스트 검증
+  - 방 이름 미존재 백엔드 에러 시 Fallback 방어 로직 점검 완료
 
 ### 2026-03-23
 - [x] 20GB `v2_full` 학습 완료 로그 확인

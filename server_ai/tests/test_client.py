@@ -6,17 +6,18 @@ from pathlib import Path
 # GPU 서버의 IP 주소와 포트를 입력하세요. (현재는 로컬호스트로 설정)
 # 실제 테스트 시에는 '127.0.0.1' 대신 '192.168.x.x' 등 GPU 서버의 IP로 변경해야 합니다.
 SERVER_IP = "127.0.0.1" 
-REC_SERVER_PORT = "8000"
+REC_SERVER_PORT = "9000"
 STT_SERVER_PORT = "9001"
 
 import os
 
-PROJECT_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_DIR = BASE_DIR.parent
 
 
 def resolve_stt_test_audio() -> tuple[str | None, str | None]:
     candidates = [
-        PROJECT_DIR / "stt" / "test_audio" / "test_00.mp3",
+        PROJECT_DIR / "stt" / "tests" / "test_audio" / "test_00.mp3",
         PROJECT_DIR / "test_audio" / "test_00.mp3",
         PROJECT_DIR / "test_command.wav",
     ]
@@ -34,11 +35,11 @@ def resolve_stt_test_audio() -> tuple[str | None, str | None]:
 
 def test_recommendation_api():
     """
-    추천 시스템(recommendation/main.py) 동작 확인:
+    추천 시스템(recommendation/api/main.py) 동작 확인:
     생성된 mock_payload.json을 읽어서 POST 요청을 보냅니다.
     """
-    mock_file = "recommendation/mock_payload.json"
-    if not os.path.exists(mock_file):
+    mock_file = PROJECT_DIR / "recommendation" / "data" / "mock_payload.json"
+    if not mock_file.exists():
         print(f"❌ '{mock_file}' 파일이 없습니다. 먼저 generate_mock_data.py를 실행하세요.")
         return
         
@@ -89,8 +90,8 @@ def test_stt_api():
 
     if not audio_file_path:
         print("\n❌ STT 테스트용 오디오 파일을 찾지 못했습니다.")
-        print("-> 우선순위: stt/test_audio/test_00.mp3 -> test_audio/test_00.mp3 -> test_command.wav")
-        print("-> 팁: GPU 서버에서 `python stt/stt_benchmark.py --model v2`를 한 번 실행하면 테스트 음성이 생성됩니다.")
+        print("-> 우선순위: stt/tests/test_audio/test_00.mp3 -> test_audio/test_00.mp3 -> test_command.wav")
+        print("-> 팁: GPU 서버에서 `python stt/tests/stt_benchmark.py --model v2`를 한 번 실행하면 테스트 음성이 생성됩니다.")
         return
     
     print(f"\n📡 [STT 시스템] GPU 서버로 음성 텍스트 변환 및 파싱 명령 요청 중... ({url})")
@@ -121,7 +122,7 @@ def test_stt_api():
                 
     except requests.exceptions.ConnectionError:
         print(f"\n❌ 연결 실패: '{SERVER_IP}:{STT_SERVER_PORT}' 서버에 접속할 수 없습니다.")
-        print("-> 팁: GPU 서버에서 stt/main.py (uvicorn)가 실행 중인지 확인하세요.")
+        print("-> 팁: GPU 서버에서 stt/api/main.py (uvicorn)가 실행 중인지 확인하세요.")
     except Exception as e:
         print(f"\n❌ STT 테스트 중 에러 발생: {e}")
 
