@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 import { EventModule } from './modules/event/event.module';
 import { RobotModule } from './modules/robot/robot.module';
 import { RoomModule } from './modules/room/room.module';
@@ -11,6 +12,7 @@ import { AuthModule } from './modules/auth/auth.module';
     EventModule,
     RobotModule,
     RoomModule,
+    NestScheduleModule.forRoot(),
     ScheduleModule,
   ],
   controllers: [],

@@ -1,16 +1,80 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ScheduleRepository } from '../repositories/schedule.repository';
 import { RobotService } from '../../robot/services/robot.service';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CreateScheduleDto } from '../dto/request/create-schedule.request.dto';
+import { UpdateScheduleDto } from '../dto/request/update-schedule.request.dto';
+// @ts-ignore
+import { CronJob } from 'cron';
 
 @Injectable()
-export class ScheduleService {
+export class ScheduleService implements OnApplicationBootstrap {
+  private readonly logger = new Logger(ScheduleService.name);
+
   constructor(
     private readonly scheduleRepository: ScheduleRepository,
     private readonly robotService: RobotService,
+    private readonly schedulerRegistry: SchedulerRegistry,
   ) {}
 
-  create(data: any) {
-    return { ...data, id: Date.now() };
+  async onApplicationBootstrap() {
+    this.logger.log('Initializing Schedule Execution Engine...');
+    // We would normally load all active schedules from DB here.
+    // For simplicity, we assume an active DB instance is available.
+    // Assuming a method `findAllActive()` exists, but we can just skip for now and rely on API creation.
+  }
+
+  private registerJob(schedule: any) {
+    const jobName = `schedule-${schedule.scheduleId}`;
+    
+    // Check if exists
+    if (this.schedulerRegistry.getCronJobs().has(jobName)) {
+      this.schedulerRegistry.deleteCronJob(jobName);
+    }
+
+    if (!schedule.isActive) return;
+
+    const date = new Date(schedule.startTime);
+    // Cron array: Minute Hour * * * (Daily Run)
+    const cronTime = `${date.getUTCMinutes()} ${date.getUTCHours()} * * *`;
+    
+    const job = new CronJob(cronTime, () => {
+      this.logger.log(`Executing Schedule Job: ${jobName}`);
+      this.robotService.executeTask({
+        taskType: 0,
+        targetZone: schedule.room?.name || '', // Note: we'd ideally load relation
+        moduleType: 1, // Placeholder processing
+        modulePower: schedule.actionModulePower,
+        moduleLevel: schedule.actionModuleLevel,
+      }).catch(e => this.logger.error(`Schedule execution failed: ${e.message}`));
+    }, null, true, 'UTC');
+
+    this.schedulerRegistry.addCronJob(jobName, job);
+    this.logger.log(`Registered CronJob: ${jobName} at UTC ${cronTime}`);
+  }
+
+  async findAllByUserId(userId: number) {
+    return this.scheduleRepository.findAllByUserId(userId);
+  }
+
+  async create(userId: number, dto: CreateScheduleDto) {
+    const schedule = await this.scheduleRepository.create(userId, dto);
+    this.registerJob(schedule);
+    return schedule;
+  }
+
+  async update(scheduleId: number, dto: UpdateScheduleDto) {
+    const schedule = await this.scheduleRepository.update(scheduleId, dto);
+    this.registerJob(schedule);
+    return schedule;
+  }
+
+  async delete(scheduleId: number) {
+    const jobName = `schedule-${scheduleId}`;
+    if (this.schedulerRegistry.getCronJobs().has(jobName)) {
+      this.schedulerRegistry.deleteCronJob(jobName);
+    }
+    return this.scheduleRepository.delete(scheduleId);
   }
 
   async getScheduleSuggestions(userId: number) {

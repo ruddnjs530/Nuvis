@@ -10,8 +10,9 @@ export class ScheduleGateway {
   constructor(private readonly service: ScheduleService) {}
 
   @SubscribeMessage('create')
-  handleCreate(@MessageBody() data: any): string {
-    const item = this.service.create(data);
+  async handleCreate(@MessageBody() data: any): Promise<string> {
+    // Mock user 1 for dummy WS call
+    const item = await this.service.create(1, data);
     this.server.emit('created', item);
     return 'Created';
   }

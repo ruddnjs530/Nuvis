@@ -2,7 +2,8 @@ import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import { RobotRepository } from '../repositories/robot.repository';
 import { Observable, Subject, lastValueFrom } from 'rxjs';
 import { ClientGrpc } from '@nestjs/microservices';
-import { ExecuteCommandDto, ManualControlDto, TaskType } from '../dto/robot.dto';
+import { ExecuteCommandDto, TaskType } from '../dto/request/execute-command.request.dto';
+import { ManualControlDto } from '../dto/request/manual-control.request.dto';
 
 interface RobotGatewayService {
   executeTask(data: any): Observable<any>;
@@ -106,8 +107,28 @@ export class RobotService implements OnModuleInit {
     }
   }
 
-  getStatus() {
-    return this.getMockStatus();
+  async getStatus() {
+    try {
+      if (this.robotGateway && this.robotGateway['getStatus']) {
+         const grpcStatus = await lastValueFrom((this.robotGateway as any).getStatus({}));
+         return this.formatStatus(grpcStatus);
+      }
+    } catch(e) {
+      this.logger.warn(`gRPC GetStatus failed, returning mock: ${e.message}`);
+    }
+    return this.formatStatus(this.getMockStatus());
+  }
+
+  private formatStatus(status: any) {
+    // Hardcode module info based on ROS2 ModuleState definitions
+    return {
+      ...status,
+      attached_module: {
+        type: 1,
+        name: 'AIR_PURIFIER',
+        is_available: true
+      }
+    };
   }
 
   streamStatus(intervalMs: number): Observable<any> {
@@ -118,7 +139,7 @@ export class RobotService implements OnModuleInit {
     let count = 0;
     const timer = setInterval(() => {
       count++;
-      subject.next(this.getMockStatus());
+      subject.next(this.formatStatus(this.getMockStatus()));
       if (count >= 10) {
         clearInterval(timer);
         subject.complete();

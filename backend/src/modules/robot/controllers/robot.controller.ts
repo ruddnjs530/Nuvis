@@ -4,7 +4,9 @@ import { RobotService } from '../services/robot.service';
 import { RankGuard } from 'src/common/guard/auth.guard';
 import { GetUser } from 'src/common/decorator/get-user.decorator';
 import { User } from 'src/modules/auth/models/user.model';
-import { ExecuteCommandDto, ManualControlDto } from '../dto/robot.dto';
+import { ExecuteCommandDto } from '../dto/request/execute-command.request.dto';
+import { ManualControlDto } from '../dto/request/manual-control.request.dto';
+import { ResponseRobotStatusDto } from '../dto/response/robot-status.response.dto';
 
 @ApiTags('Robot')
 @ApiBearerAuth()
@@ -39,5 +41,14 @@ export class RobotController {
   @ApiBody({ type: ManualControlDto })
   async manualControl(@Body() dto: ManualControlDto) {
     return this.robotService.manualControl(dto);
+  }
+
+  @Get('status')
+  @UseGuards(RankGuard)
+  @ApiOperation({ summary: '로봇 상태 조회', description: '로봇의 현재 상태(배터리, 위치, 진행중인 작업, 장착된 모듈)를 반환합니다.' })
+  @ApiResponse({ status: 200, type: ResponseRobotStatusDto })
+  async getStatus() {
+    const data = await this.robotService.getStatus();
+    return { data };
   }
 }

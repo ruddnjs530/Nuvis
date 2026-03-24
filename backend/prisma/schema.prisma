@@ -82,10 +82,12 @@ model Robot {
 model Schedule {
   scheduleId       Int      @id @default(autoincrement()) @map("schedule_id")
   userId           Int      @map("user_id")
-  roomId           Int      @map("room_id")
-  actionModuleType String   @map("action_module_type")
-  startTime        DateTime @map("start_time") @db.Time
-  durationMinutes  Int      @map("duration_minutes")
+  roomId            Int      @map("room_id")
+  actionModuleType  String   @map("action_module_type")
+  actionModulePower Boolean  @default(true) @map("action_module_power")
+  actionModuleLevel Int      @default(1) @map("action_module_level")
+  startTime         DateTime @map("start_time") @db.Time
+  durationMinutes   Int      @map("duration_minutes")
   isActive         Boolean  @map("is_active")
 
   user User @relation(fields: [userId], references: [userId])
