@@ -101,6 +101,8 @@ model Event {
   conditionOperator String  @map("condition_operator")
   thresholdValue    Float   @map("threshold_value")
   actionModuleType  String  @map("action_module_type")
+  actionModulePower Boolean @default(true) @map("action_module_power")
+  actionModuleLevel Int     @default(1) @map("action_module_level")
   isActive          Boolean @map("is_active")
 
   aiSuggestions AiSuggestion[]

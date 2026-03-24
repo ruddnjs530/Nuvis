@@ -9,8 +9,20 @@ export class EventService {
     private readonly robotService: RobotService,
   ) {}
 
-  create(data: any) {
-    return { ...data, id: Date.now() };
+  async findAll(userId: number) {
+    return this.eventRepository.findAll(userId);
+  }
+
+  async create(userId: number, createEventDto: any) {
+    return this.eventRepository.create(userId, createEventDto);
+  }
+
+  async update(eventId: number, userId: number, updateEventDto: any) {
+    return this.eventRepository.update(eventId, userId, updateEventDto);
+  }
+
+  async remove(eventId: number, userId: number) {
+    return this.eventRepository.delete(eventId, userId);
   }
 
   async getEventSuggestions(userId: number) {
