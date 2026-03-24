@@ -1,0 +1,13 @@
+=== GPU Training Environment ===
+Date: 2026-03-23
+
+[Hardware]
+GPU: Tesla V100-PCIE-32GB
+
+[Software]
+PyTorch: 2.10.0+cu128
+CUDA: 12.8
+
+[Training Summary]
+Model: Whisper (fine-tuned for smart home Korean STT)
+Best Checkpoint: v2_full / checkpoint-10000
