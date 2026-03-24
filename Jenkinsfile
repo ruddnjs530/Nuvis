@@ -27,7 +27,7 @@ pipeline {
                     echo "Building Docker Images..."
                     sh '''
                     # Dockerfile(프론트, 백, AI) 이미지 빌드
-                    docker-compose build
+                    docker compose build
                     '''
                 }
             }
@@ -39,7 +39,7 @@ pipeline {
                     echo "Deploying new infrastructure..."
                     sh '''
                     # 백그라운드(-d)로 모든 서비스를 실행
-                    docker-compose up -d
+                    docker compose up -d
                     '''
                 }
             }
