@@ -24,6 +24,12 @@ namespace RosSharp.Control
         public float damping = 10;
         public bool invertLinearX = false;
         public bool invertAngularZ = true;
+        public float minLinearCommand = 0.02f;
+        public float minAngularCommand = 0.08f;
+        public bool enableKinematicFallback = true;
+        public float fallbackStuckSeconds = 0.4f;
+        public float fallbackMinLinear = 0.03f;
+        public float fallbackMinAngular = 0.10f;
 
         public float ROSTimeout = 0.5f;
         private float lastCmdReceived = 0f;
@@ -32,6 +38,9 @@ namespace RosSharp.Control
         private RotationDirection direction;
         private float rosLinear = 0f;
         private float rosAngular = 0f;
+        private Vector3 prevPosition;
+        private Quaternion prevRotation;
+        private float stuckTimer = 0f;
 
         void Start()
         {
@@ -41,13 +50,15 @@ namespace RosSharp.Control
             SetParameters(wA2);
             ros = ROSConnection.GetOrCreateInstance();
             ros.Subscribe<TwistMsg>("/cmd_vel", ReceiveROSCmd);
+            prevPosition = transform.position;
+            prevRotation = transform.rotation;
         }
 
         void ReceiveROSCmd(TwistMsg cmdVel)
         {
             rosLinear = (float)cmdVel.linear.x;
             rosAngular = (float)cmdVel.angular.z;
-            lastCmdReceived = Time.time;
+            lastCmdReceived = Time.realtimeSinceStartup;
         }
 
         void FixedUpdate()
@@ -121,26 +132,32 @@ namespace RosSharp.Control
 
         private void ROSUpdate()
         {
-            if (Time.time - lastCmdReceived > ROSTimeout)
+            if (Time.realtimeSinceStartup - lastCmdReceived > ROSTimeout)
             {
                 rosLinear = 0f;
                 rosAngular = 0f;
             }
             float linear = invertLinearX ? -rosLinear : rosLinear;
             float angular = invertAngularZ ? -rosAngular : rosAngular;
+
+            // Help articulation dynamics overcome tiny command deadbands.
+            if (Mathf.Abs(linear) > 0f && Mathf.Abs(linear) < minLinearCommand)
+            {
+                linear = Mathf.Sign(linear) * minLinearCommand;
+            }
+            if (Mathf.Abs(angular) > 0f && Mathf.Abs(angular) < minAngularCommand)
+            {
+                angular = Mathf.Sign(angular) * minAngularCommand;
+            }
+
             RobotInput(linear, angular);
+            TryKinematicFallback(linear, angular);
         }
 
         private void RobotInput(float speed, float rotSpeed) // m/s and rad/s
         {
-            if (speed > maxLinearSpeed)
-            {
-                speed = maxLinearSpeed;
-            }
-            if (rotSpeed > maxRotationalSpeed)
-            {
-                rotSpeed = maxRotationalSpeed;
-            }
+            speed = Mathf.Clamp(speed, -maxLinearSpeed, maxLinearSpeed);
+            rotSpeed = Mathf.Clamp(rotSpeed, -maxRotationalSpeed, maxRotationalSpeed);
             float wheel1Rotation = (speed / wheelRadius);
             float wheel2Rotation = wheel1Rotation;
             float wheelSpeedDiff = ((rotSpeed * trackWidth) / wheelRadius);
@@ -156,6 +173,63 @@ namespace RosSharp.Control
             }
             SetSpeed(wA1, wheel1Rotation);
             SetSpeed(wA2, wheel2Rotation);
+        }
+
+        private void TryKinematicFallback(float linear, float angular)
+        {
+            if (!enableKinematicFallback)
+            {
+                prevPosition = transform.position;
+                prevRotation = transform.rotation;
+                stuckTimer = 0f;
+                return;
+            }
+
+            var cmdActive = Mathf.Abs(linear) > 0.001f || Mathf.Abs(angular) > 0.001f;
+            if (!cmdActive)
+            {
+                prevPosition = transform.position;
+                prevRotation = transform.rotation;
+                stuckTimer = 0f;
+                return;
+            }
+
+            var moved = Vector3.Distance(transform.position, prevPosition);
+            var turned = Quaternion.Angle(transform.rotation, prevRotation);
+            if (moved < 0.0005f && turned < 0.05f)
+            {
+                stuckTimer += Time.fixedDeltaTime;
+            }
+            else
+            {
+                stuckTimer = 0f;
+            }
+
+            prevPosition = transform.position;
+            prevRotation = transform.rotation;
+
+            if (stuckTimer < fallbackStuckSeconds)
+            {
+                return;
+            }
+
+            var kLinear = Mathf.Abs(linear) < fallbackMinLinear
+                ? Mathf.Sign(linear) * fallbackMinLinear
+                : linear;
+            var kAngular = Mathf.Abs(angular) < fallbackMinAngular
+                ? Mathf.Sign(angular) * fallbackMinAngular
+                : angular;
+            if (Mathf.Abs(linear) <= 0.001f)
+            {
+                kLinear = 0f;
+            }
+            if (Mathf.Abs(angular) <= 0.001f)
+            {
+                kAngular = 0f;
+            }
+
+            transform.position += transform.forward * (kLinear * Time.fixedDeltaTime);
+            transform.Rotate(0f, kAngular * Mathf.Rad2Deg * Time.fixedDeltaTime, 0f, Space.World);
         }
     }
 }

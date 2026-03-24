@@ -9,6 +9,7 @@ Navigation adapter package for map-based Nav2 navigation.
 - Relocalization service endpoint (`/robot/relocalize`)
 - Pose publishing (`/robot/pose`) from Nav2 feedback
 - Unity pose -> odom bridge (`/unity/robot_pose` -> `/odom`, `odom->base_link` TF)
+- Unity scan timestamp bridge (`/scan` -> `/scan_nav`)
 - AMCL initial pose one-shot publishing (`/initialpose`)
 - Unity-to-ROS coordinate conversion for incoming Unity-frame goals
 
@@ -25,7 +26,9 @@ ros2 launch robot_nav robot_nav.launch.py
 - `waypoints_file` default is empty, so zone-based targets are disabled unless you pass a valid YAML file.
 - SLAM mode is available with `use_slam:=true`.
 - Nav2 is the only motion command generator; controller output goes directly to `/cmd_vel`.
-- Obstacle avoidance is handled by Nav2 local/global costmaps with `/scan`.
+- Obstacle avoidance is handled by Nav2 local/global costmaps with `/scan_nav`.
+- `unity_scan_bridge_node` rewrites Unity LaserScan timestamps to ROS sim time to avoid
+  `Message Filter dropping message ... earlier than transform cache`.
 - Unity-frame targets are transformed with:
   - `unity_origin_offset_x`, `unity_origin_offset_y`
   - `unity_yaw_offset_rad`
@@ -37,6 +40,10 @@ ros2 launch robot_nav robot_nav.launch.py
 - Launch provides TF bootstrap options:
   - `enable_base_scan_tf` (`base_link -> base_scan`)
   - `enable_map_odom_tf` (`map -> odom`, disabled by default to avoid AMCL conflict)
+- Scan bridge options:
+  - `enable_unity_scan_bridge:=true` (default)
+  - `unity_scan_topic:=/scan` (Unity raw scan input)
+  - `nav_scan_topic:=/scan_nav` (Nav2 scan input topic)
 - AMCL initial pose:
   - launch args: `initial_pose_x`, `initial_pose_y`, `initial_pose_yaw`
   - default values are `-8.010941721272749, 10.032504845484937, 0.01376541107`

@@ -47,7 +47,8 @@ def cmd_execute(stub, args) -> None:
         module_level=args.module_level,
         max_exec_sec=args.max_exec_sec,
     )
-    _print_proto(stub.ExecuteTask(req, timeout=args.rpc_timeout_sec))
+    effective_timeout = max(float(args.rpc_timeout_sec), float(args.max_exec_sec) + 30.0)
+    _print_proto(stub.ExecuteTask(req, timeout=effective_timeout))
 
 
 def cmd_cancel(stub, args) -> None:
@@ -71,8 +72,7 @@ def cmd_manual(stub, args) -> None:
 
 
 def cmd_status(stub, args) -> None:
-    del args
-    _print_proto(stub.GetStatus(pb2.GetStatusRequest()))
+    _print_proto(stub.GetStatus(pb2.GetStatusRequest(), timeout=args.rpc_timeout_sec))
 
 
 def cmd_watch(stub, args) -> None:
@@ -94,7 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--rpc-timeout-sec",
         type=float,
-        default=30.0,
+        default=180.0,
         help="timeout for unary RPC calls",
     )
 

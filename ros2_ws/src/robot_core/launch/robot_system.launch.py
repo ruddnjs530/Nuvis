@@ -37,8 +37,18 @@ def generate_launch_description() -> LaunchDescription:
                 [FindPackageShare("robot_nav"), "config", "nav2_params.yaml"]
             ),
         ),
+        DeclareLaunchArgument(
+            "nav_waypoints_file",
+            default_value=PathJoinSubstitution(
+                [FindPackageShare("robot_nav"), "config", "waypoints.yaml"]
+            ),
+        ),
         DeclareLaunchArgument("unity_odom_publish_tf", default_value="true"),
         DeclareLaunchArgument("unity_pose_topic", default_value="/unity/robot_pose"),
+        DeclareLaunchArgument("unity_scan_topic", default_value="/scan"),
+        DeclareLaunchArgument("nav_scan_topic", default_value="/scan_nav"),
+        DeclareLaunchArgument("enable_unity_scan_bridge", default_value="true"),
+        DeclareLaunchArgument("nav_scan_frame", default_value="base_scan"),
         DeclareLaunchArgument("unity_origin_offset_x", default_value="0.0"),
         DeclareLaunchArgument("unity_origin_offset_y", default_value="0.0"),
         DeclareLaunchArgument("unity_yaw_offset_rad", default_value="0.0"),
@@ -70,9 +80,14 @@ def generate_launch_description() -> LaunchDescription:
                 "use_respawn": LaunchConfiguration("nav_use_respawn"),
                 "map_yaml_file": LaunchConfiguration("map_yaml_file"),
                 "nav2_params_file": LaunchConfiguration("nav2_params_file"),
+                "waypoints_file": LaunchConfiguration("nav_waypoints_file"),
                 "enable_map_odom_tf": LaunchConfiguration("nav_enable_map_odom_tf"),
                 "unity_odom_publish_tf": LaunchConfiguration("unity_odom_publish_tf"),
                 "unity_pose_topic": LaunchConfiguration("unity_pose_topic"),
+                "unity_scan_topic": LaunchConfiguration("unity_scan_topic"),
+                "nav_scan_topic": LaunchConfiguration("nav_scan_topic"),
+                "enable_unity_scan_bridge": LaunchConfiguration("enable_unity_scan_bridge"),
+                "nav_scan_frame": LaunchConfiguration("nav_scan_frame"),
                 "unity_origin_offset_x": LaunchConfiguration("unity_origin_offset_x"),
                 "unity_origin_offset_y": LaunchConfiguration("unity_origin_offset_y"),
                 "unity_yaw_offset_rad": LaunchConfiguration("unity_yaw_offset_rad"),

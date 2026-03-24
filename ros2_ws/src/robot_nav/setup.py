@@ -26,6 +26,7 @@ setup(
         "console_scripts": [
             "nav_adapter_node = robot_nav.nav_adapter_node:main",
             "unity_odom_bridge_node = robot_nav.unity_odom_bridge_node:main",
+            "unity_scan_bridge_node = robot_nav.unity_scan_bridge_node:main",
             "initial_pose_publisher_node = robot_nav.initial_pose_publisher_node:main",
         ],
     },

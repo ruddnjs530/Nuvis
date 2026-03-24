@@ -1,4 +1,5 @@
 import math
+import time
 from typing import Optional
 
 import rclpy
@@ -23,6 +24,7 @@ class UnityOdomBridgeNode(Node):
         self.declare_parameter("unity_frame_prefix", "unity")
         self.declare_parameter("publish_tf", True)
         self.declare_parameter("publish_rate_hz", 20.0)
+        self.declare_parameter("input_timeout_sec", 1.0)
 
         self.source_pose_topic = (
             self.get_parameter("source_pose_topic").get_parameter_value().string_value
@@ -45,12 +47,17 @@ class UnityOdomBridgeNode(Node):
         )
         self.publish_tf = self.get_parameter("publish_tf").get_parameter_value().bool_value
         publish_rate_hz = self.get_parameter("publish_rate_hz").get_parameter_value().double_value
+        self.input_timeout_sec = (
+            self.get_parameter("input_timeout_sec").get_parameter_value().double_value
+        )
 
         self._odom_pub = self.create_publisher(Odometry, odom_topic, 30)
         self._tf_broadcaster = TransformBroadcaster(self) if self.publish_tf else None
         self._latest_pose: PoseStamped = self._default_pose()
         self._prev_published_pose: Optional[PoseStamped] = None
         self._prev_pub_stamp_sec = 0.0
+        self._last_input_monotonic_sec = 0.0
+        self._warned_input_stale = False
 
         self.create_subscription(PoseStamped, self.source_pose_topic, self._on_pose, 30)
         self.create_timer(1.0 / max(1.0, publish_rate_hz), self._on_timer)
@@ -61,8 +68,24 @@ class UnityOdomBridgeNode(Node):
 
     def _on_pose(self, msg: PoseStamped) -> None:
         self._latest_pose = self._to_odom_pose(msg)
+        self._last_input_monotonic_sec = time.monotonic()
+        self._warned_input_stale = False
 
     def _on_timer(self) -> None:
+        if self._last_input_monotonic_sec <= 0.0:
+            return
+
+        stale_sec = time.monotonic() - self._last_input_monotonic_sec
+        if stale_sec > max(0.1, float(self.input_timeout_sec)):
+            if not self._warned_input_stale:
+                self._warned_input_stale = True
+                self.get_logger().warn(
+                    "No recent Unity pose input on "
+                    f"{self.source_pose_topic} for {stale_sec:.2f}s; "
+                    "skip publishing /odom and odom->base_link TF until input recovers."
+                )
+            return
+
         pose_odom = self._clone_pose(self._latest_pose)
         pose_odom.header.stamp = self.get_clock().now().to_msg()
 
