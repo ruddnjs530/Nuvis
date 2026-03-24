@@ -493,7 +493,7 @@ MonoBehaviour:
   NumMeasurementsPerScan: 180
   TimeBetweenMeasurementsSeconds: 0
   markerPrefab: {fileID: 7151730531324999659, guid: 6fd54caedc5cc354088d86e85c957664, type: 3}
-  LayerMaskName: TurtleBot3Manual
+  LayerMaskName: Default,TurtleBot3Manual
   FrameId: base_scan
   m_RenderDebugVisuals: 1
   m_ActiveMarkerGradient:
@@ -1026,7 +1026,7 @@ MonoBehaviour:
   maxRotationalSpeed: 0.5
   wheelRadius: 0.033
   trackWidth: 0.288
-  forceLimit: 10
+  forceLimit: 200
   damping: 10
   ROSTimeout: 0.5
 --- !u!1 &1872241788697882711

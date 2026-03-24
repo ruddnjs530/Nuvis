@@ -21,8 +21,9 @@ public class ROSClockPublisher : MonoBehaviour
     ROSConnection m_ROS;
 
     double PublishPeriodSeconds => 1.0f / m_PublishRateHz;
+    static double NowSec => Time.realtimeSinceStartupAsDouble;
 
-    bool ShouldPublishMessage => Clock.FrameStartTimeInSeconds - PublishPeriodSeconds > m_LastPublishTimeSeconds;
+    bool ShouldPublishMessage => NowSec >= m_LastPublishTimeSeconds + PublishPeriodSeconds;
 
     void OnValidate()
     {
@@ -57,7 +58,7 @@ public class ROSClockPublisher : MonoBehaviour
 
     void PublishMessage()
     {
-        var publishTime = Clock.time;
+        var publishTime = NowSec;
         var timeMsg = new TimeMsg
         {
             sec = (int)publishTime,

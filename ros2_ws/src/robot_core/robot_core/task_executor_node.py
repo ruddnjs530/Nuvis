@@ -119,8 +119,12 @@ class TaskExecutorNode(Node):
 
     def _on_goal(self, goal_request: ExecuteTask.Goal) -> GoalResponse:
         if self._active_goal_handle is not None:
-            self.get_logger().warn("Reject goal: another task is active")
-            return GoalResponse.REJECT
+            if getattr(self._active_goal_handle, "is_active", False):
+                self.get_logger().warn("Reject goal: another task is active")
+                return GoalResponse.REJECT
+            # Recover from stale handle left by unexpected terminal-state errors.
+            self.get_logger().warn("Detected stale active goal handle, resetting state")
+            self._clear_active_task()
         if self._safety_state == SAFETY_ESTOP:
             self.get_logger().warn("Reject goal: emergency stop is active")
             return GoalResponse.REJECT
@@ -291,9 +295,8 @@ class TaskExecutorNode(Node):
         result.started_at = started_at
         result.finished_at = self.get_clock().now().to_msg()
         result.error_code = 0
-        goal_handle.succeed()
-        self._active_goal_handle = None
-        self._active_task_id = ""
+        self._safe_goal_succeed(goal_handle)
+        self._clear_active_task()
         return result
 
     def _validate_goal(self, goal: ExecuteTask.Goal) -> Optional[str]:
@@ -524,10 +527,8 @@ class TaskExecutorNode(Node):
         result.started_at = started_at
         result.finished_at = self.get_clock().now().to_msg()
         result.error_code = ErrorCode.CANCELED
-        goal_handle.canceled()
-        self._active_goal_handle = None
-        self._active_task_id = ""
-        self._cancel_requested = False
+        self._safe_goal_cancel_or_abort(goal_handle)
+        self._clear_active_task()
         return result
 
     def _fail_goal(self, goal_handle, task_id: str, started_at, message: str, error_code: int):
@@ -549,10 +550,50 @@ class TaskExecutorNode(Node):
         result.started_at = started_at
         result.finished_at = self.get_clock().now().to_msg()
         result.error_code = error_code
-        goal_handle.abort()
+        self._safe_goal_abort(goal_handle)
+        self._clear_active_task()
+        return result
+
+    def _clear_active_task(self) -> None:
         self._active_goal_handle = None
         self._active_task_id = ""
-        return result
+        self._cancel_requested = False
+        self._force_return_after_cancel = False
+
+    def _safe_goal_succeed(self, goal_handle) -> None:
+        if not getattr(goal_handle, "is_active", False):
+            self.get_logger().warn("Goal already inactive before succeed()")
+            return
+        try:
+            goal_handle.succeed()
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().warn(f"Failed to mark goal as succeeded: {exc}")
+
+    def _safe_goal_abort(self, goal_handle) -> None:
+        if not getattr(goal_handle, "is_active", False):
+            return
+        try:
+            goal_handle.abort()
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().warn(f"Failed to mark goal as aborted: {exc}")
+
+    def _safe_goal_cancel_or_abort(self, goal_handle) -> None:
+        if not getattr(goal_handle, "is_active", False):
+            return
+        try:
+            if getattr(goal_handle, "is_cancel_requested", False):
+                goal_handle.canceled()
+            else:
+                # Service/internal cancellation does not always transition to CANCELING.
+                self.get_logger().warn(
+                    "Cancel requested without Action cancel transition; aborting goal state"
+                )
+                goal_handle.abort()
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().warn(
+                f"Failed to set canceled state ({exc}); trying abort fallback"
+            )
+            self._safe_goal_abort(goal_handle)
 
     def _publish_feedback(
         self,

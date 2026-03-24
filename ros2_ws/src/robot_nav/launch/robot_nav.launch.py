@@ -13,7 +13,7 @@ def generate_launch_description() -> LaunchDescription:
     robot_nav_share = Path(get_package_share_directory("robot_nav"))
     nav2_bringup_share = Path(get_package_share_directory("nav2_bringup"))
 
-    waypoints_file_default = ""
+    waypoints_file_default = str(robot_nav_share / "config" / "waypoints.yaml")
     map_file_default = str(robot_nav_share / "maps" / "my_map.yaml")
     nav2_params_default = str(robot_nav_share / "config" / "nav2_params.yaml")
     nav2_bringup_launch = str(nav2_bringup_share / "launch" / "bringup_launch.py")
@@ -31,6 +31,10 @@ def generate_launch_description() -> LaunchDescription:
     enable_map_odom_tf = LaunchConfiguration("enable_map_odom_tf")
     unity_odom_publish_tf = LaunchConfiguration("unity_odom_publish_tf")
     unity_pose_topic = LaunchConfiguration("unity_pose_topic")
+    unity_scan_topic = LaunchConfiguration("unity_scan_topic")
+    nav_scan_topic = LaunchConfiguration("nav_scan_topic")
+    enable_unity_scan_bridge = LaunchConfiguration("enable_unity_scan_bridge")
+    nav_scan_frame = LaunchConfiguration("nav_scan_frame")
     unity_origin_offset_x = LaunchConfiguration("unity_origin_offset_x")
     unity_origin_offset_y = LaunchConfiguration("unity_origin_offset_y")
     unity_yaw_offset_rad = LaunchConfiguration("unity_yaw_offset_rad")
@@ -81,6 +85,10 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("enable_map_odom_tf", default_value="false"),
             DeclareLaunchArgument("unity_odom_publish_tf", default_value="true"),
             DeclareLaunchArgument("unity_pose_topic", default_value="/unity/robot_pose"),
+            DeclareLaunchArgument("unity_scan_topic", default_value="/scan"),
+            DeclareLaunchArgument("nav_scan_topic", default_value="/scan_nav"),
+            DeclareLaunchArgument("enable_unity_scan_bridge", default_value="true"),
+            DeclareLaunchArgument("nav_scan_frame", default_value="base_scan"),
             DeclareLaunchArgument("unity_origin_offset_x", default_value="0.0"),
             DeclareLaunchArgument("unity_origin_offset_y", default_value="0.0"),
             DeclareLaunchArgument("unity_yaw_offset_rad", default_value="0.0"),
@@ -110,6 +118,23 @@ def generate_launch_description() -> LaunchDescription:
                         "unity_frame_prefix": "unity",
                         "publish_tf": unity_odom_publish_tf,
                         "publish_rate_hz": 30.0,
+                        "input_timeout_sec": 1.0,
+                        "use_sim_time": use_sim_time,
+                    }
+                ],
+            ),
+            Node(
+                package="robot_nav",
+                executable="unity_scan_bridge_node",
+                name="unity_scan_bridge_node",
+                output="screen",
+                condition=IfCondition(enable_unity_scan_bridge),
+                parameters=[
+                    {
+                        "source_scan_topic": unity_scan_topic,
+                        "output_scan_topic": nav_scan_topic,
+                        "output_frame_id": nav_scan_frame,
+                        "watchdog_warn_sec": 2.0,
                         "use_sim_time": use_sim_time,
                     }
                 ],
@@ -155,7 +180,7 @@ def generate_launch_description() -> LaunchDescription:
                         "initial_pose_yaw": initial_pose_yaw,
                         "initial_pose_frame": initial_pose_frame,
                         "publish_delay_sec": initial_pose_delay_sec,
-                        "use_unity_pose_if_available": True,
+                        "use_unity_pose_if_available": False,
                         "source_pose_topic": unity_pose_topic,
                         "unity_frame_prefix": "unity",
                         "unity_origin_offset_x": unity_origin_offset_x,
@@ -175,11 +200,11 @@ def generate_launch_description() -> LaunchDescription:
                     {
                         "waypoints_file": waypoints_file,
                         "step_sec": 0.2,
-                        "arrival_pos_tol": 0.25,
-                        "arrival_yaw_tol_deg": 15.0,
-                        "stable_sec": 1.0,
+                        "arrival_pos_tol": 0.45,
+                        "arrival_yaw_tol_deg": 30.0,
+                        "stable_sec": 0.5,
                         "localization_min_score": 0.4,
-                        "default_home_zone": "",
+                        "default_home_zone": "hq",
                         "cmd_vel_topic": "/cmd_vel",
                         "unity_origin_offset_x": unity_origin_offset_x,
                         "unity_origin_offset_y": unity_origin_offset_y,
