@@ -23,10 +23,11 @@ model User {
 }
 
 model Room {
-  roomId  Int    @id @default(autoincrement()) @map("room_id")
-  userId  Int    @map("user_id")
-  name    String
-  mapData Json?  @map("map_data")
+  roomId     Int    @id @default(autoincrement()) @map("room_id")
+  userId     Int    @map("user_id")
+  name       String
+  targetZone String? @map("target_zone")
+  mapData    Json?  @map("map_data")
 
   user                   User                   @relation(fields: [userId], references: [userId])
   roomCondition          RoomCondition?

@@ -1,12 +1,29 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import { RobotRepository } from '../repositories/robot.repository';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, lastValueFrom } from 'rxjs';
+import { ClientGrpc } from '@nestjs/microservices';
+import { ExecuteCommandDto, ManualControlDto, TaskType } from '../dto/robot.dto';
+
+interface RobotGatewayService {
+  executeTask(data: any): Observable<any>;
+  cancelTask(data: any): Observable<any>;
+  emergencyStop(data: any): Observable<any>;
+  manualControl(data: any): Observable<any>;
+}
 
 @Injectable()
-export class RobotService {
+export class RobotService implements OnModuleInit {
   private readonly logger = new Logger(RobotService.name);
+  private robotGateway: RobotGatewayService;
 
-  constructor(private readonly robotRepository: RobotRepository) {}
+  constructor(
+    private readonly robotRepository: RobotRepository,
+    @Inject('ROBOT_GRPC_CLIENT') private readonly client: ClientGrpc,
+  ) {}
+
+  onModuleInit() {
+    this.robotGateway = this.client.getService<RobotGatewayService>('RobotGateway');
+  }
 
   async getAiDataset(userId: number, days: number) {
     return { userId, days, data: [] };
@@ -17,16 +34,42 @@ export class RobotService {
     return { ...data, createdAt: new Date() };
   }
 
-  executeTask(data: any) {
+  async executeTask(data: ExecuteCommandDto) {
     this.logger.log(`ExecuteTask called: ${JSON.stringify(data)}`);
-    return {
-      accepted: true,
-      task_id: data.task_id || 'task-1234',
-      final_state: 0, // FINAL_COMPLETED
-      result_code: 0,
-      result_message: 'Task completed successfully (Placeholder)',
-      error_code: 0,
+
+    // Override target coordinates if target_zone is provided (Guideline implementation)
+    let finalX = data.targetX || 0.0;
+    let finalY = data.targetY || 0.0;
+    const finalYaw = data.targetYaw || 0.0;
+
+    if (data.targetZone && data.targetZone.trim() !== '') {
+      // Zone provided: strict zero override
+      this.logger.debug(`Target Zone '${data.targetZone}' identified. Overriding coordinates to 0.0`);
+      finalX = 0.0;
+      finalY = 0.0;
+    }
+
+    const requestPayload = {
+      commandId: data.commandId || `cmd-rest-${Date.now()}`,
+      taskId: data.taskId || `task-${Date.now()}`,
+      taskType: data.taskType ?? TaskType.MOVE_AND_EXECUTE,
+      targetZone: data.targetZone || '',
+      targetX: finalX,
+      targetY: finalY,
+      targetYaw: finalYaw,
+      moduleType: data.moduleType || 0,
+      modulePower: data.modulePower ?? true,
+      moduleLevel: data.moduleLevel || 1,
+      maxExecSec: data.maxExecSec || 180,
     };
+
+    try {
+      const result = await lastValueFrom(this.robotGateway.executeTask(requestPayload));
+      return result;
+    } catch (error) {
+      this.logger.error(`executeTask gRPC Error: ${error.message}`);
+      throw error;
+    }
   }
 
   cancelTask(data: any) {
@@ -47,12 +90,20 @@ export class RobotService {
     };
   }
 
-  manualControl(data: any) {
+  async manualControl(data: ManualControlDto) {
     this.logger.log(`ManualControl called: vx=${data.vx}, wz=${data.wz}`);
-    return {
-      accepted: true,
-      message: 'Manual control command sent',
-    };
+    
+    try {
+      const result = await lastValueFrom(this.robotGateway.manualControl({
+        vx: data.vx,
+        wz: data.wz,
+        durationMs: data.durationMs || 1000,
+      }));
+      return result;
+    } catch (error) {
+      this.logger.error(`manualControl gRPC Error: ${error.message}`);
+      throw error;
+    }
   }
 
   getStatus() {
