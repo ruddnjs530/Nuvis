@@ -24,9 +24,9 @@ class NavAdapterNode(Node):
         super().__init__("nav_adapter_node")
         self.declare_parameter("waypoints_file", "")
         self.declare_parameter("step_sec", 0.2)
-        self.declare_parameter("arrival_pos_tol", 0.25)
-        self.declare_parameter("arrival_yaw_tol_deg", 15.0)
-        self.declare_parameter("stable_sec", 1.0)
+        self.declare_parameter("arrival_pos_tol", 0.45)
+        self.declare_parameter("arrival_yaw_tol_deg", 30.0)
+        self.declare_parameter("stable_sec", 0.5)
         self.declare_parameter("localization_min_score", 0.4)
         self.declare_parameter("default_home_zone", "hq")
         self.declare_parameter("cmd_vel_topic", "/cmd_vel")
@@ -293,6 +293,15 @@ class NavAdapterNode(Node):
             self._release_busy()
             return False, False, 5001, "Emergency stop active"
         if status_code != GoalStatus.STATUS_SUCCEEDED:
+            fallback_pose = self._last_feedback_pose if self._last_feedback_pose is not None else self._current_pose
+            if self._is_arrived(fallback_pose, target):
+                self.get_logger().warn(
+                    "Nav2 returned non-success status "
+                    f"(status={status_code}) but pose is within arrival tolerance "
+                    f"(pos_tol={self.arrival_pos_tol:.2f}m, yaw_tol={self.arrival_yaw_tol_deg:.1f}deg). "
+                    "Treating as ARRIVED."
+                )
+                return True, False, 0, "Arrived (tolerance fallback)"
             self._release_busy()
             return False, False, 2001, f"Nav2 failed (status={status_code})"
 
@@ -489,6 +498,13 @@ class NavAdapterNode(Node):
         dy = a.pose.position.y - b.pose.position.y
         return math.sqrt(dx * dx + dy * dy)
 
+    def _is_arrived(self, current: PoseStamped, target: PoseStamped) -> bool:
+        pos_err = self._distance(current, target)
+        curr_yaw = self._yaw_from_quaternion(current.pose.orientation)
+        target_yaw = self._yaw_from_quaternion(target.pose.orientation)
+        yaw_err_deg = math.degrees(abs(self._normalize_angle(curr_yaw - target_yaw)))
+        return pos_err <= float(self.arrival_pos_tol) and yaw_err_deg <= float(self.arrival_yaw_tol_deg)
+
     def _make_pose(self, x: float, y: float, yaw: float) -> PoseStamped:
         pose = PoseStamped()
         pose.header.stamp = self.get_clock().now().to_msg()
@@ -528,6 +544,10 @@ class NavAdapterNode(Node):
     @staticmethod
     def _yaw_from_quaternion(q: Quaternion) -> float:
         return float(math.atan2(2.0 * q.w * q.z, 1.0 - 2.0 * q.z * q.z))
+
+    @staticmethod
+    def _normalize_angle(angle: float) -> float:
+        return math.atan2(math.sin(angle), math.cos(angle))
 
 
 def main(args=None) -> None:

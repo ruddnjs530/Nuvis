@@ -107,6 +107,7 @@ docker compose down
 - `/map`
 - `/tf`
 - `/scan`
+- `/scan_nav`
 - `/odom`
 - `/amcl_pose`
 - `/plan`
@@ -159,3 +160,13 @@ docker compose logs -f ros2-run
 ### 9-4. 시간이 멈춘 것처럼 보일 때
 - `use_sim_time=true` 환경에서 `/clock`이 정상 발행되는지 확인
 - `/clock`이 정지하면 Nav2/RViz 갱신이 멈춘 것처럼 보일 수 있음
+
+### 9-5. `Message Filter dropping message ... earlier than transform cache`
+- Unity 원본 `/scan` 타임스탬프와 ROS TF 시간이 어긋나면 발생합니다.
+- 기본 설정에서 `unity_scan_bridge_node`가 `/scan -> /scan_nav`로 타임스탬프를 보정합니다.
+- 아래로 입력/보정 토픽을 각각 확인하세요.
+
+```bash
+docker compose exec ros2-run bash -lc "source /workspace/ros2_ws/install/setup.bash && ros2 topic hz /scan"
+docker compose exec ros2-run bash -lc "source /workspace/ros2_ws/install/setup.bash && ros2 topic hz /scan_nav"
+```

@@ -30,7 +30,7 @@ class ExternalGrpcGuiClient:
         self._log_queue: queue.Queue[str] = queue.Queue()
 
         self.target_var = tk.StringVar(value=default_target)
-        self.timeout_var = tk.StringVar(value="30.0")
+        self.timeout_var = tk.StringVar(value="180.0")
         self.watch_interval_var = tk.StringVar(value="500")
         self.watch_count_var = tk.StringVar(value="0")
 
@@ -211,7 +211,7 @@ class ExternalGrpcGuiClient:
     def _call_unary(self, name: str, fn: Callable[[Any], Any]) -> None:
         try:
             target = self.target_var.get().strip()
-            timeout = float(self.timeout_var.get().strip() or "30.0")
+            timeout = float(self.timeout_var.get().strip() or "180.0")
             with grpc.insecure_channel(target) as channel:
                 stub = pb2_grpc.RobotGatewayStub(channel)
                 response = fn((stub, timeout))
@@ -230,6 +230,8 @@ class ExternalGrpcGuiClient:
     def on_execute(self) -> None:
         def _exec(args):
             stub, timeout = args
+            max_exec_sec = int(self.exec_max_exec_sec_var.get().strip() or "120")
+            effective_timeout = max(float(timeout), float(max_exec_sec) + 30.0)
             req = pb2.ExecuteTaskRequest(
                 command_id=self.exec_command_id_var.get().strip(),
                 task_id=self.exec_task_id_var.get().strip(),
@@ -241,9 +243,9 @@ class ExternalGrpcGuiClient:
                 module_type=int(self.exec_module_type_var.get().strip() or "0"),
                 module_power=bool(self.exec_module_power_var.get()),
                 module_level=int(self.exec_module_level_var.get().strip() or "0"),
-                max_exec_sec=int(self.exec_max_exec_sec_var.get().strip() or "120"),
+                max_exec_sec=max_exec_sec,
             )
-            return stub.ExecuteTask(req, timeout=timeout)
+            return stub.ExecuteTask(req, timeout=effective_timeout)
 
         threading.Thread(target=self._call_unary, args=("ExecuteTask", _exec), daemon=True).start()
 

@@ -7,6 +7,7 @@ using Unity.Robotics.Core;
 using UnityEngine;
 using Unity.Robotics.ROSTCPConnector;
 using UnityEngine.Serialization;
+using System.Linq;
 
 public class LaserScanSensor : MonoBehaviour
 {
@@ -21,7 +22,7 @@ public class LaserScanSensor : MonoBehaviour
     public float ScanOffsetAfterPublish = 0f;
     public int NumMeasurementsPerScan = 180;
     public float TimeBetweenMeasurementsSeconds = 0.01f;
-    public string LayerMaskName = "TurtleBot3Manual";
+    public string LayerMaskName = "Default,TurtleBot3Manual";
     public string FrameId = "base_scan";
 
     float m_CurrentScanAngleStart;
@@ -30,25 +31,46 @@ public class LaserScanSensor : MonoBehaviour
     double m_TimeNextScanSeconds = -1;
     int m_NumMeasurementsTaken;
     List<float> ranges = new List<float>();
+    LayerMask m_LayerMask;
+    Collider[] m_SelfColliders;
 
     bool isScanning = false;
     double m_TimeLastScanBeganSeconds = -1;
+    static double NowSec => Time.realtimeSinceStartupAsDouble;
 
     protected virtual void Start()
     {
         m_Ros = ROSConnection.GetOrCreateInstance();
         m_Ros.RegisterPublisher<LaserScanMsg>(topic);
 
+        var layerNames = LayerMaskName
+            .Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        m_LayerMask = layerNames.Length > 0 ? LayerMask.GetMask(layerNames) : 0;
+        if (m_LayerMask == 0)
+        {
+            Debug.LogWarning(
+                $"LaserScanSensor[{name}] LayerMaskName '{LayerMaskName}' not found. " +
+                "Falling back to all layers (self-filter will still apply)."
+            );
+            m_LayerMask = Physics.DefaultRaycastLayers;
+        }
+
+        // Exclude robot self-hits so Nav2 does not see the robot body as an obstacle.
+        m_SelfColliders = GetComponentsInParent<Transform>()
+            .SelectMany(t => t.GetComponents<Collider>())
+            .Distinct()
+            .ToArray();
+
         m_CurrentScanAngleStart = ScanAngleStartDegrees;
         m_CurrentScanAngleEnd = ScanAngleEndDegrees;
 
-        m_TimeNextScanSeconds = Clock.Now + PublishPeriodSeconds;
+        m_TimeNextScanSeconds = NowSec + PublishPeriodSeconds;
     }
 
     void BeginScan()
     {
         isScanning = true;
-        m_TimeLastScanBeganSeconds = Clock.Now;
+        m_TimeLastScanBeganSeconds = NowSec;
         m_TimeNextScanSeconds = m_TimeLastScanBeganSeconds + PublishPeriodSeconds;
         m_NumMeasurementsTaken = 0;
     }
@@ -65,7 +87,9 @@ public class LaserScanSensor : MonoBehaviour
                              $"and recorded {ranges.Count} ranges.");
         }
 
-        var timestamp = new TimeStamp(Clock.time);
+        var now = NowSec;
+        var sec = (int)now;
+        var nsec = (uint)((now - Math.Floor(now)) * Clock.k_NanoSecondsInSeconds);
         // Invert the angle ranges when going from Unity to ROS
         var angleStartRos = -m_CurrentScanAngleStart * Mathf.Deg2Rad;
         var angleEndRos = -m_CurrentScanAngleEnd * Mathf.Deg2Rad;
@@ -85,8 +109,8 @@ public class LaserScanSensor : MonoBehaviour
                 frame_id = FrameId,
                 stamp = new TimeMsg
                 {
-                    sec = timestamp.Seconds,
-                    nanosec = timestamp.NanoSeconds,
+                    sec = sec,
+                    nanosec = nsec,
                 }
             },
             range_min = RangeMetersMin,
@@ -105,7 +129,6 @@ public class LaserScanSensor : MonoBehaviour
         m_NumMeasurementsTaken = 0;
         ranges.Clear();
         isScanning = false;
-        var now = (float)Clock.time;
         if (now > m_TimeNextScanSeconds)
         {
             Debug.LogWarning($"Failed to complete scan started at {m_TimeLastScanBeganSeconds:F} before next scan was " +
@@ -126,7 +149,7 @@ public class LaserScanSensor : MonoBehaviour
     {
         if (!isScanning)
         {
-            if (Clock.NowTimeInSeconds < m_TimeNextScanSeconds)
+            if (NowSec < m_TimeNextScanSeconds)
             {
                 return;
             }
@@ -136,7 +159,7 @@ public class LaserScanSensor : MonoBehaviour
 
 
         var measurementsSoFar = TimeBetweenMeasurementsSeconds == 0 ? NumMeasurementsPerScan :
-            1 + Mathf.FloorToInt((float)(Clock.time - m_TimeLastScanBeganSeconds) / TimeBetweenMeasurementsSeconds);
+            1 + Mathf.FloorToInt((float)(NowSec - m_TimeLastScanBeganSeconds) / TimeBetweenMeasurementsSeconds);
         if (measurementsSoFar > NumMeasurementsPerScan)
             measurementsSoFar = NumMeasurementsPerScan;
 
@@ -149,16 +172,30 @@ public class LaserScanSensor : MonoBehaviour
             var directionVector = Quaternion.Euler(0f, yawDegrees, 0f) * Vector3.forward;
             var measurementStart = RangeMetersMin * directionVector + transform.position;
             var measurementRay = new Ray(measurementStart, directionVector);
-            var foundValidMeasurement = Physics.Raycast(measurementRay, out var hit, RangeMetersMax);
-            // Only record measurement if it's within the sensor's operating range
-            if (foundValidMeasurement)
+
+            var hits = Physics.RaycastAll(
+                measurementRay,
+                RangeMetersMax,
+                m_LayerMask,
+                QueryTriggerInteraction.Ignore
+            );
+            var foundValidMeasurement = false;
+            var nearest = float.PositiveInfinity;
+            foreach (var hit in hits)
             {
-                ranges.Add(hit.distance);
+                if (hit.collider == null)
+                    continue;
+                if (System.Array.IndexOf(m_SelfColliders, hit.collider) >= 0)
+                    continue;
+                if (hit.distance < nearest)
+                {
+                    nearest = hit.distance;
+                    foundValidMeasurement = true;
+                }
             }
-            else
-            {
-                ranges.Add(float.MaxValue);
-            }
+
+            // Only record measurement if it's within the sensor's operating range.
+            ranges.Add(foundValidMeasurement ? nearest : float.PositiveInfinity);
 
             // Even if Raycast didn't find a valid hit, we still count it as a measurement
             ++m_NumMeasurementsTaken;

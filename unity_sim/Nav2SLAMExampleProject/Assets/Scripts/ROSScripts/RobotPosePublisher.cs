@@ -1,7 +1,6 @@
 using RosMessageTypes.BuiltinInterfaces;
 using RosMessageTypes.Geometry;
 using RosMessageTypes.Std;
-using Unity.Robotics.Core;
 using Unity.Robotics.ROSTCPConnector;
 using Unity.Robotics.ROSTCPConnector.ROSGeometry;
 using UnityEngine;
@@ -15,14 +14,15 @@ public class RobotPosePublisher : MonoBehaviour
     ROSConnection m_Ros;
     double m_LastPublishTime;
 
-    double PublishPeriodSeconds => 1.0f / Mathf.Max(1f, (float)m_PublishRateHz);
-    bool ShouldPublish => Clock.NowTimeInSeconds - m_LastPublishTime >= PublishPeriodSeconds;
+    double PublishPeriodSeconds => 1.0 / Mathf.Max(1f, (float)m_PublishRateHz);
+    static double NowSec => Time.realtimeSinceStartupAsDouble;
+    bool ShouldPublish => NowSec - m_LastPublishTime >= PublishPeriodSeconds;
 
     void Start()
     {
         m_Ros = ROSConnection.GetOrCreateInstance();
         m_Ros.RegisterPublisher<PoseStampedMsg>(m_TopicName);
-        m_LastPublishTime = Clock.NowTimeInSeconds;
+        m_LastPublishTime = NowSec - PublishPeriodSeconds;
     }
 
     void Update()
@@ -31,14 +31,16 @@ public class RobotPosePublisher : MonoBehaviour
             return;
 
         PublishPose();
-        m_LastPublishTime = Clock.NowTimeInSeconds;
+        m_LastPublishTime = NowSec;
     }
 
     void PublishPose()
     {
         var positionFlu = transform.position.To<FLU>();
         var rotationFlu = transform.rotation.To<FLU>();
-        var timestamp = new TimeStamp(Clock.time);
+        var now = NowSec;
+        var sec = (int)now;
+        var nsec = (uint)((now - sec) * 1e9);
 
         var msg = new PoseStampedMsg
         {
@@ -47,8 +49,8 @@ public class RobotPosePublisher : MonoBehaviour
                 frame_id = m_FrameId,
                 stamp = new TimeMsg
                 {
-                    sec = timestamp.Seconds,
-                    nanosec = timestamp.NanoSeconds,
+                    sec = sec,
+                    nanosec = nsec,
                 }
             },
             pose = new PoseMsg
