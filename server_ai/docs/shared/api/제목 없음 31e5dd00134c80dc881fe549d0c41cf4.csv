@@ -1,5 +1,0 @@
-﻿Done,Method,Entry Point,Description,우선순위
-No,GET,api/robot/status,"로봇의 현재 위치, 배터리, 현재 장착된 모듈 정보 조회",MVP
-No,POST,api/robot/status,"로봇의 현재 위치, 배터리, 현재 장착된 모듈 정보 조회",
-No,POST,api/robot/command,"수동 제어 명령 하달 (특정 방으로 이동, 특정 모듈 기능 작동)",MVP
-No,GET,ws/robot/camera/stream,로봇 카메라 실시간 영상 스트리밍 연결 (WebRTC WHEP 엔드포인트),MVP

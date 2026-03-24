@@ -71,12 +71,19 @@ pip install -r requirements.txt
 
 ### 2. 모듈별 실행 방법
 
-#### 🤖 비전 프레임워크 (YOLO ROS2 Node, 프로토타입 보관)
-*   **경로:** `vision/yolo_node.py`
-*   **설명:** 주행 파트의 로봇/시뮬레이터에서 발행하는 카메라 토픽(`image_raw`)을 Subscribe 하고, YOLO 모델을 사용해 전방의 장애물을 탐지하여 결과를 로깅/Publish 합니다.
-*   **배치 방향:** 최종 모노레포에서는 일반 AI API 서버가 아닌 `ros2_ws` 측 비전 패키지로 재배치 예정입니다.
-*   **의존성 구분:** `ultralytics`, `opencv-python`은 `pip`로 설치 가능하지만, `rclpy`, `sensor_msgs`, `cv_bridge`는 ROS2 환경에서 별도 준비해야 합니다.
-*   **실행:** `python yolo_node.py` (ROS2 환경 sourcing 필수)
+#### 🚨 서버 재시작 및 프로세스 1초 통합 가동 (단일 스크립트)
+GPU 머신 컨테이너 환경에서 `PM2`나 `crontab` 등 별도 의존성 패키지 설치 없이, 순수 기본 쉘 명령어(`nohup`)만으로 AI 파트 3종 세트(추천, STT, 봇)를 한 번에 백그라운드 구동합니다.
+
+GPU 머신 터미널 창(서버/컨테이너 재부팅 혹은 새로 켤 때마다)에서 다음 단계를 진행하세요.
+*   **실행 방법 (재부팅 복구용):**
+```bash
+# 최상위 프로젝트 폴더에서 바로 한 번에 실행합니다
+cd /home/j-j14b110/smart_home_ai/server_ai
+bash start_all_servers.sh
+```
+
+*(이 명령어 하나로 9000 포트의 추천 API, 9001 포트의 STT API, 24시간 재학습 봇이 전부 백그라운드로 자동 연결되며 꺼지지 않습니다.)*
+
 
 #### 📈 추천 시스템 (AI Recommendation API)
 *   **경로:** `recommendation/main.py`, `recommendation/generate_mock_data.py`
@@ -86,8 +93,8 @@ pip install -r requirements.txt
     1.  `python generate_mock_data.py` : 테스트용 가상 데이터 생성 (`mock_payload.json`)
     2.  `python gpu_lstm_model.py` : LSTM 기반 시계열 예측 모델 학습 및 저장 (`model/lstm_device_model.pth`)
         - **주의:** GPU 서버 환경에서 실행 시 GPU 가속을 활용하며, 학습 완료 후 최신 모델이 자동 저장됩니다.
-    3.  `python main.py` : Uvicorn 내부 API 서버 실행 (기본 포트 8000)
-    4.  `GET http://localhost:8000/api/event/ai-suggestions` 로 결과 확인 가능.
+    3.  `python main.py` : Uvicorn 내부 API 서버 실행 (기본 포트 9000)
+    4.  `GET http://localhost:9000/api/event/ai-suggestions` 로 결과 확인 가능.
 
 #### 🎙️ 음성 인식 제어 (STT Pipeline)
 *   **경로:** `stt/main.py`, `stt/stt_parser.py`, `stt/stt_benchmark.py`
