@@ -2,42 +2,39 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Robotics.ROSTCPConnector;
-using RosMessageTypes.Std;
+using RosMessageTypes.Robot;
 
 public enum ModuleType
 {
-    None,
-    Air,
-    Dehumid
+    None = 0,
+    AirPurifier = 1,
+    Humidifier = 2,
+    Dehumidifier = 3
 }
 
 [System.Serializable]
 public class ModuleVisualData
 {
     public ModuleType moduleType;
-    public GameObject equippedObject;   // 로봇에 최종 장착되어 보이는 오브젝트
-    public GameObject movingBoxPrefab;  // 스테이션에서 나와 이동하는 프리팹
+    public GameObject equippedObject;
+    public GameObject movingBoxPrefab;
 }
 
 public class RobotModuleSubscriber : MonoBehaviour
 {
-    [Header("ROS")]
-    [SerializeField] 
-    private string moduleChangeTopic = "/robot/module_change";
+    [Header("ROS Topics")]
+    [SerializeField] private string moduleStateTopic = "/robot/module/state";
+    [SerializeField] private string moduleSwapEventTopic = "/robot/module/swap_event";
 
     [Header("Module State")]
-    [SerializeField] 
-    private ModuleType currentModule = ModuleType.None;
+    [SerializeField] private ModuleType currentModule = ModuleType.None;
 
     [Header("Module Visual")]
-    [SerializeField] 
-    private List<ModuleVisualData> moduleVisualList = new List<ModuleVisualData>();
+    [SerializeField] private List<ModuleVisualData> moduleVisualList = new List<ModuleVisualData>();
 
     [Header("Transfer Points")]
-    [SerializeField] 
-    private Transform stationSpawnPoint;
-    [SerializeField] 
-    private Transform robotAttachPoint;
+    [SerializeField] private Transform stationSpawnPoint;
+    [SerializeField] private Transform robotAttachPoint;
 
     [Header("Animation")]
     [SerializeField] private float removeDuration = 0.35f;
@@ -51,61 +48,68 @@ public class RobotModuleSubscriber : MonoBehaviour
 
     private bool isChanging = false;
     private Coroutine changeCoroutine;
+    private string lastHandledSwapKey = "";
+
+    private const byte STATE_COMPLETED = 4;
 
     private void Awake()
     {
         foreach (var data in moduleVisualList)
         {
             if (!moduleVisualMap.ContainsKey(data.moduleType))
-            {
                 moduleVisualMap.Add(data.moduleType, data);
-            }
         }
     }
 
     private void Start()
     {
         ros = ROSConnection.GetOrCreateInstance();
-        ros.Subscribe<StringMsg>(moduleChangeTopic, OnReceiveModuleChange);
+
+        ros.Subscribe<ModuleStateMsg>(moduleStateTopic, OnReceiveModuleState);
+        ros.Subscribe<ModuleSwapEventMsg>(moduleSwapEventTopic, OnReceiveSwapEvent);
 
         ApplyEquippedVisual(currentModule);
         Debug.Log($"[Module] 초기 모듈 상태: {currentModule}");
     }
 
-    private void Update()
+    private void OnReceiveModuleState(ModuleStateMsg msg)
     {
-        // 테스트용
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-            RequestModuleChange(ModuleType.Air);
+        ModuleType stateModule = ParseModuleType(msg.module_type);
 
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-            RequestModuleChange(ModuleType.Dehumid);
+        Debug.Log($"[Module][State] module_type={msg.module_type}, parsed={stateModule}");
 
-        if (Input.GetKeyDown(KeyCode.Alpha0))
-            RequestModuleChange(ModuleType.None);
+        if (!isChanging && currentModule != stateModule)
+        {
+            currentModule = stateModule;
+            ApplyEquippedVisual(currentModule);
+            Debug.Log($"[Module][State] 상태 스냅샷으로 보정: {currentModule}");
+        }
     }
 
-    private void OnReceiveModuleChange(StringMsg msg)
+    private void OnReceiveSwapEvent(ModuleSwapEventMsg msg)
     {
-        string raw = msg.data.Trim().ToLower();
-        Debug.Log($"[Module] 수신한 메시지: {raw}");
+        Debug.Log($"[Module][SwapEvent] state={msg.state}, success={msg.success}, from={msg.from_module_type}, to={msg.to_module_type}, task_id={msg.task_id}, command_id={msg.command_id}");
 
-        ModuleType newModule = ParseModuleType(raw);
-        if (newModule == ModuleType.None)
-        {
-            Debug.LogWarning($"[Module] 알 수 없는 모듈 값: {raw}");
+        if (msg.state != STATE_COMPLETED || !msg.success)
             return;
-        }
 
+        string eventKey = $"{msg.task_id}:{msg.command_id}:{msg.state}:{msg.to_module_type}";
+        if (lastHandledSwapKey == eventKey)
+            return;
+
+        lastHandledSwapKey = eventKey;
+
+        ModuleType newModule = ParseModuleType(msg.to_module_type);
         RequestModuleChange(newModule);
     }
 
-    private ModuleType ParseModuleType(string value)
+    private ModuleType ParseModuleType(byte value)
     {
         switch (value)
         {
-            case "air": return ModuleType.Air;
-            case "dehumid": return ModuleType.Dehumid;
+            case 1: return ModuleType.AirPurifier;
+            case 2: return ModuleType.Humidifier;
+            case 3: return ModuleType.Dehumidifier;
             default: return ModuleType.None;
         }
     }
@@ -136,7 +140,6 @@ public class RobotModuleSubscriber : MonoBehaviour
 
         if (stationSpawnPoint == null || robotAttachPoint == null)
         {
-            Debug.LogWarning("[Module] stationSpawnPoint 또는 robotAttachPoint가 비어 있습니다. 바로 교체합니다.");
             currentModule = newModule;
             ApplyEquippedVisual(currentModule);
             isChanging = false;
@@ -146,27 +149,21 @@ public class RobotModuleSubscriber : MonoBehaviour
 
         if (!moduleVisualMap.TryGetValue(newModule, out ModuleVisualData targetData))
         {
-            Debug.LogWarning($"[Module] {newModule}에 해당하는 시각 데이터가 없습니다.");
+            Debug.LogWarning($"[Module] {newModule}에 해당하는 visual data가 없습니다.");
             isChanging = false;
             changeCoroutine = null;
             yield break;
         }
 
-        Debug.Log($"[Module] 모듈 교체 시작: {currentModule} -> {newModule}");
-
-        // 1. 기존 장착 모듈 제거 연출
         if (currentModule != ModuleType.None && moduleVisualMap.TryGetValue(currentModule, out ModuleVisualData currentData))
         {
             if (currentData.equippedObject != null && currentData.equippedObject.activeSelf)
-            {
                 yield return StartCoroutine(AnimateRemoveCurrentModule(currentData.equippedObject));
-            }
         }
 
         if (startDelayAfterRemove > 0f)
             yield return new WaitForSeconds(startDelayAfterRemove);
 
-        // 2. 새 박스 생성
         GameObject movingBox = null;
         if (targetData.movingBoxPrefab != null)
         {
@@ -178,7 +175,6 @@ public class RobotModuleSubscriber : MonoBehaviour
             movingBox.SetActive(true);
         }
 
-        // 3. 새 박스가 스테이션에서 로봇으로 이동
         float elapsed = 0f;
         Vector3 startPos = stationSpawnPoint.position;
         Vector3 endPos = robotAttachPoint.position;
@@ -202,11 +198,9 @@ public class RobotModuleSubscriber : MonoBehaviour
             yield return null;
         }
 
-        // 4. 이동 박스 제거
         if (movingBox != null)
             Destroy(movingBox);
 
-        // 5. 새 모듈 장착
         currentModule = newModule;
         ApplyEquippedVisual(currentModule);
 
@@ -228,9 +222,7 @@ public class RobotModuleSubscriber : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / removeDuration);
-
             tr.localPosition = Vector3.Lerp(originalLocalPos, targetLocalPos, t);
-
             yield return null;
         }
 
