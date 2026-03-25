@@ -26,14 +26,17 @@ sensor_fusion_node:
     base_pm25: 18.0
 
 module_controller_node:
-  ros__parameters: {}
+  ros__parameters:
+    state_publish_rate_hz: 1.0
 
 safety_manager_node:
   ros__parameters:
     warning_battery_pct: 20.0
     return_battery_pct: 15.0
     simulate_battery: true
-    battery_drain_per_tick: 0.05
+    # 2Hz 기준 0.0035/tick -> 약 0.007%/sec
+    # 100% -> 15% 도달까지 약 3.37시간
+    battery_drain_per_tick: 0.0035
     battery_publish_rate_hz: 2.0
 
 task_executor_node:
@@ -55,3 +58,5 @@ task_executor_node:
     segment_timeout_min_sec: 30
     segment_timeout_base_sec: 10
     segment_timeout_per_meter_sec: 8.0
+    module_state_wait_sec: 2.0
+    module_service_timeout_sec: 3.0
