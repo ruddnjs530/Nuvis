@@ -31,6 +31,7 @@ set(srv_files
 set(action_files
   "action/ExecuteTask.action"
   "action/NavToGoal.action"
+  "action/NavPath.action"
   "action/ReturnHome.action"
 )
 

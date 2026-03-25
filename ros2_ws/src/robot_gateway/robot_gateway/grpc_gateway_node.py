@@ -142,7 +142,11 @@ class GatewayBridgeNode(Node):
             )
 
         result_future = goal_handle.get_result_async()
-        timeout_sec = max(5.0, float(request.max_exec_sec if request.max_exec_sec > 0 else 300) + 5.0)
+        requested_exec_sec = int(request.max_exec_sec if request.max_exec_sec > 0 else 300)
+        timeout_sec = max(
+            120.0,
+            float(requested_exec_sec) + max(60.0, float(requested_exec_sec) * 0.25),
+        )
         action_result = self._wait_future_result(result_future, timeout_sec=timeout_sec)
         if action_result is None:
             return pb2.ExecuteTaskResponse(

@@ -5,46 +5,26 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="3ba36f27-85d2-44d3-98fa-cb9da7bbd75a" name="변경" comment="">
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/docs/grpc_target_request_guide.ko.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/docs/grpc_target_request_guide.ko.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/ROS-TCP-Endpoint" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/ROS-TCP-Endpoint" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Prefabs/TurtleBot3ManualConfig.prefab" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Prefabs/TurtleBot3ManualConfig.prefab" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Resources/ROSConnectionPrefab.prefab" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Resources/ROSConnectionPrefab.prefab" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_core/config/robot_core.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_core/config/robot_core.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_core/launch/robot_core.launch.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_core/launch/robot_core.launch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_core/launch/robot_system.launch.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_core/launch/robot_system.launch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_core/robot_core/task_executor_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_core/robot_core/task_executor_node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_gateway/README.ko.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_gateway/README.ko.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_gateway/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_gateway/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/README.ko.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/README.ko.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/config/nav2_params.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/config/nav2_params.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/config/nav_debug.rviz" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/config/nav_debug.rviz" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/launch/robot_nav.launch.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/launch/robot_nav.launch.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/package.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/package.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/robot_nav/nav_adapter_node.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/robot_nav/nav_adapter_node.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/setup.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/setup.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/test/test_waypoints_schema.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../ros2_ws/src/robot_nav/test/test_waypoints_schema.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../scripts/grpc_client/external_client.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../scripts/grpc_client/external_client.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Assets/Samples/Unity Render Streaming/2.2.2-preview/URP/Editor/RenderStreamingURPSimple.unitypackage.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/AudioStreamer.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/AudioStreamer.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/CameraStreamer.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/CameraStreamer.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Editor.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Editor/RenderStreamingEditor.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Editor/RenderStreamingEditor.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Editor/Unity.Template.RenderStreaming.Editor.asmdef" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Editor/Unity.Template.RenderStreaming.Editor.asmdef.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/ROSScripts/AGVController.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scripts/ROSScripts/AGVController.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/ROSScripts/LaserScanSensor.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scripts/ROSScripts/LaserScanSensor.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/ReceiveVideoViewer.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/ReceiveVideoViewer.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/RemoteInput.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/RemoteInput.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/RenderStreaming.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/RenderStreaming.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/RobotPosePublisher.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/RobotPosePublisher.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/FurioosSignaling.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/FurioosSignaling.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/HttpSignaling.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/HttpSignaling.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/ISignaling.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/ISignaling.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/SignalingMessage.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/SignalingMessage.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/WebSocketSignaling.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/Signaling/WebSocketSignaling.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/SimpleCameraController.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/SimpleCameraController.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/UIController.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/UIController.cs.meta" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/WebCamStreamer.cs" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/WebCamStreamer.cs.meta" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scenes/testScene.unity" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scenes/testScene.unity" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -66,22 +46,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;ros/fix/fix-bugs&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.lookFeel&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "git-widget-placeholder": "ros/bug/fix-local-cost-map",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.lookFeel",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
+}]]></component>
   <component name="RunManager" selected="Unity 에디터에 연결.Unity 에디터에 연결">
     <configuration name="유닛 테스트(배치 모드)" type="RunUnityExe" factoryName="Unity Executable">
       <option name="EXE_PATH" value="C:\Program Files\Unity\Hub\Editor\2020.3.11f1\Editor\Unity.exe" />
@@ -130,6 +110,7 @@
       <workItem from="1774233657976" duration="44000" />
       <workItem from="1774233722384" duration="134000" />
       <workItem from="1774234146754" duration="6223000" />
+      <workItem from="1774316551505" duration="4998000" />
     </task>
     <servers />
   </component>

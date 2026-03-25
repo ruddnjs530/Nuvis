@@ -231,6 +231,19 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /local_plan
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: Clicked Points
+      Namespaces:
+        clicked_points: true
+        clicked_points_text: true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /robot/debug/clicked_points_markers
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48

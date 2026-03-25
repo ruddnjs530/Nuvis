@@ -12,7 +12,13 @@ setup(
         (f"share/{package_name}/launch", ["launch/robot_nav.launch.py"]),
         (
             f"share/{package_name}/config",
-            ["config/waypoints.yaml", "config/nav2_params.yaml"],
+            [
+                "config/waypoints.yaml",
+                "config/routes.yaml",
+                "config/graph.yaml",
+                "config/rooms.yaml",
+                "config/nav2_params.yaml",
+            ],
         ),
         (f"share/{package_name}/maps", ["maps/my_map.yaml", "maps/my_map.pgm"]),
     ],
@@ -28,6 +34,7 @@ setup(
             "unity_odom_bridge_node = robot_nav.unity_odom_bridge_node:main",
             "unity_scan_bridge_node = robot_nav.unity_scan_bridge_node:main",
             "initial_pose_publisher_node = robot_nav.initial_pose_publisher_node:main",
+            "clicked_point_recorder_node = robot_nav.clicked_point_recorder_node:main",
         ],
     },
 )

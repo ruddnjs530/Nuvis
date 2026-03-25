@@ -4,6 +4,7 @@
 
 ## 책임 범위
 - 선택적 Zone→Pose 매핑(`waypoints.yaml`, 기본 비활성)
+- 방 기반 topology graph 설정(`graph.yaml`, `rooms.yaml`)
 - Nav2 브리지(`/robot/nav_to_goal` -> `/navigate_to_pose`)
 - 복귀 액션 엔드포인트(`/robot/return_home` -> `/navigate_to_pose`)
 - 재위치추정 서비스 엔드포인트(`/robot/relocalize`)
@@ -12,6 +13,7 @@
 - Unity scan 타임스탬프 브리지(`/scan` -> `/scan_nav`)
 - AMCL 초기 자세 one-shot 발행(`/initialpose`)
 - Unity 프레임 목표를 ROS 맵 좌표로 변환
+- RViz `Publish Point` 좌표 누적 기록(`/clicked_point` -> `/robot/debug/clicked_points_markers`)
 
 ## 실행
 ```bash
@@ -24,6 +26,15 @@ ros2 launch robot_nav robot_nav.launch.py
   - `nav2_params_file=config/nav2_params.yaml`
   - `use_slam:=false`
 - `waypoints_file` 기본값은 빈 값이므로, 유효한 YAML을 넘기지 않으면 zone 기반 목표는 비활성이다.
+- graph 기반 경로 해석은 `robot_core.task_executor_node`가 담당하고, `nav_adapter_node`는 단일 goal만 처리한다.
+- `target_zone`은 `rooms.yaml` 기준으로 entry/work node로 해석된다.
+- 좌표 직접 요청(`target_pose`)은 graph 해석을 우회해서 단일 goal로 처리된다.
+- `routes.yaml`은 ingress fallback 데이터로 남아있고, 기본 경로 모델은 아니다.
+- `clicked_point_recorder_node`는 기본 활성화(`enable_clicked_point_recorder:=true`)이며,
+  RViz에서 클릭한 좌표를 마커/텍스트로 누적 표시한다.
+- 선택 파라미터:
+  - `clicked_point_persist_file`: 파일 저장 경로(기본 비활성)
+  - `clicked_point_max_points`: 최대 누적 개수(기본 500)
 - SLAM 모드는 `use_slam:=true`로 전환할 수 있다.
 - 속도 명령은 Nav2 controller가 직접 `/cmd_vel`로 출력한다.
 - 장애물 회피는 `/scan_nav`를 입력으로 하는 Nav2 local/global costmap에서 처리한다.

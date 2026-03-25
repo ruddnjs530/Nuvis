@@ -34,6 +34,7 @@ ros2 run robot_gateway grpc_gateway_node
 ### 1. 웨이포인트 방식
 - `target_zone`에 zone 이름을 넣어 요청
 - 로봇 내부에서 `waypoints.yaml`을 조회해 좌표로 변환
+- robot_core가 `rooms.yaml`과 graph 설정을 사용해 내부 다중 segment로 해석
 - 운영 관점에서는 이 방식을 우선 권장
 
 조건:
@@ -93,11 +94,16 @@ python scripts/grpc_client/external_client.py --target 127.0.0.1:50051 execute \
 - `left_down_room`
 - `second_toilet`
 
+## 내부 내비게이션 해석
+- 외부 `target_zone`은 기존처럼 방/업무 zone 의미를 유지
+- graph node id는 내부 전용이며 gRPC 계약에는 노출되지 않음
+- `target_x/target_y` 좌표 직접 요청은 graph 해석을 우회함
+
 ## 테스트 클라이언트 예시
 ```bash
 ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 status
-ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 execute --command-id cmd-1 --task-type 1 --target-zone hq --max-exec-sec 120
-ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 execute --command-id cmd-2 --task-type 1 --target-zone "" --target-x -6.0 --target-y 10.0 --target-yaw 0.0 --max-exec-sec 120
+ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 execute --command-id cmd-1 --task-type 1 --target-zone hq --max-exec-sec 600
+ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 execute --command-id cmd-2 --task-type 1 --target-zone "" --target-x -6.0 --target-y 10.0 --target-yaw 0.0 --max-exec-sec 600
 ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 cancel --command-id cmd-2 --task-id task-1
 ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 estop --command-id cmd-3 --reason emergency
 ```

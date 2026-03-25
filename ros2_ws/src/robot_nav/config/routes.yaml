@@ -1,0 +1,16 @@
+blocked_zones:
+  - entrance_next_room
+  - left_up_room
+  - left_down_room
+  - second_toilet
+
+zone_routes:
+  kitchen:
+    - picture
+    - kitchen
+  pc:
+    - tv
+    - pc
+  toilet_next_room:
+    - first_toilet
+    - toilet_next_room

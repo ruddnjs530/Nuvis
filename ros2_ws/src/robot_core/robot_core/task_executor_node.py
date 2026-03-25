@@ -1,7 +1,8 @@
+import math
 import time
 import uuid
 import threading
-from typing import Optional
+from typing import Dict, List, Optional, Tuple
 
 import rclpy
 from geometry_msgs.msg import PoseStamped
@@ -9,7 +10,7 @@ from rclpy.action import ActionClient, ActionServer, CancelResponse, GoalRespons
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from robot_msgs.action import ExecuteTask, NavToGoal, ReturnHome
+from robot_msgs.action import ExecuteTask, NavPath, NavToGoal, ReturnHome
 from robot_msgs.msg import ErrorReport, RobotStatus
 from robot_msgs.srv import CancelTask, SetManualControl, SetModuleState
 from std_msgs.msg import String, UInt8, UInt32
@@ -37,6 +38,8 @@ from .constants import (
     TASK_TYPE_MOVE_ONLY,
     TASK_TYPE_RETURN_HOME,
 )
+from .zone_routes import load_route_config, load_waypoint_names
+from .topology_graph import GraphConfigError, RoomSpec, load_room_specs, load_topology_graph
 
 
 class TaskExecutorNode(Node):
@@ -45,6 +48,20 @@ class TaskExecutorNode(Node):
         self.declare_parameter("default_timeout_sec", 300)
         self.declare_parameter("always_return_home", False)
         self.declare_parameter("simulation_step_sec", 0.5)
+        self.declare_parameter("navigation_path_mode", "graph")
+        self.declare_parameter("nav_execution_mode", "through_poses")
+        self.declare_parameter("waypoints_file", "")
+        self.declare_parameter("routes_file", "")
+        self.declare_parameter("graph_file", "")
+        self.declare_parameter("rooms_file", "")
+        self.declare_parameter("graph_snap_radius", 2.5)
+        self.declare_parameter("graph_stick_radius", 0.8)
+        self.declare_parameter("default_home_zone", "hq")
+        self.declare_parameter("graph_path_cache_enabled", True)
+        self.declare_parameter("graph_path_cache_max_entries", 512)
+        self.declare_parameter("segment_timeout_min_sec", 30)
+        self.declare_parameter("segment_timeout_base_sec", 10)
+        self.declare_parameter("segment_timeout_per_meter_sec", 8.0)
 
         self.default_timeout_sec = (
             self.get_parameter("default_timeout_sec").get_parameter_value().integer_value
@@ -55,6 +72,61 @@ class TaskExecutorNode(Node):
         self.simulation_step_sec = (
             self.get_parameter("simulation_step_sec").get_parameter_value().double_value
         )
+        self.navigation_path_mode = (
+            self.get_parameter("navigation_path_mode").get_parameter_value().string_value.strip().lower()
+        )
+        self.nav_execution_mode = (
+            self.get_parameter("nav_execution_mode").get_parameter_value().string_value.strip().lower()
+        )
+        self.waypoints_file = self.get_parameter("waypoints_file").get_parameter_value().string_value
+        self.routes_file = self.get_parameter("routes_file").get_parameter_value().string_value
+        self.graph_file = self.get_parameter("graph_file").get_parameter_value().string_value
+        self.rooms_file = self.get_parameter("rooms_file").get_parameter_value().string_value
+        self.graph_snap_radius = (
+            self.get_parameter("graph_snap_radius").get_parameter_value().double_value
+        )
+        self.graph_stick_radius = (
+            self.get_parameter("graph_stick_radius").get_parameter_value().double_value
+        )
+        self.default_home_zone = (
+            self.get_parameter("default_home_zone").get_parameter_value().string_value
+        )
+        self.graph_path_cache_enabled = bool(self.get_parameter("graph_path_cache_enabled").value)
+        self.graph_path_cache_max_entries = int(self.get_parameter("graph_path_cache_max_entries").value)
+        self.segment_timeout_min_sec = int(self.get_parameter("segment_timeout_min_sec").value)
+        self.segment_timeout_base_sec = int(self.get_parameter("segment_timeout_base_sec").value)
+        self.segment_timeout_per_meter_sec = float(
+            self.get_parameter("segment_timeout_per_meter_sec").value
+        )
+
+        if self.navigation_path_mode not in {"graph", "ingress"}:
+            self.get_logger().warn(
+                "Invalid navigation_path_mode='%s'; fallback to 'graph'"
+                % self.navigation_path_mode
+            )
+            self.navigation_path_mode = "graph"
+        if self.nav_execution_mode not in {"segment", "through_poses"}:
+            self.get_logger().warn(
+                "Invalid nav_execution_mode='%s'; fallback to 'through_poses'"
+                % self.nav_execution_mode
+            )
+            self.nav_execution_mode = "through_poses"
+
+        self._waypoint_names = load_waypoint_names(self.waypoints_file)
+        self._route_config = load_route_config(self.routes_file, self._waypoint_names)
+        self._graph = None
+        self._room_specs: Dict[str, RoomSpec] = {}
+        self._graph_config_error = ""
+        self._graph_path_cache: Dict[Tuple[str, str], List[str]] = {}
+        if self.navigation_path_mode == "graph":
+            try:
+                self._graph = load_topology_graph(self.graph_file)
+                self._room_specs = load_room_specs(
+                    self.rooms_file, self._graph.nodes.keys()
+                )
+            except GraphConfigError as exc:
+                self._graph_config_error = str(exc)
+                self.get_logger().error(f"GRAPH_CONFIG_INVALID: {self._graph_config_error}")
 
         self._cb_group = ReentrantCallbackGroup()
         self._active_goal_handle = None
@@ -65,6 +137,8 @@ class TaskExecutorNode(Node):
         self._manual_timer = None
         self._last_failure_code = ErrorCode.OK
         self._last_failure_message = ""
+        self._current_status_pose: Optional[PoseStamped] = None
+        self._last_arrived_node_id = ""
 
         self._mode_pub = self.create_publisher(UInt8, "/robot/internal/mode", 10)
         self._task_state_pub = self.create_publisher(UInt8, "/robot/internal/task_state", 10)
@@ -77,6 +151,7 @@ class TaskExecutorNode(Node):
         self.create_subscription(
             String, "/robot/internal/return_home_request", self._on_return_request, 10
         )
+        self.create_subscription(RobotStatus, "/robot/status", self._on_robot_status, 10)
 
         self._cancel_service = self.create_service(
             CancelTask, "/robot/cancel_task", self._handle_cancel_task
@@ -90,6 +165,9 @@ class TaskExecutorNode(Node):
         )
         self._nav_client = ActionClient(
             self, NavToGoal, "/robot/nav_to_goal", callback_group=self._cb_group
+        )
+        self._nav_path_client = ActionClient(
+            self, NavPath, "/robot/nav_path", callback_group=self._cb_group
         )
         self._return_client = ActionClient(
             self, ReturnHome, "/robot/return_home", callback_group=self._cb_group
@@ -105,7 +183,16 @@ class TaskExecutorNode(Node):
             callback_group=self._cb_group,
         )
 
-        self.get_logger().info("task_executor_node started")
+        self.get_logger().info(
+            "task_executor_node started "
+            f"(path_mode={self.navigation_path_mode}, "
+            f"nav_exec_mode={self.nav_execution_mode}, "
+            f"waypoints={len(self._waypoint_names)}, "
+            f"blocked_zones={len(self._route_config.blocked_zones)}, "
+            f"routed_zones={len(self._route_config.zone_routes)}, "
+            f"graph_nodes={len(self._graph.nodes) if self._graph else 0}, "
+            f"rooms={len(self._room_specs)})"
+        )
 
     def _on_safety_state(self, msg: UInt8) -> None:
         self._safety_state = msg.data
@@ -116,6 +203,9 @@ class TaskExecutorNode(Node):
         if self._active_goal_handle is not None:
             self._force_return_after_cancel = True
             self._cancel_requested = True
+
+    def _on_robot_status(self, msg: RobotStatus) -> None:
+        self._current_status_pose = msg.pose
 
     def _on_goal(self, goal_request: ExecuteTask.Goal) -> GoalResponse:
         if self._active_goal_handle is not None:
@@ -130,6 +220,16 @@ class TaskExecutorNode(Node):
             return GoalResponse.REJECT
         if not goal_request.command_id:
             self.get_logger().warn("Reject goal: command_id is required")
+            return GoalResponse.REJECT
+        if self.navigation_path_mode == "graph" and self._graph_config_error and self._goal_needs_navigation(goal_request):
+            self.get_logger().warn(
+                f"Reject goal: GRAPH_CONFIG_INVALID: {self._graph_config_error}"
+            )
+            return GoalResponse.REJECT
+        if self._is_blocked_zone_request(goal_request):
+            self.get_logger().warn(
+                f"Reject goal: target_zone '{goal_request.target_zone}' is blocked by route policy"
+            )
             return GoalResponse.REJECT
         return GoalResponse.ACCEPT
 
@@ -222,16 +322,84 @@ class TaskExecutorNode(Node):
         )
 
         if goal.task_type in (TASK_TYPE_MOVE_AND_EXECUTE, TASK_TYPE_MOVE_ONLY):
-            self._publish_task_state(TASK_MOVING)
-            ok = self._run_nav_to_goal(goal_handle, task_id, goal)
-            if not ok:
-                return self._finish_canceled_or_failed(
+            nav_segments, route_error_code, route_error = self._resolve_nav_segments(goal)
+            if route_error:
+                return self._fail_goal(
                     goal_handle=goal_handle,
                     task_id=task_id,
                     started_at=started_at,
-                    default_error=self._last_failure_code or ErrorCode.NAVIGATION_FAILED,
-                    default_message=self._last_failure_message or "Navigation failed",
+                    message=route_error,
+                    error_code=route_error_code,
                 )
+            self._publish_task_state(TASK_MOVING)
+            nav_deadline = time.time() + float(
+                goal.max_exec_sec if goal.max_exec_sec > 0 else self.default_timeout_sec
+            )
+            if self._should_use_nav_path(goal, nav_segments):
+                raw_remaining_timeout = int(nav_deadline - time.time())
+                path_timeout = self._compute_path_timeout(raw_remaining_timeout, nav_segments)
+                if path_timeout > raw_remaining_timeout:
+                    extension = int(path_timeout - raw_remaining_timeout)
+                    nav_deadline += float(extension)
+                    self.get_logger().info(
+                        f"graph_path navigation: extend timeout {raw_remaining_timeout}s -> {path_timeout}s "
+                        "(path floor policy)"
+                    )
+                ok = self._run_nav_path(
+                    goal_handle=goal_handle,
+                    task_id=task_id,
+                    goal=goal,
+                    nav_segments=nav_segments,
+                    timeout_sec=path_timeout,
+                    feedback_phase=ExecuteTask.Feedback.PHASE_MOVING,
+                    progress_start=10.0,
+                    progress_end=60.0,
+                )
+                if not ok:
+                    return self._finish_canceled_or_failed(
+                        goal_handle=goal_handle,
+                        task_id=task_id,
+                        started_at=started_at,
+                        default_error=self._last_failure_code or ErrorCode.NAVIGATION_FAILED,
+                        default_message=self._last_failure_message or "Navigation failed",
+                    )
+            else:
+                for segment_index, segment in enumerate(nav_segments, start=1):
+                    raw_remaining_timeout = int(nav_deadline - time.time())
+                    segment_timeout = self._compute_segment_timeout(raw_remaining_timeout, segment)
+                    if segment_timeout > raw_remaining_timeout:
+                        extension = int(segment_timeout - raw_remaining_timeout)
+                        nav_deadline += float(extension)
+                        self.get_logger().info(
+                            f"{self._segment_display(segment_index, len(nav_segments), segment['zone'], segment['pose'], segment.get('from_node', ''), segment.get('to_node', ''))}: "
+                            f"extend timeout {raw_remaining_timeout}s -> {segment_timeout}s "
+                            f"(min policy for long graph edge)"
+                        )
+                    ok = self._run_nav_to_goal(
+                        goal_handle=goal_handle,
+                        task_id=task_id,
+                        goal=goal,
+                        segment_zone=segment["zone"],
+                        segment_pose=segment["pose"],
+                        segment_index=segment_index,
+                        segment_total=len(nav_segments),
+                        timeout_sec=segment_timeout,
+                        feedback_phase=ExecuteTask.Feedback.PHASE_MOVING,
+                        progress_start=10.0,
+                        progress_end=60.0,
+                        segment_from_node=segment.get("from_node", ""),
+                        segment_to_node=segment.get("to_node", ""),
+                    )
+                    if not ok:
+                        return self._finish_canceled_or_failed(
+                            goal_handle=goal_handle,
+                            task_id=task_id,
+                            started_at=started_at,
+                            default_error=self._last_failure_code or ErrorCode.NAVIGATION_FAILED,
+                            default_message=self._last_failure_message or "Navigation failed",
+                        )
+                    if segment.get("to_node"):
+                        self._last_arrived_node_id = str(segment["to_node"])
             self._publish_task_state(TASK_ARRIVED)
 
         if goal.task_type in (TASK_TYPE_MOVE_AND_EXECUTE, TASK_TYPE_MODULE_ONLY):
@@ -257,7 +425,15 @@ class TaskExecutorNode(Node):
         if should_return:
             self._publish_mode(ROBOT_MODE_DOCKING)
             self._publish_task_state(TASK_RETURNING)
-            ok = self._run_return_home(goal_handle, task_id, goal)
+            if self.navigation_path_mode == "graph":
+                home_zone_override = ""
+                if goal.task_type == TASK_TYPE_RETURN_HOME and goal.target_zone:
+                    home_zone_override = goal.target_zone.strip()
+                ok = self._run_return_home_graph(
+                    goal_handle, task_id, goal, home_zone_override=home_zone_override
+                )
+            else:
+                ok = self._run_return_home(goal_handle, task_id, goal)
             if not ok:
                 return self._finish_canceled_or_failed(
                     goal_handle=goal_handle,
@@ -312,51 +488,260 @@ class TaskExecutorNode(Node):
             has_pose = bool(goal.target_pose.header.frame_id)
             if not has_zone and not has_pose:
                 return "Move task requires target_zone or target_pose"
+            if has_zone and not has_pose:
+                zone = goal.target_zone.strip()
+                if self.navigation_path_mode == "graph":
+                    if self._graph_config_error:
+                        return f"GRAPH_CONFIG_INVALID: {self._graph_config_error}"
+                    if zone not in self._room_specs:
+                        return f"UNKNOWN_ZONE: target_zone '{zone}'"
+                else:
+                    if self._route_config.is_blocked(zone):
+                        return f"target_zone '{zone}' is blocked by route policy"
+                    if self._waypoint_names and zone not in self._waypoint_names:
+                        return f"Unknown target_zone='{zone}'"
+        if goal.task_type == TASK_TYPE_RETURN_HOME and self.navigation_path_mode == "graph":
+            if self._graph_config_error:
+                return f"GRAPH_CONFIG_INVALID: {self._graph_config_error}"
+            home_zone = goal.target_zone.strip() if goal.target_zone else self.default_home_zone
+            if home_zone not in self._room_specs:
+                return f"UNKNOWN_ZONE: home_zone '{home_zone}'"
         return None
 
-    def _run_nav_to_goal(self, goal_handle, task_id: str, goal: ExecuteTask.Goal) -> bool:
+    def _run_nav_to_goal(
+        self,
+        goal_handle,
+        task_id: str,
+        goal: ExecuteTask.Goal,
+        segment_zone: str,
+        segment_pose: Optional[PoseStamped],
+        segment_index: int,
+        segment_total: int,
+        timeout_sec: int,
+        feedback_phase: int,
+        progress_start: float,
+        progress_end: float,
+        segment_from_node: str = "",
+        segment_to_node: str = "",
+    ) -> bool:
         if not self._nav_client.wait_for_server(timeout_sec=1.0):
-            self._set_failure(ErrorCode.NAVIGATION_FAILED, "nav_to_goal action server unavailable")
+            self._set_failure(
+                ErrorCode.NAVIGATION_FAILED,
+                f"{self._segment_display(segment_index, segment_total, segment_zone, segment_pose, segment_from_node, segment_to_node)}: "
+                "nav_to_goal action server unavailable",
+            )
             return False
 
         nav_goal = NavToGoal.Goal()
         nav_goal.task_id = task_id
         nav_goal.command_id = goal.command_id
-        nav_goal.target_zone = goal.target_zone
-        if goal.target_pose.header.frame_id:
-            nav_goal.target_pose = goal.target_pose
-        nav_goal.timeout_sec = int(goal.max_exec_sec if goal.max_exec_sec > 0 else self.default_timeout_sec)
+        nav_goal.target_zone = segment_zone
+        if segment_pose is not None and segment_pose.header.frame_id:
+            nav_goal.target_pose = segment_pose
+        nav_goal.timeout_sec = int(timeout_sec)
+        segment_display = self._segment_display(
+            segment_index,
+            segment_total,
+            segment_zone,
+            segment_pose,
+            segment_from_node,
+            segment_to_node,
+        )
+        self.get_logger().info(f"Dispatch {segment_display}")
+        self._publish_feedback(
+            goal_handle=goal_handle,
+            task_id=task_id,
+            phase=feedback_phase,
+            progress=self._segment_progress(
+                segment_index, segment_total, 0.0, progress_start, progress_end
+            ),
+            note=f"Dispatch {segment_display}",
+            pose=segment_pose if segment_pose is not None and segment_pose.header.frame_id else None,
+        )
 
         send_future = self._nav_client.send_goal_async(
             nav_goal,
-            feedback_callback=lambda fb: self._on_nav_feedback(goal_handle, task_id, fb.feedback),
+            feedback_callback=lambda fb: self._on_nav_feedback(
+                goal_handle,
+                task_id,
+                fb.feedback,
+                segment_index,
+                segment_total,
+                segment_display,
+                feedback_phase,
+                progress_start,
+                progress_end,
+            ),
         )
         nav_goal_handle = self._wait_future_result(send_future, timeout_sec=2.0)
         if nav_goal_handle is None:
-            self._set_failure(ErrorCode.NAVIGATION_FAILED, "Timeout waiting nav goal acceptance")
+            self._set_failure(
+                ErrorCode.NAVIGATION_FAILED,
+                f"{segment_display}: timeout waiting nav goal acceptance",
+            )
             return False
         if not nav_goal_handle.accepted:
-            self._set_failure(ErrorCode.NAVIGATION_FAILED, "nav_to_goal rejected by nav_adapter")
+            self._set_failure(
+                ErrorCode.NAVIGATION_FAILED,
+                f"{segment_display}: nav_to_goal rejected by nav_adapter",
+            )
             return False
 
         result_future = nav_goal_handle.get_result_async()
+        wait_timeout = max(
+            float(timeout_sec + 10),
+            float(timeout_sec) * 3.2,
+            float(timeout_sec + 140),
+        )
         action_result = self._wait_action_result_with_cancel(
             result_future=result_future,
             child_goal_handle=nav_goal_handle,
-            timeout_sec=float(nav_goal.timeout_sec + 5),
+            timeout_sec=wait_timeout,
         )
         if action_result is None:
             if self._last_failure_code == ErrorCode.OK:
-                self._set_failure(ErrorCode.NAVIGATION_FAILED, "Timeout waiting nav_to_goal result")
+                self._set_failure(
+                    ErrorCode.NAVIGATION_FAILED,
+                    f"{segment_display}: timeout waiting nav_to_goal result",
+                )
             return False
 
         nav_result = action_result.result
         if not nav_result.success:
             self._set_failure(
                 int(nav_result.result_code) if nav_result.result_code else ErrorCode.NAVIGATION_FAILED,
-                nav_result.message or "Navigation failed",
+                f"{segment_display}: {nav_result.message or 'Navigation failed'}",
             )
             return False
+        self._publish_feedback(
+            goal_handle=goal_handle,
+            task_id=task_id,
+            phase=feedback_phase,
+            progress=self._segment_progress(
+                segment_index, segment_total, 100.0, progress_start, progress_end
+            ),
+            note=f"Reached {segment_display}",
+        )
+        return True
+
+    def _run_nav_path(
+        self,
+        goal_handle,
+        task_id: str,
+        goal: ExecuteTask.Goal,
+        nav_segments: List[Dict[str, object]],
+        timeout_sec: int,
+        feedback_phase: int,
+        progress_start: float,
+        progress_end: float,
+    ) -> bool:
+        if not nav_segments:
+            return True
+        if not self._nav_path_client.wait_for_server(timeout_sec=1.0):
+            self._set_failure(
+                ErrorCode.NAVIGATION_FAILED,
+                "graph_path: nav_path action server unavailable",
+            )
+            return False
+
+        node_ids = [str(segment.get("to_node", "")).strip() for segment in nav_segments]
+        poses = [segment["pose"] for segment in nav_segments]
+        graph_path = self._graph_path_text(nav_segments)
+        total_steps = max(1, len(node_ids))
+        first_from = str(nav_segments[0].get("from_node", "")).strip() if nav_segments else ""
+        first_to = node_ids[0] if node_ids else ""
+
+        nav_path_goal = NavPath.Goal()
+        nav_path_goal.task_id = task_id
+        nav_path_goal.command_id = goal.command_id
+        nav_path_goal.node_ids = node_ids
+        nav_path_goal.poses = poses
+        nav_path_goal.timeout_sec = int(timeout_sec)
+
+        self.get_logger().info(
+            f"Dispatch graph_path [{graph_path}] (segments={len(nav_segments)})"
+        )
+        self._publish_feedback(
+            goal_handle=goal_handle,
+            task_id=task_id,
+            phase=feedback_phase,
+            progress=progress_start,
+            note=(
+                f"graph_path={graph_path}; step=0/{total_steps}; "
+                f"from={first_from}; to={first_to}"
+            ),
+            pose=poses[0] if poses else None,
+        )
+
+        send_future = self._nav_path_client.send_goal_async(
+            nav_path_goal,
+            feedback_callback=lambda fb: self._on_nav_path_feedback(
+                goal_handle=goal_handle,
+                task_id=task_id,
+                feedback=fb.feedback,
+                graph_path=graph_path,
+                feedback_phase=feedback_phase,
+                progress_start=progress_start,
+                progress_end=progress_end,
+                total_steps=total_steps,
+            ),
+        )
+        nav_goal_handle = self._wait_future_result(send_future, timeout_sec=2.0)
+        if nav_goal_handle is None:
+            self._set_failure(
+                ErrorCode.NAVIGATION_FAILED,
+                "graph_path: timeout waiting nav_path goal acceptance",
+            )
+            return False
+        if not nav_goal_handle.accepted:
+            self._set_failure(
+                ErrorCode.NAVIGATION_FAILED,
+                "graph_path: nav_path rejected by nav_adapter",
+            )
+            return False
+
+        result_future = nav_goal_handle.get_result_async()
+        wait_timeout = max(
+            float(timeout_sec + 10),
+            float(timeout_sec) * 3.2,
+            float(timeout_sec + 140),
+        )
+        action_result = self._wait_action_result_with_cancel(
+            result_future=result_future,
+            child_goal_handle=nav_goal_handle,
+            timeout_sec=wait_timeout,
+        )
+        if action_result is None:
+            if self._last_failure_code == ErrorCode.OK:
+                self._set_failure(
+                    ErrorCode.NAVIGATION_FAILED,
+                    "graph_path: timeout waiting nav_path result",
+                )
+            return False
+
+        nav_result = action_result.result
+        if not nav_result.success:
+            self._set_failure(
+                int(nav_result.result_code) if nav_result.result_code else ErrorCode.NAVIGATION_FAILED,
+                f"graph_path: {nav_result.message or 'Navigation failed'}",
+            )
+            return False
+        if nav_result.final_node_id:
+            self._last_arrived_node_id = str(nav_result.final_node_id)
+        elif node_ids:
+            self._last_arrived_node_id = node_ids[-1]
+
+        self._publish_feedback(
+            goal_handle=goal_handle,
+            task_id=task_id,
+            phase=feedback_phase,
+            progress=progress_end,
+            note=(
+                f"graph_path={graph_path}; step={total_steps}/{total_steps}; "
+                f"from={node_ids[-1] if node_ids else ''}; to={node_ids[-1] if node_ids else ''}; "
+                "phase=arrived"
+            ),
+        )
         return True
 
     def _execute_module(self, goal: ExecuteTask.Goal) -> bool:
@@ -426,15 +811,61 @@ class TaskExecutorNode(Node):
             return False
         return True
 
-    def _on_nav_feedback(self, goal_handle, task_id: str, feedback: NavToGoal.Feedback) -> None:
-        # Reserve 10~60% for moving phase in ExecuteTask feedback timeline.
-        progress = min(60.0, 10.0 + (float(feedback.progress_pct) * 0.5))
+    def _on_nav_feedback(
+        self,
+        goal_handle,
+        task_id: str,
+        feedback: NavToGoal.Feedback,
+        segment_index: int,
+        segment_total: int,
+        segment_display: str,
+        feedback_phase: int,
+        progress_start: float,
+        progress_end: float,
+    ) -> None:
+        progress = self._segment_progress(
+            segment_index,
+            segment_total,
+            float(feedback.progress_pct),
+            progress_start,
+            progress_end,
+        )
         self._publish_feedback(
             goal_handle=goal_handle,
             task_id=task_id,
-            phase=ExecuteTask.Feedback.PHASE_MOVING,
+            phase=feedback_phase,
             progress=progress,
-            note=feedback.phase if feedback.phase else "moving",
+            note=f"{segment_display}: {feedback.phase if feedback.phase else 'moving'}",
+            pose=feedback.current_pose,
+            eta_sec=feedback.eta_sec,
+        )
+
+    def _on_nav_path_feedback(
+        self,
+        goal_handle,
+        task_id: str,
+        feedback: NavPath.Feedback,
+        graph_path: str,
+        feedback_phase: int,
+        progress_start: float,
+        progress_end: float,
+        total_steps: int,
+    ) -> None:
+        ratio = max(0.0, min(100.0, float(feedback.progress_pct))) / 100.0
+        progress = progress_start + (progress_end - progress_start) * ratio
+        reached = max(0, int(feedback.reached_count))
+        total = max(1, int(feedback.total_count) if int(feedback.total_count) > 0 else total_steps)
+        step = min(total, reached)
+        phase_label = feedback.phase if feedback.phase else "moving"
+        self._publish_feedback(
+            goal_handle=goal_handle,
+            task_id=task_id,
+            phase=feedback_phase,
+            progress=progress,
+            note=(
+                f"graph_path={graph_path}; step={step}/{total}; "
+                f"from={feedback.from_node}; to={feedback.to_node}; phase={phase_label}"
+            ),
             pose=feedback.current_pose,
             eta_sec=feedback.eta_sec,
         )
@@ -489,6 +920,334 @@ class TaskExecutorNode(Node):
         self._last_failure_code = int(code)
         self._last_failure_message = message
         self.get_logger().warn(message)
+
+    def _resolve_nav_segments(self, goal: ExecuteTask.Goal):
+        if goal.target_pose.header.frame_id:
+            return [{"zone": "", "pose": goal.target_pose, "from_node": "", "to_node": ""}], 0, ""
+
+        zone = goal.target_zone.strip()
+        if not zone:
+            return [], ErrorCode.VALIDATION_FAILED, "Move task requires target_zone or target_pose"
+
+        if self.navigation_path_mode == "graph":
+            return self._resolve_graph_nav_segments(zone)
+
+        if self._route_config.is_blocked(zone):
+            return [], ErrorCode.VALIDATION_FAILED, f"target_zone '{zone}' is blocked by route policy"
+        route = self._route_config.expand(zone)
+        segments = [
+            {"zone": route_zone, "pose": None, "from_node": "", "to_node": ""}
+            for route_zone in route
+        ]
+        return segments, 0, ""
+
+    def _resolve_graph_nav_segments(self, zone: str):
+        return self._resolve_graph_path_to_zone(zone)
+
+    def _resolve_graph_path_to_zone(self, zone: str):
+        if self._graph_config_error or self._graph is None:
+            return (
+                [],
+                ErrorCode.VALIDATION_FAILED,
+                f"GRAPH_CONFIG_INVALID: {self._graph_config_error or 'graph not loaded'}",
+            )
+        if zone not in self._room_specs:
+            return [], ErrorCode.VALIDATION_FAILED, f"UNKNOWN_ZONE: target_zone '{zone}'"
+
+        source_node, source_error = self._resolve_graph_source_node()
+        if source_error:
+            return [], ErrorCode.VALIDATION_FAILED, source_error
+
+        room_spec = self._room_specs[zone]
+        target_node = room_spec.work_node
+        path_nodes = self._resolve_graph_path_nodes(source_node, target_node)
+        if not path_nodes:
+            return (
+                [],
+                ErrorCode.VALIDATION_FAILED,
+                f"NO_PATH: source={source_node} target={target_node}",
+            )
+        if len(path_nodes) == 1:
+            self._last_arrived_node_id = target_node
+            return [], 0, ""
+
+        segments = []
+        for from_node, to_node in zip(path_nodes[:-1], path_nodes[1:]):
+            segments.append(
+                {
+                    "zone": to_node,
+                    "pose": self._make_graph_pose(to_node),
+                    "from_node": from_node,
+                    "to_node": to_node,
+                }
+            )
+        self.get_logger().info(f"graph_path {zone}: {' -> '.join(path_nodes)}")
+        return segments, 0, ""
+
+    def _resolve_graph_path_nodes(self, source_node: str, target_node: str) -> Optional[List[str]]:
+        if self._graph is None:
+            return None
+        cache_key = (source_node, target_node)
+        if self.graph_path_cache_enabled:
+            cached = self._graph_path_cache.get(cache_key)
+            if cached:
+                return list(cached)
+
+        path_nodes = self._graph.shortest_path(source_node, target_node)
+        if not path_nodes:
+            return None
+
+        if self.graph_path_cache_enabled:
+            self._graph_path_cache[cache_key] = list(path_nodes)
+            if len(self._graph_path_cache) > max(1, self.graph_path_cache_max_entries):
+                # Keep cache bounded; remove oldest inserted key.
+                oldest_key = next(iter(self._graph_path_cache))
+                self._graph_path_cache.pop(oldest_key, None)
+        return path_nodes
+
+    def _resolve_graph_source_node(self):
+        if self._graph is None:
+            return "", "GRAPH_CONFIG_INVALID: graph is not loaded"
+        if self._current_status_pose is None:
+            if self._last_arrived_node_id and self._last_arrived_node_id in self._graph.nodes:
+                return self._last_arrived_node_id, ""
+            return "", "NO_SNAP_NODE: /robot/status pose is not available"
+
+        x = float(self._current_status_pose.pose.position.x)
+        y = float(self._current_status_pose.pose.position.y)
+        source_node = self._graph.nearest_node(
+            x,
+            y,
+            last_node_id=self._last_arrived_node_id,
+            snap_radius=self.graph_snap_radius,
+            stick_radius=self.graph_stick_radius,
+        )
+        if not source_node:
+            return (
+                "",
+                f"NO_SNAP_NODE: no graph node within snap_radius={self.graph_snap_radius:.2f}",
+            )
+        return source_node, ""
+
+    def _make_graph_pose(self, node_id: str) -> PoseStamped:
+        node = self._graph.nodes[node_id]
+        pose = PoseStamped()
+        pose.header.stamp = self.get_clock().now().to_msg()
+        pose.header.frame_id = "map"
+        pose.pose.position.x = float(node.x)
+        pose.pose.position.y = float(node.y)
+        pose.pose.orientation.z = math.sin(float(node.yaw) / 2.0)
+        pose.pose.orientation.w = math.cos(float(node.yaw) / 2.0)
+        return pose
+
+    def _goal_needs_navigation(self, goal: ExecuteTask.Goal) -> bool:
+        return goal.task_type in {
+            TASK_TYPE_MOVE_AND_EXECUTE,
+            TASK_TYPE_MOVE_ONLY,
+            TASK_TYPE_RETURN_HOME,
+        }
+
+    def _run_return_home_graph(
+        self,
+        goal_handle,
+        task_id: str,
+        goal: ExecuteTask.Goal,
+        home_zone_override: str = "",
+    ) -> bool:
+        home_zone = home_zone_override if home_zone_override else self.default_home_zone
+        segments, error_code, error_message = self._resolve_graph_path_to_zone(home_zone)
+        if error_message:
+            self._set_failure(error_code, error_message)
+            return False
+
+        timeout_deadline = time.time() + float(
+            goal.max_exec_sec if goal.max_exec_sec > 0 else self.default_timeout_sec
+        )
+        if self._should_use_nav_path(goal, segments):
+            raw_remaining_timeout = int(timeout_deadline - time.time())
+            path_timeout = self._compute_path_timeout(raw_remaining_timeout, segments)
+            if path_timeout > raw_remaining_timeout:
+                extension = int(path_timeout - raw_remaining_timeout)
+                timeout_deadline += float(extension)
+                self.get_logger().info(
+                    f"return_home graph_path: extend timeout {raw_remaining_timeout}s -> {path_timeout}s "
+                    "(path floor policy)"
+                )
+            ok = self._run_nav_path(
+                goal_handle=goal_handle,
+                task_id=task_id,
+                goal=goal,
+                nav_segments=segments,
+                timeout_sec=path_timeout,
+                feedback_phase=ExecuteTask.Feedback.PHASE_RETURNING,
+                progress_start=75.0,
+                progress_end=95.0,
+            )
+            return ok
+
+        for segment_index, segment in enumerate(segments, start=1):
+            raw_remaining_timeout = int(timeout_deadline - time.time())
+            segment_timeout = self._compute_segment_timeout(raw_remaining_timeout, segment)
+            if segment_timeout > raw_remaining_timeout:
+                extension = int(segment_timeout - raw_remaining_timeout)
+                timeout_deadline += float(extension)
+                self.get_logger().info(
+                    f"{self._segment_display(segment_index, len(segments), segment['zone'], segment['pose'], segment.get('from_node', ''), segment.get('to_node', ''))}: "
+                    f"extend timeout {raw_remaining_timeout}s -> {segment_timeout}s "
+                    f"(min policy for long graph edge)"
+                )
+            ok = self._run_nav_to_goal(
+                goal_handle=goal_handle,
+                task_id=task_id,
+                goal=goal,
+                segment_zone=segment["zone"],
+                segment_pose=segment["pose"],
+                segment_index=segment_index,
+                segment_total=len(segments),
+                timeout_sec=segment_timeout,
+                feedback_phase=ExecuteTask.Feedback.PHASE_RETURNING,
+                progress_start=75.0,
+                progress_end=95.0,
+                segment_from_node=segment.get("from_node", ""),
+                segment_to_node=segment.get("to_node", ""),
+            )
+            if not ok:
+                return False
+            if segment.get("to_node"):
+                self._last_arrived_node_id = str(segment["to_node"])
+        return True
+
+    def _is_blocked_zone_request(self, goal: ExecuteTask.Goal) -> bool:
+        if self.navigation_path_mode != "ingress":
+            return False
+        if goal.target_pose.header.frame_id:
+            return False
+        zone = goal.target_zone.strip()
+        if not zone:
+            return False
+        return self._route_config.is_blocked(zone)
+
+    def _segment_display(
+        self,
+        segment_index: int,
+        segment_total: int,
+        zone: str,
+        pose: Optional[PoseStamped],
+        from_node: str = "",
+        to_node: str = "",
+    ) -> str:
+        if from_node and to_node:
+            target = f"graph={from_node}->{to_node}"
+        elif zone:
+            target = f"zone={zone}"
+        elif pose is not None and pose.header.frame_id:
+            target = (
+                f"pose=({pose.pose.position.x:.2f}, {pose.pose.position.y:.2f}, "
+                f"frame={pose.header.frame_id})"
+            )
+        else:
+            target = "target"
+        return f"segment {segment_index}/{segment_total} [{target}]"
+
+    def _compute_segment_timeout(self, remaining_timeout: int, segment: Dict[str, object]) -> int:
+        remaining_timeout = max(1, int(remaining_timeout))
+        policy_floor = max(1, int(self.segment_timeout_min_sec))
+
+        edge_dist = self._segment_edge_distance_m(segment)
+        if edge_dist is not None:
+            adaptive_floor = int(
+                math.ceil(
+                    max(0.0, float(self.segment_timeout_base_sec))
+                    + max(0.0, float(self.segment_timeout_per_meter_sec)) * edge_dist
+                )
+            )
+            policy_floor = max(policy_floor, adaptive_floor)
+
+        return max(remaining_timeout, policy_floor)
+
+    def _compute_path_timeout(self, remaining_timeout: int, segments: List[Dict[str, object]]) -> int:
+        remaining_timeout = max(1, int(remaining_timeout))
+        edge_count = max(1, len(segments))
+        total_distance = self._path_edge_distance_m(segments)
+        path_floor = int(
+            math.ceil(
+                max(0.0, float(self.segment_timeout_base_sec)) * float(edge_count)
+                + max(0.0, float(self.segment_timeout_per_meter_sec)) * total_distance
+            )
+        )
+        return max(remaining_timeout, max(1, int(self.segment_timeout_min_sec)), path_floor)
+
+    def _path_edge_distance_m(self, segments: List[Dict[str, object]]) -> float:
+        total = 0.0
+        for segment in segments:
+            edge_dist = self._segment_edge_distance_m(segment)
+            if edge_dist is None:
+                continue
+            total += edge_dist
+        return total
+
+    def _segment_edge_distance_m(self, segment: Dict[str, object]) -> Optional[float]:
+        if self._graph is None:
+            return None
+        from_node = str(segment.get("from_node", "")).strip()
+        to_node = str(segment.get("to_node", "")).strip()
+        if not from_node or not to_node:
+            return None
+        if from_node not in self._graph.nodes or to_node not in self._graph.nodes:
+            return None
+        a = self._graph.nodes[from_node]
+        b = self._graph.nodes[to_node]
+        dx = float(a.x) - float(b.x)
+        dy = float(a.y) - float(b.y)
+        return math.sqrt(dx * dx + dy * dy)
+
+    def _should_use_nav_path(self, goal: ExecuteTask.Goal, segments: List[Dict[str, object]]) -> bool:
+        if not segments:
+            return False
+        if self.nav_execution_mode != "through_poses":
+            return False
+        if self.navigation_path_mode != "graph":
+            return False
+        if goal.target_pose.header.frame_id:
+            return False
+        for segment in segments:
+            if not str(segment.get("to_node", "")).strip():
+                return False
+            pose = segment.get("pose")
+            if not isinstance(pose, PoseStamped) or not pose.header.frame_id:
+                return False
+        return True
+
+    @staticmethod
+    def _graph_path_text(segments: List[Dict[str, object]]) -> str:
+        if not segments:
+            return ""
+        first_from = str(segments[0].get("from_node", "")).strip()
+        nodes: List[str] = [first_from] if first_from else []
+        for segment in segments:
+            to_node = str(segment.get("to_node", "")).strip()
+            if to_node:
+                nodes.append(to_node)
+        if not nodes:
+            return ""
+        return "->".join(nodes)
+
+    @staticmethod
+    def _segment_progress(
+        segment_index: int,
+        segment_total: int,
+        segment_pct: float,
+        progress_start: float,
+        progress_end: float,
+    ) -> float:
+        segment_total = max(1, segment_total)
+        window = max(0.0, progress_end - progress_start)
+        per_segment = window / float(segment_total)
+        base = progress_start + (float(segment_index - 1) * per_segment)
+        return min(
+            progress_end,
+            base + (max(0.0, min(100.0, segment_pct)) / 100.0) * per_segment,
+        )
 
     def _finish_canceled_or_failed(
         self,
