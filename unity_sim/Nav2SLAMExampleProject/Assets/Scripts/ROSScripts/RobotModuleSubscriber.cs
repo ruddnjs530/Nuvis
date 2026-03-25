@@ -52,6 +52,9 @@ public class RobotModuleSubscriber : MonoBehaviour
 
     private const byte STATE_COMPLETED = 4;
 
+    private ModuleType latestStateModule = ModuleType.None;
+    private bool hasInitializedFromState = false;
+
     private void Awake()
     {
         foreach (var data in moduleVisualList)
@@ -74,16 +77,8 @@ public class RobotModuleSubscriber : MonoBehaviour
 
     private void OnReceiveModuleState(ModuleStateMsg msg)
     {
-        ModuleType stateModule = ParseModuleType(msg.module_type);
-
-        Debug.Log($"[Module][State] module_type={msg.module_type}, parsed={stateModule}");
-
-        if (!isChanging && currentModule != stateModule)
-        {
-            currentModule = stateModule;
-            ApplyEquippedVisual(currentModule);
-            Debug.Log($"[Module][State] 상태 스냅샷으로 보정: {currentModule}");
-        }
+        latestStateModule = ParseModuleType(msg.module_type);
+        Debug.Log($"[Module][State] module_type={msg.module_type}, parsed={latestStateModule}");
     }
 
     private void OnReceiveSwapEvent(ModuleSwapEventMsg msg)
@@ -122,7 +117,7 @@ public class RobotModuleSubscriber : MonoBehaviour
             return;
         }
 
-        if (currentModule == newModule)
+        if (currentModule == newModule && latestStateModule == newModule)
         {
             Debug.Log($"[Module] 이미 {newModule} 모듈입니다.");
             return;
@@ -155,15 +150,22 @@ public class RobotModuleSubscriber : MonoBehaviour
             yield break;
         }
 
+        Debug.Log($"[Module] 모듈 교체 시작: {currentModule} -> {newModule}");
+
+        // 기존 장착 모듈 제거 애니메이션
         if (currentModule != ModuleType.None && moduleVisualMap.TryGetValue(currentModule, out ModuleVisualData currentData))
         {
             if (currentData.equippedObject != null && currentData.equippedObject.activeSelf)
+            {
+                Debug.Log("[Module] 기존 모듈 제거 시작");
                 yield return StartCoroutine(AnimateRemoveCurrentModule(currentData.equippedObject));
+            }
         }
 
         if (startDelayAfterRemove > 0f)
             yield return new WaitForSeconds(startDelayAfterRemove);
 
+        // 박스 생성
         GameObject movingBox = null;
         if (targetData.movingBoxPrefab != null)
         {
@@ -175,6 +177,7 @@ public class RobotModuleSubscriber : MonoBehaviour
             movingBox.SetActive(true);
         }
 
+        // 박스 이동
         float elapsed = 0f;
         Vector3 startPos = stationSpawnPoint.position;
         Vector3 endPos = robotAttachPoint.position;
@@ -202,6 +205,7 @@ public class RobotModuleSubscriber : MonoBehaviour
             Destroy(movingBox);
 
         currentModule = newModule;
+        latestStateModule = newModule;
         ApplyEquippedVisual(currentModule);
 
         Debug.Log($"[Module] 모듈 교체 완료: {currentModule}");
@@ -237,7 +241,18 @@ public class RobotModuleSubscriber : MonoBehaviour
         if (moduleVisualMap.TryGetValue(module, out ModuleVisualData targetData))
         {
             if (targetData.equippedObject != null)
+            {
+                Transform targetTransform = targetData.equippedObject.transform;
+
+                if (robotAttachPoint != null)
+                {
+                    targetTransform.SetParent(robotAttachPoint, false);
+                    targetTransform.localPosition = Vector3.zero;
+                    targetTransform.localRotation = Quaternion.identity;
+                }
+
                 targetData.equippedObject.SetActive(true);
+            }
         }
     }
 
