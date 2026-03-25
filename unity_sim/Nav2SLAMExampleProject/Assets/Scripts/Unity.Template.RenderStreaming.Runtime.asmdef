@@ -1,9 +1,11 @@
 {
     "name": "Unity.Template.RenderStreaming.Runtime",
+    "rootNamespace": "",
     "references": [
         "Unity.InputSystem",
         "Unity.WebRTC",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "Unity.Robotics.ROSTCPConnector"
     ],
     "includePlatforms": [
         "Editor",
