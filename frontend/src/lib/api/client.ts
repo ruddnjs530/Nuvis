@@ -30,7 +30,7 @@ export async function api<T>({
   url,
   options,
   type = 'json',
-  apiPrefix = 'api/v1',
+  apiPrefix = 'api',
 }: APIClientParams): Promise<T> {
   const normalizedUrl = url.startsWith('/') ? url.slice(1) : url;
   const requestUrl = apiPrefix ? `${apiPrefix}/${normalizedUrl}` : normalizedUrl;

@@ -7,8 +7,6 @@ import { cn } from '~/lib/utils';
 // Phase 3: useQuery로 서버 목록 교체
 const QUICK_ACTIONS = [
   { id: 'station', label: '스테이션 복귀' },
-  { id: 'humid-bedroom', label: '침실 가습' },
-  { id: 'air-kitchen', label: '부엌 강력 공기 청정' },
 ] as const;
 
 // ── Section ───────────────────────────────────────────────────────────────────
@@ -43,7 +41,7 @@ export default function QuickActionSection() {
           ))}
         </AppCard>
 
-        <SectionLinkFooter to="/quick-actions/edit">등록 / 수정하기</SectionLinkFooter>
+        {/* <SectionLinkFooter to="/quick-actions/edit">등록 / 수정하기</SectionLinkFooter> */}
       </div>
     </section>
   );
