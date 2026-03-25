@@ -6,7 +6,7 @@ export const authApi = {
   login: (data: LoginRequest) =>
     api<ApiResponse<LoginResponse>>({
       method: 'post',
-      url: 'auth/login', // 백엔드 라우트에 맞게 수정 가능
+      url: 'auth/login',
       options: { json: data },
-    }).then(res => res.data),
+    }),
 };

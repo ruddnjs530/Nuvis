@@ -11,21 +11,24 @@ export interface RoomDataResponse {
   condition: RoomCondition | null;
 }
 
-export interface RobotPose {
-  x: number;
-  y: number;
-  yaw: number;
+export interface AttachedModule {
+  type: number;
+  name: string;
+  is_available: boolean;
 }
 
 export interface RobotStatusResponse {
-  robotId: string;
+  robot_id: string;
   mode: number;
-  taskState: number;
-  activeTaskId: string;
-  batteryPct: number;
-  isCharging: boolean;
-  safetyState: number;
-  lastErrorCode: number;
-  pose: RobotPose;
+  task_state: number;
+  active_task_id: string;
+  battery_pct: number;
+  is_charging: boolean;
+  safety_state: number;
+  last_error_code: number;
+  pose_x: number;
+  pose_y: number;
+  pose_yaw: number;
   stamp: string;
+  attached_module: AttachedModule;
 }

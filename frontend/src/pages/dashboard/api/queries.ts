@@ -1,3 +1,4 @@
+import type { RobotStatusResponse } from './types';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from './api';
 
@@ -13,6 +14,6 @@ export function useRobotStatusQuery() {
   return useQuery({
     queryKey: ['dashboard', 'robot-status'],
     queryFn: dashboardApi.getRobotStatus,
-    refetchInterval: 1000, // 로봇 상태는 1초마다 갱신 (더 빈번하게)
+    refetchInterval: 1000,
   });
 }
