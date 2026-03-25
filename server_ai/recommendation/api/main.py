@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict # ConfigDict, Field 추가
 from typing import List, Optional
 import asyncio
 import logging
@@ -133,18 +133,27 @@ DEVICE_CONFIG = {
 class SensorRecord(BaseModel):
     """메인 서버에서 배열 형태로 담아 전달하는 개별 센서 측정 + 기기 조작 1행 데이터 스펙"""
     timestamp: str
-    room_id: int                          # 메인 서버와의 통신 규약: 어떤 방(room_id)의 센서 데이터인지
-    temperature: Optional[float] = None   # Optional: 값이 null(None)이어도 에러를 내지 않고 허용함
+    # 백엔드 DB/API 규격 'roomId'와 호환을 위한 alias
+    room_id: int = Field(alias="roomId", validation_alias="room_id") 
+    temperature: Optional[float] = None
     humidity: Optional[float] = None
     fine_dust: Optional[float] = None     
-    air_purifier_on: Optional[int] = 0    # 값이 안 들어오면 기본값 0(꺼짐) 처리
+    air_purifier_on: Optional[int] = 0
     humidifier_on: Optional[int] = 0
     dehumidifier_on: Optional[int] = 0
 
+    model_config = ConfigDict(populate_by_name=True)
+
 class AnalysisRequest(BaseModel):
     """AI API 서버에 POST 요청을 보낼 때 제일 최상단의 통합 Body 구조체"""
-    user_id: int                          # 어떤 유저의 집 데이터인지 식별키
-    sensor_data: List[SensorRecord]       # List[객체]: 위에서 선언한 데이터행이 배열([{}, {}]) 꼴로 다발로 들어옴
+    # 백엔드(Nest.js/Spring)의 CamelCase 필드명(userId)과 AI 내부 snake_case를 호환시키기 위해 alias 적용
+    user_id: int = Field(alias="userId", validation_alias="user_id") 
+    
+    # 백엔드 전달명 'data'를 AI 내부명 'sensor_data'로 유연하게 수용
+    sensor_data: List[SensorRecord] = Field(alias="data", validation_alias="sensor_data")
+
+    # 별칭(Alias)과 실제 변수명 둘 다 인식할 수 있도록 설정
+    model_config = ConfigDict(populate_by_name=True)
 
 
 # ─────────────────────────────────────────

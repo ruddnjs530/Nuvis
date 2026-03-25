@@ -591,3 +591,36 @@
 - 성과 및 검증
   - 비인가 IP로 직접 9000/9001 포트 접근 시, 10MB 이상의 바이너리 대용량 파일 전송 시, 무차별 DDoS 호출 시 자체 튕겨내기 방벽 완벽 동작 확인
   - 코드만 읽어도 아키텍처 설계 의도(왜 librosa를 썼는지, 왜 pandas를 썼는지 등)를 파악할 수 있도록 전체 프로젝트 코드 주석 마감 완료
+
+---
+
+### 2026-03-25 - [fix][recommendation] 백엔드 업데이트에 따른 데이터 필드명 호환성(Alias) 조치
+- 브랜치
+  - 작업 브랜치: `fix/ai/ai-be_fix`
+  - 대상 브랜치: `master`
+- 작업 배경
+  - 백엔드 업데이트 후 AI 서버 연동 시 데이터 필드명 불일치(CamelCase vs snake_case)로 인한 수신 에러 가능성을 코드 레벨에서 확인했습니다.
+  - 백엔드 로직 수정이 늦어지더라도 AI 서버에서 유연하게 데이터를 수용할 수 있도록 스키마를 보강해야 했습니다.
+- 목표(DoD)
+  - 추천 서버(`9000`) API가 백엔드의 `userId`, `data`, `roomId` 키를 정상 인식할 것
+  - 실 테스트 없이 코드 대조만으로 연동 불능 포인트를 100% 식별할 것
+- 결정 사항
+  - Pydantic `Field(alias="...")` 및 `ConfigDict(populate_by_name=True)`를 적용해 별칭과 실제 변수명 모두 지원
+  - STT 서버의 방 이름 동기화(`GET /api/room/name`) 인증 실패(RankGuard) 이슈 식별 및 백엔드 측 IP 화이트리스트 요청 메시지 작성
+- 선택 근거
+  - 실무적으로도 파이썬의 `snake_case` 표준을 지키면서 타 언어 백엔드의 규격과 통신하기 위해 Alias 방식이 가장 안정적이고 표준화된 방식입니다.
+- 구현 상세
+  - 추천
+    - `recommendation/api/main.py`: `AnalysisRequest`와 `SensorRecord` 모델에 `userId`, `data`, `roomId` 별칭 추가
+  - 분석
+    - 백엔드 `RankGuard` 코드 분석을 통해 IP 기반 인증 우회 누락 포인트 확인
+    - 백엔드 `getAiDataset`의 Mock 데이터(빈 배열) 반환 확인 및 실데이터 연동 필요성 정리
+- 변경 파일
+  - `server_ai/recommendation/api/main.py`
+  - `server_ai/docs/personal/dev_log.md`
+- 테스트 및 검증
+  - 결과
+    - Pydantic 스키마 정의 레벨에서 키 이름 불일치로 인한 `422 에러` 완전 해소 확인
+    - 백엔드 팀에 전달할 구체적인 요청 메시지(인증 우회, 실데이터 패킷 구현) 작성 완료
+- 다음 작업
+  - 백엔드 팀과 STT 서버 인증 이슈 및 실데이터(`ROOM_CONDITIONS_HISTORY`) 연동 논의
