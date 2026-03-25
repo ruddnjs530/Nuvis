@@ -15,6 +15,8 @@ set(msg_files
   "msg/RobotStatus.msg"
   "msg/RobotCommand.msg"
   "msg/ModuleState.msg"
+  "msg/ModuleSwapEvent.msg"
+  "msg/ModuleOperationEvent.msg"
   "msg/SensorState.msg"
   "msg/ErrorReport.msg"
   "msg/Heartbeat.msg"

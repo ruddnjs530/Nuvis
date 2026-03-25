@@ -11,12 +11,21 @@ from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from robot_msgs.action import ExecuteTask, NavPath, NavToGoal, ReturnHome
-from robot_msgs.msg import ErrorReport, RobotStatus
+from robot_msgs.msg import (
+    ErrorReport,
+    ModuleState,
+    ModuleSwapEvent,
+    RobotStatus,
+)
 from robot_msgs.srv import CancelTask, SetManualControl, SetModuleState
 from std_msgs.msg import String, UInt8, UInt32
 
 from .constants import (
     ErrorCode,
+    MODULE_AIR_PURIFIER,
+    MODULE_DEHUMIDIFIER,
+    MODULE_HUMIDIFIER,
+    MODULE_NONE,
     ROBOT_MODE_AUTONOMOUS,
     ROBOT_MODE_DOCKING,
     ROBOT_MODE_IDLE,
@@ -62,6 +71,8 @@ class TaskExecutorNode(Node):
         self.declare_parameter("segment_timeout_min_sec", 30)
         self.declare_parameter("segment_timeout_base_sec", 10)
         self.declare_parameter("segment_timeout_per_meter_sec", 8.0)
+        self.declare_parameter("module_state_wait_sec", 2.0)
+        self.declare_parameter("module_service_timeout_sec", 3.0)
 
         self.default_timeout_sec = (
             self.get_parameter("default_timeout_sec").get_parameter_value().integer_value
@@ -97,6 +108,10 @@ class TaskExecutorNode(Node):
         self.segment_timeout_base_sec = int(self.get_parameter("segment_timeout_base_sec").value)
         self.segment_timeout_per_meter_sec = float(
             self.get_parameter("segment_timeout_per_meter_sec").value
+        )
+        self.module_state_wait_sec = float(self.get_parameter("module_state_wait_sec").value)
+        self.module_service_timeout_sec = float(
+            self.get_parameter("module_service_timeout_sec").value
         )
 
         if self.navigation_path_mode not in {"graph", "ingress"}:
@@ -138,6 +153,7 @@ class TaskExecutorNode(Node):
         self._last_failure_code = ErrorCode.OK
         self._last_failure_message = ""
         self._current_status_pose: Optional[PoseStamped] = None
+        self._current_module_state: Optional[ModuleState] = None
         self._last_arrived_node_id = ""
 
         self._mode_pub = self.create_publisher(UInt8, "/robot/internal/mode", 10)
@@ -146,12 +162,16 @@ class TaskExecutorNode(Node):
         self._last_error_pub = self.create_publisher(UInt32, "/robot/internal/last_error_code", 10)
         self._feedback_pub = self.create_publisher(ExecuteTask.Feedback, "/robot/task_feedback", 10)
         self._error_pub = self.create_publisher(ErrorReport, "/robot/error_report", 10)
+        self._module_swap_event_pub = self.create_publisher(
+            ModuleSwapEvent, "/robot/module/swap_event", 10
+        )
 
         self.create_subscription(UInt8, "/robot/internal/safety_state", self._on_safety_state, 10)
         self.create_subscription(
             String, "/robot/internal/return_home_request", self._on_return_request, 10
         )
         self.create_subscription(RobotStatus, "/robot/status", self._on_robot_status, 10)
+        self.create_subscription(ModuleState, "/robot/module/state", self._on_module_state, 10)
 
         self._cancel_service = self.create_service(
             CancelTask, "/robot/cancel_task", self._handle_cancel_task
@@ -206,6 +226,9 @@ class TaskExecutorNode(Node):
 
     def _on_robot_status(self, msg: RobotStatus) -> None:
         self._current_status_pose = msg.pose
+
+    def _on_module_state(self, msg: ModuleState) -> None:
+        self._current_module_state = msg
 
     def _on_goal(self, goal_request: ExecuteTask.Goal) -> GoalResponse:
         if self._active_goal_handle is not None:
@@ -321,6 +344,21 @@ class TaskExecutorNode(Node):
             note="Task accepted",
         )
 
+        if goal.task_type in (TASK_TYPE_MOVE_AND_EXECUTE, TASK_TYPE_MODULE_ONLY):
+            swap_ready = self._ensure_module_ready(
+                goal_handle=goal_handle,
+                task_id=task_id,
+                goal=goal,
+            )
+            if not swap_ready:
+                return self._finish_canceled_or_failed(
+                    goal_handle=goal_handle,
+                    task_id=task_id,
+                    started_at=started_at,
+                    default_error=self._last_failure_code or ErrorCode.MODULE_SWAP_FAILED,
+                    default_message=self._last_failure_message or "Module swap preparation failed",
+                )
+
         if goal.task_type in (TASK_TYPE_MOVE_AND_EXECUTE, TASK_TYPE_MOVE_ONLY):
             nav_segments, route_error_code, route_error = self._resolve_nav_segments(goal)
             if route_error:
@@ -404,7 +442,7 @@ class TaskExecutorNode(Node):
 
         if goal.task_type in (TASK_TYPE_MOVE_AND_EXECUTE, TASK_TYPE_MODULE_ONLY):
             self._publish_task_state(TASK_EXECUTING_MODULE)
-            ok = self._execute_module(goal)
+            ok = self._execute_module(task_id=task_id, goal=goal)
             self._publish_feedback(
                 goal_handle=goal_handle,
                 task_id=task_id,
@@ -417,8 +455,8 @@ class TaskExecutorNode(Node):
                     goal_handle=goal_handle,
                     task_id=task_id,
                     started_at=started_at,
-                    default_error=ErrorCode.MODULE_FAILED,
-                    default_message="Module control failed",
+                    default_error=ErrorCode.MODULE_OPERATION_FAILED,
+                    default_message="Module operation failed",
                 )
 
         should_return = goal.task_type == TASK_TYPE_RETURN_HOME or self.always_return_home
@@ -744,28 +782,267 @@ class TaskExecutorNode(Node):
         )
         return True
 
-    def _execute_module(self, goal: ExecuteTask.Goal) -> bool:
-        if not self._module_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().warn("Module service unavailable, using simulated success")
-            return True
-
-        request = SetModuleState.Request()
-        request.module_type = goal.module_type
-        request.power_on = goal.module_power
-        request.level = goal.module_level
-        request.command_id = goal.command_id
-
-        future = self._module_client.call_async(request)
-        future.add_done_callback(self._on_module_response)
+    def _execute_module(self, task_id: str, goal: ExecuteTask.Goal) -> bool:
+        ok, message, _ = self._set_module_state(
+            task_id=task_id,
+            command_id=goal.command_id,
+            module_type=int(goal.module_type),
+            power_on=bool(goal.module_power),
+            level=int(goal.module_level),
+        )
+        if not ok:
+            self._set_failure(
+                ErrorCode.MODULE_OPERATION_FAILED,
+                message or "Module operation failed",
+            )
+            return False
         return True
 
-    def _on_module_response(self, future) -> None:
-        try:
-            response = future.result()
-            if response is None or not response.accepted:
-                self.get_logger().warn("Module service responded with rejection")
-        except Exception as exc:  # noqa: BLE001
-            self.get_logger().warn(f"Module service call failed: {exc}")
+    def _ensure_module_ready(self, goal_handle, task_id: str, goal: ExecuteTask.Goal) -> bool:
+        target_module = int(goal.module_type)
+        if target_module == MODULE_NONE:
+            return True
+
+        if target_module not in {MODULE_AIR_PURIFIER, MODULE_HUMIDIFIER, MODULE_DEHUMIDIFIER}:
+            self._publish_module_swap_event(
+                task_id=task_id,
+                command_id=goal.command_id,
+                from_module_type=MODULE_NONE,
+                to_module_type=target_module,
+                state=ModuleSwapEvent.STATE_FAILED,
+                success=False,
+                message=f"Unsupported requested module_type={target_module}",
+            )
+            self._set_failure(
+                ErrorCode.VALIDATION_FAILED,
+                f"Unsupported requested module_type={target_module}",
+            )
+            return False
+
+        module_state = self._wait_for_module_state(timeout_sec=self.module_state_wait_sec)
+        if module_state is None:
+            self._publish_module_swap_event(
+                task_id=task_id,
+                command_id=goal.command_id,
+                from_module_type=MODULE_NONE,
+                to_module_type=target_module,
+                state=ModuleSwapEvent.STATE_FAILED,
+                success=False,
+                message="Module state unavailable",
+            )
+            self._set_failure(
+                ErrorCode.MODULE_STATE_UNAVAILABLE,
+                "Module state unavailable",
+            )
+            return False
+
+        current_module = int(module_state.module_type)
+        if current_module == target_module:
+            return True
+
+        self._publish_module_swap_event(
+            task_id=task_id,
+            command_id=goal.command_id,
+            from_module_type=current_module,
+            to_module_type=target_module,
+            state=ModuleSwapEvent.STATE_REQUESTED,
+            success=False,
+            message="Module mismatch detected; swap required",
+        )
+        self._publish_module_swap_event(
+            task_id=task_id,
+            command_id=goal.command_id,
+            from_module_type=current_module,
+            to_module_type=target_module,
+            state=ModuleSwapEvent.STATE_MOVING_TO_HQ,
+            success=False,
+            message=f"Moving to HQ ({self.default_home_zone}) for module swap",
+        )
+
+        moved = self._move_to_hq_for_swap(
+            goal_handle=goal_handle,
+            task_id=task_id,
+            goal=goal,
+            from_module_type=current_module,
+            to_module_type=target_module,
+        )
+        if not moved:
+            return False
+
+        self._publish_module_swap_event(
+            task_id=task_id,
+            command_id=goal.command_id,
+            from_module_type=current_module,
+            to_module_type=target_module,
+            state=ModuleSwapEvent.STATE_ARRIVED_HQ,
+            success=False,
+            message="Arrived HQ for module swap",
+        )
+
+        ok, message, _ = self._set_module_state(
+            task_id=task_id,
+            command_id=goal.command_id,
+            module_type=target_module,
+            power_on=False,
+            level=0,
+        )
+        if not ok:
+            self._publish_module_swap_event(
+                task_id=task_id,
+                command_id=goal.command_id,
+                from_module_type=current_module,
+                to_module_type=target_module,
+                state=ModuleSwapEvent.STATE_FAILED,
+                success=False,
+                message=message or "Module swap failed",
+            )
+            self._set_failure(
+                ErrorCode.MODULE_SWAP_FAILED,
+                message or "Module swap failed",
+            )
+            return False
+        return True
+
+    def _move_to_hq_for_swap(
+        self,
+        goal_handle,
+        task_id: str,
+        goal: ExecuteTask.Goal,
+        from_module_type: int,
+        to_module_type: int,
+    ) -> bool:
+        if self.navigation_path_mode == "graph":
+            segments, error_code, error_message = self._resolve_graph_path_to_zone(
+                self.default_home_zone
+            )
+            if error_message:
+                self._publish_module_swap_event(
+                    task_id=task_id,
+                    command_id=goal.command_id,
+                    from_module_type=from_module_type,
+                    to_module_type=to_module_type,
+                    state=ModuleSwapEvent.STATE_FAILED,
+                    success=False,
+                    message=error_message,
+                )
+                self._set_failure(error_code, error_message)
+                return False
+            if not segments:
+                return True
+
+            swap_timeout = self._compute_path_timeout(
+                int(goal.max_exec_sec if goal.max_exec_sec > 0 else self.default_timeout_sec),
+                segments,
+            )
+            if self._should_use_nav_path(goal, segments):
+                ok = self._run_nav_path(
+                    goal_handle=goal_handle,
+                    task_id=task_id,
+                    goal=goal,
+                    nav_segments=segments,
+                    timeout_sec=swap_timeout,
+                    feedback_phase=ExecuteTask.Feedback.PHASE_MOVING,
+                    progress_start=6.0,
+                    progress_end=18.0,
+                )
+            else:
+                ok = True
+                for segment_index, segment in enumerate(segments, start=1):
+                    segment_timeout = self._compute_segment_timeout(swap_timeout, segment)
+                    if not self._run_nav_to_goal(
+                        goal_handle=goal_handle,
+                        task_id=task_id,
+                        goal=goal,
+                        segment_zone=segment["zone"],
+                        segment_pose=segment["pose"],
+                        segment_index=segment_index,
+                        segment_total=len(segments),
+                        timeout_sec=segment_timeout,
+                        feedback_phase=ExecuteTask.Feedback.PHASE_MOVING,
+                        progress_start=6.0,
+                        progress_end=18.0,
+                        segment_from_node=segment.get("from_node", ""),
+                        segment_to_node=segment.get("to_node", ""),
+                    ):
+                        ok = False
+                        break
+                    if segment.get("to_node"):
+                        self._last_arrived_node_id = str(segment["to_node"])
+            if not ok:
+                self._publish_module_swap_event(
+                    task_id=task_id,
+                    command_id=goal.command_id,
+                    from_module_type=from_module_type,
+                    to_module_type=to_module_type,
+                    state=ModuleSwapEvent.STATE_FAILED,
+                    success=False,
+                    message=self._last_failure_message or "Failed to move HQ for module swap",
+                )
+            return ok
+
+        timeout_sec = int(goal.max_exec_sec if goal.max_exec_sec > 0 else self.default_timeout_sec)
+        ok = self._run_nav_to_goal(
+            goal_handle=goal_handle,
+            task_id=task_id,
+            goal=goal,
+            segment_zone=self.default_home_zone,
+            segment_pose=None,
+            segment_index=1,
+            segment_total=1,
+            timeout_sec=timeout_sec,
+            feedback_phase=ExecuteTask.Feedback.PHASE_MOVING,
+            progress_start=6.0,
+            progress_end=18.0,
+        )
+        if not ok:
+            self._publish_module_swap_event(
+                task_id=task_id,
+                command_id=goal.command_id,
+                from_module_type=from_module_type,
+                to_module_type=to_module_type,
+                state=ModuleSwapEvent.STATE_FAILED,
+                success=False,
+                message=self._last_failure_message or "Failed to move HQ for module swap",
+            )
+        return ok
+
+    def _wait_for_module_state(self, timeout_sec: float) -> Optional[ModuleState]:
+        deadline = time.time() + max(0.0, float(timeout_sec))
+        while time.time() < deadline:
+            if self._current_module_state is not None:
+                return self._current_module_state
+            time.sleep(0.05)
+        return self._current_module_state
+
+    def _set_module_state(
+        self,
+        task_id: str,
+        command_id: str,
+        module_type: int,
+        power_on: bool,
+        level: int,
+    ) -> Tuple[bool, str, Optional[ModuleState]]:
+        if not self._module_client.wait_for_service(timeout_sec=1.0):
+            return False, "module/set service unavailable", None
+
+        request = SetModuleState.Request()
+        request.module_type = int(module_type)
+        request.power_on = bool(power_on)
+        request.level = int(level)
+        request.task_id = task_id
+        request.command_id = command_id
+
+        future = self._module_client.call_async(request)
+        response = self._wait_future_result(
+            future, timeout_sec=max(1.0, float(self.module_service_timeout_sec))
+        )
+        if response is None:
+            return False, "module/set response timeout", None
+        if not response.accepted:
+            return False, response.message if response.message else "module/set rejected", response.module_state
+
+        self._current_module_state = response.module_state
+        return True, response.message, response.module_state
 
     def _run_return_home(self, goal_handle, task_id: str, goal: ExecuteTask.Goal) -> bool:
         if not self._return_client.wait_for_server(timeout_sec=1.0):
@@ -1417,6 +1694,27 @@ class TaskExecutorNode(Node):
         err.message = message
         err.recoverable = bool(recoverable)
         self._error_pub.publish(err)
+
+    def _publish_module_swap_event(
+        self,
+        task_id: str,
+        command_id: str,
+        from_module_type: int,
+        to_module_type: int,
+        state: int,
+        success: bool,
+        message: str,
+    ) -> None:
+        event = ModuleSwapEvent()
+        event.stamp = self.get_clock().now().to_msg()
+        event.task_id = task_id
+        event.command_id = command_id
+        event.from_module_type = int(from_module_type)
+        event.to_module_type = int(to_module_type)
+        event.state = int(state)
+        event.success = bool(success)
+        event.message = message
+        self._module_swap_event_pub.publish(event)
 
 
 def main(args=None) -> None:

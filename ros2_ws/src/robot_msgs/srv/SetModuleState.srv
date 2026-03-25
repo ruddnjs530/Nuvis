@@ -1,6 +1,7 @@
 uint8 module_type
 bool power_on
 uint8 level
+string task_id
 string command_id
 ---
 bool accepted
