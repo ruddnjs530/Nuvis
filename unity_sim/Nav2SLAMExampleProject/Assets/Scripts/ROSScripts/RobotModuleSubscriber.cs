@@ -15,26 +15,39 @@ public enum ModuleType
 public class ModuleVisualData
 {
     public ModuleType moduleType;
-    public GameObject moduleObject;
+    public GameObject equippedObject;   // 로봇에 최종 장착되어 보이는 오브젝트
+    public GameObject movingBoxPrefab;  // 스테이션에서 나와 이동하는 프리팹
 }
 
 public class RobotModuleSubscriber : MonoBehaviour
 {
     [Header("ROS")]
-    [SerializeField] private string moduleChangeTopic = "/robot/module_change";
+    [SerializeField] 
+    private string moduleChangeTopic = "/robot/module_change";
 
     [Header("Module State")]
-    [SerializeField] private ModuleType currentModule = ModuleType.None;
+    [SerializeField] 
+    private ModuleType currentModule = ModuleType.None;
 
-    [Header("Visual")]
-    [SerializeField] private List<ModuleVisualData> moduleVisualList = new List<ModuleVisualData>();
+    [Header("Module Visual")]
+    [SerializeField] 
+    private List<ModuleVisualData> moduleVisualList = new List<ModuleVisualData>();
 
-    [Header("Change Effect")]
-    [SerializeField] private float changeDelay = 1.0f;
-    [SerializeField] private GameObject changingEffectObject;
+    [Header("Transfer Points")]
+    [SerializeField] 
+    private Transform stationSpawnPoint;
+    [SerializeField] 
+    private Transform robotAttachPoint;
+
+    [Header("Animation")]
+    [SerializeField] private float removeDuration = 0.35f;
+    [SerializeField] private float removeDropDistance = 0.3f;
+    [SerializeField] private float moveDuration = 1.0f;
+    [SerializeField] private float moveArcHeight = 0.3f;
+    [SerializeField] private float startDelayAfterRemove = 0.1f;
 
     private ROSConnection ros;
-    private Dictionary<ModuleType, GameObject> moduleVisualMap = new Dictionary<ModuleType, GameObject>();
+    private Dictionary<ModuleType, ModuleVisualData> moduleVisualMap = new Dictionary<ModuleType, ModuleVisualData>();
 
     private bool isChanging = false;
     private Coroutine changeCoroutine;
@@ -43,10 +56,10 @@ public class RobotModuleSubscriber : MonoBehaviour
     {
         foreach (var data in moduleVisualList)
         {
-            if (data.moduleObject == null) continue;
-
             if (!moduleVisualMap.ContainsKey(data.moduleType))
-                moduleVisualMap.Add(data.moduleType, data.moduleObject);
+            {
+                moduleVisualMap.Add(data.moduleType, data);
+            }
         }
     }
 
@@ -55,11 +68,7 @@ public class RobotModuleSubscriber : MonoBehaviour
         ros = ROSConnection.GetOrCreateInstance();
         ros.Subscribe<StringMsg>(moduleChangeTopic, OnReceiveModuleChange);
 
-        ApplyModuleVisual(currentModule);
-
-        if (changingEffectObject != null)
-            changingEffectObject.SetActive(false);
-
+        ApplyEquippedVisual(currentModule);
         Debug.Log($"[Module] 초기 모듈 상태: {currentModule}");
     }
 
@@ -82,7 +91,6 @@ public class RobotModuleSubscriber : MonoBehaviour
         Debug.Log($"[Module] 수신한 메시지: {raw}");
 
         ModuleType newModule = ParseModuleType(raw);
-
         if (newModule == ModuleType.None)
         {
             Debug.LogWarning($"[Module] 알 수 없는 모듈 값: {raw}");
@@ -126,23 +134,81 @@ public class RobotModuleSubscriber : MonoBehaviour
     {
         isChanging = true;
 
+        if (stationSpawnPoint == null || robotAttachPoint == null)
+        {
+            Debug.LogWarning("[Module] stationSpawnPoint 또는 robotAttachPoint가 비어 있습니다. 바로 교체합니다.");
+            currentModule = newModule;
+            ApplyEquippedVisual(currentModule);
+            isChanging = false;
+            changeCoroutine = null;
+            yield break;
+        }
+
+        if (!moduleVisualMap.TryGetValue(newModule, out ModuleVisualData targetData))
+        {
+            Debug.LogWarning($"[Module] {newModule}에 해당하는 시각 데이터가 없습니다.");
+            isChanging = false;
+            changeCoroutine = null;
+            yield break;
+        }
+
         Debug.Log($"[Module] 모듈 교체 시작: {currentModule} -> {newModule}");
 
-        if (changingEffectObject != null)
-            changingEffectObject.SetActive(true);
+        // 1. 기존 장착 모듈 제거 연출
+        if (currentModule != ModuleType.None && moduleVisualMap.TryGetValue(currentModule, out ModuleVisualData currentData))
+        {
+            if (currentData.equippedObject != null && currentData.equippedObject.activeSelf)
+            {
+                yield return StartCoroutine(AnimateRemoveCurrentModule(currentData.equippedObject));
+            }
+        }
 
-        // 필요하면 여기서 현재 모듈 잠깐 끄기
-        HideAllModules();
+        if (startDelayAfterRemove > 0f)
+            yield return new WaitForSeconds(startDelayAfterRemove);
 
-        yield return new WaitForSeconds(changeDelay);
+        // 2. 새 박스 생성
+        GameObject movingBox = null;
+        if (targetData.movingBoxPrefab != null)
+        {
+            movingBox = Instantiate(
+                targetData.movingBoxPrefab,
+                stationSpawnPoint.position,
+                stationSpawnPoint.rotation);
 
+            movingBox.SetActive(true);
+        }
+
+        // 3. 새 박스가 스테이션에서 로봇으로 이동
+        float elapsed = 0f;
+        Vector3 startPos = stationSpawnPoint.position;
+        Vector3 endPos = robotAttachPoint.position;
+        Quaternion startRot = stationSpawnPoint.rotation;
+        Quaternion endRot = robotAttachPoint.rotation;
+
+        while (elapsed < moveDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / moveDuration);
+
+            if (movingBox != null)
+            {
+                Vector3 pos = Vector3.Lerp(startPos, endPos, t);
+                pos.y += Mathf.Sin(t * Mathf.PI) * moveArcHeight;
+
+                movingBox.transform.position = pos;
+                movingBox.transform.rotation = Quaternion.Slerp(startRot, endRot, t);
+            }
+
+            yield return null;
+        }
+
+        // 4. 이동 박스 제거
+        if (movingBox != null)
+            Destroy(movingBox);
+
+        // 5. 새 모듈 장착
         currentModule = newModule;
-        ApplyModuleVisual(currentModule);
-
-        if (changingEffectObject != null)
-            changingEffectObject.SetActive(false);
-
-        UpdateModuleUI(currentModule);
+        ApplyEquippedVisual(currentModule);
 
         Debug.Log($"[Module] 모듈 교체 완료: {currentModule}");
 
@@ -150,28 +216,45 @@ public class RobotModuleSubscriber : MonoBehaviour
         changeCoroutine = null;
     }
 
-    private void ApplyModuleVisual(ModuleType module)
+    private IEnumerator AnimateRemoveCurrentModule(GameObject equippedObject)
     {
-        HideAllModules();
+        Transform tr = equippedObject.transform;
+        Vector3 originalLocalPos = tr.localPosition;
+        Vector3 targetLocalPos = originalLocalPos + Vector3.down * removeDropDistance;
 
-        if (moduleVisualMap.TryGetValue(module, out GameObject targetObject))
+        float elapsed = 0f;
+
+        while (elapsed < removeDuration)
         {
-            targetObject.SetActive(true);
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / removeDuration);
+
+            tr.localPosition = Vector3.Lerp(originalLocalPos, targetLocalPos, t);
+
+            yield return null;
+        }
+
+        equippedObject.SetActive(false);
+        tr.localPosition = originalLocalPos;
+    }
+
+    private void ApplyEquippedVisual(ModuleType module)
+    {
+        HideAllEquippedModules();
+
+        if (moduleVisualMap.TryGetValue(module, out ModuleVisualData targetData))
+        {
+            if (targetData.equippedObject != null)
+                targetData.equippedObject.SetActive(true);
         }
     }
 
-    private void HideAllModules()
+    private void HideAllEquippedModules()
     {
-        foreach (var pair in moduleVisualMap)
+        foreach (var data in moduleVisualList)
         {
-            if (pair.Value != null)
-                pair.Value.SetActive(false);
+            if (data.equippedObject != null)
+                data.equippedObject.SetActive(false);
         }
-    }
-
-    private void UpdateModuleUI(ModuleType module)
-    {
-        // 나중에 UI 연결
-        // 예: TMP_Text.text = module.ToString();
     }
 }
