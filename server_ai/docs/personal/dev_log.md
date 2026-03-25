@@ -581,6 +581,13 @@
       - 오인식 파서 보정 로직이 "공기청소기"를 `air_purifier` 모듈로 인식 및 전송 확인 (1.62초 초고속 추론)
 - 다음 작업
   - `be-main` 브랜치의 백엔드 API가 `master`에 병합(Merge)되는 시점에 라이브 데이터(Live Data) 연동 테스트 모니터링
-  - (선택/보류) 에지 디바이스/로봇 탑재용 추론 엔진 경량화(TensorRT) 검토
-
----
+  - `recommendation` 및 `stt` 서버에서 OOM/DDoS/비인가 접근을 차단하는 통합 클라우드 미들웨어 가동
+  - 별도 라이브러리(`slowapi` 등) 없이 순수 FastAPI/Starlette 기능만으로 가볍게 구축
+  - `.env` 파일을 활용한 동적 IP 화이트리스트 셋팅
+  - 전체 스크립트 대상 교육용/운영용 주석(Comments) 작성
+- 결정 사항
+  - `SecurityMiddleware` 구현: `403 Forbidden`, `413 Payload Too Large`, `429 Too Many Requests` 예외 게이트 생성
+  - `docs/shared/.env`에 `ALLOWED_BACKEND_IPS` 변수 정의 및 즉각 연동
+- 성과 및 검증
+  - 비인가 IP로 직접 9000/9001 포트 접근 시, 10MB 이상의 바이너리 대용량 파일 전송 시, 무차별 DDoS 호출 시 자체 튕겨내기 방벽 완벽 동작 확인
+  - 코드만 읽어도 아키텍처 설계 의도(왜 librosa를 썼는지, 왜 pandas를 썼는지 등)를 파악할 수 있도록 전체 프로젝트 코드 주석 마감 완료
