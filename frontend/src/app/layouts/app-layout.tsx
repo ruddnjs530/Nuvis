@@ -17,10 +17,10 @@ export default function AppLayout() {
 
   return (
     <div className="bg-muted/30 min-h-dvh">
-      <div className="bg-background mx-auto flex min-h-dvh max-w-md flex-col border-x">
+      <div className="bg-background mx-auto flex min-h-dvh max-w-md flex-col">
         <PageHeader title={title} />
 
-        <main className="flex min-h-0 flex-1 flex-col">
+        <main className="flex min-h-0 flex-1 flex-col pb-28">
           <Outlet />
         </main>
 

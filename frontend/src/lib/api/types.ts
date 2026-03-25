@@ -1,14 +1,12 @@
 import type { Options } from 'ky';
 
 export interface APIClientParams {
-  method?: Options['method'];
+  method?: 'get' | 'post' | 'put' | 'delete' | 'patch';
   url: string;
   options?: Options;
-  type?: 'json' | 'text' | 'formData' | 'arrayBuffer' | 'blob';
-  apiPrefix?: ApiPrefix;
+  type?: 'json' | 'text' | 'blob' | 'arrayBuffer' | 'formData';
+  apiPrefix?: string;
 }
-
-type ApiPrefix = 'api/v1';
 
 export type TokenProvider = () => string | null | undefined;
 
