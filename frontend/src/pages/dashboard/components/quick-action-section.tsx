@@ -1,6 +1,5 @@
 import AppCard from '~/components/common/app-card';
 import SectionHeader from '~/components/common/section-header';
-import SectionLinkFooter from '~/components/common/section-link-footer';
 import { cn } from '~/lib/utils';
 
 // ── Mock data ────────────────────────────────────────────────────────────────
