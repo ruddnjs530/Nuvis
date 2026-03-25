@@ -17,10 +17,11 @@ export default function LoginPage() {
 
   // 브라우저 경고(평문 전송) 방지를 위한 간단한 SHA-256 해싱
   const hashPassword = async (password: string) => {
-    const msgBuffer = new TextEncoder().encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return password;
+    // const msgBuffer = new TextEncoder().encode(password);
+    // const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    // const hashArray = Array.from(new Uint8Array(hashBuffer));
+    // return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

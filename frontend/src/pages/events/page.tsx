@@ -43,13 +43,7 @@ export default function EventsPage() {
   const updateMutation = useUpdateEventMutation();
   const deleteMutation = useDeleteEventMutation();
 
-  const events = rawEvents.map(mapEventResponseToItem).concat([{
-    id: '1',
-    room: '테스트 장소',
-    deviceName: '공기 청정기',
-    active: true,
-    conditionStr: '미세먼지가 100 이상',
-  }]);
+  const events = rawEvents.map(mapEventResponseToItem);
 
   // Sheet & Dialog State
   const [sheetOpen, setSheetOpen] = useState(false);

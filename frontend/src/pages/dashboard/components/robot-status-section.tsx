@@ -18,8 +18,8 @@ const MAP_RENDER_W = VIEWPORT_W * 1.5;
 const MAP_RENDER_H = Math.round(MAP_RENDER_W * (MAP_NATURAL_H / MAP_NATURAL_W));
 
 function FloorMap({ position }: { position: { x: number; y: number } }) {
-  const robotPxX = position.x * MAP_RENDER_W;
-  const robotPxY = position.y * MAP_RENDER_H;
+  const robotPxX = position.x * MAP_RENDER_W / 100;
+  const robotPxY = position.y * MAP_RENDER_H / 100;
 
   const offsetX = VIEWPORT_W / 2 - robotPxX;
   const offsetY = VIEWPORT_H / 2 - robotPxY;
@@ -68,6 +68,11 @@ function FloorMap({ position }: { position: { x: number; y: number } }) {
   );
 }
 
+// API에서 영어로 오는 모듈 이름을 한국어로 매핑하기 위한 객체
+const MODULE_NAME_MAP: Record<string, string> = {
+  AIR_PURIFIER: '공기청정기',
+};
+
 export default function RobotStatusSection() {
   const { data: robotStatus, isLoading } = useRobotStatusQuery();
 
@@ -82,17 +87,19 @@ export default function RobotStatusSection() {
     );
   }
 
-  const battery = robotStatus ? Math.floor(robotStatus.batteryPct) : 0;
-  // 임의 변환: 100% = 12시간 기준
+  // 변경된 키 이름(battery_pct) 적용
+  const battery = robotStatus ? Math.floor(robotStatus.battery_pct) : 0;
+
   const totalMinutes = Math.floor((battery / 100) * 12 * 60);
   const batteryHours = Math.floor(totalMinutes / 60);
   const batteryMinutes = totalMinutes % 60;
 
-  // API 로봇 위치
-  const position = robotStatus ? { x: robotStatus.pose.x, y: robotStatus.pose.y } : { x: 0.5, y: 0.5 };
+  // pose_x, pose_y 개별 필드로 접근하도록 수정
+  const position = robotStatus ? { x: robotStatus.pose_x, y: robotStatus.pose_y } : { x: 0.5, y: 0.5 };
 
-  // 로봇 모듈 정보 (API에서 제공 안되면 하드코딩 또는 다른 매핑)
-  const attachedModule = '공기청정기';
+  // API에서 모듈 정보 가져와서 매핑
+  const moduleName = robotStatus?.attached_module?.name;
+  const attachedModule = moduleName ? MODULE_NAME_MAP[moduleName] || moduleName : '모듈 없음';
 
   return (
     <section>
