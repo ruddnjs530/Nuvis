@@ -35,10 +35,20 @@ def generate_launch_description() -> LaunchDescription:
     nav_scan_topic = LaunchConfiguration("nav_scan_topic")
     enable_unity_scan_bridge = LaunchConfiguration("enable_unity_scan_bridge")
     nav_scan_frame = LaunchConfiguration("nav_scan_frame")
+    nav_progress_delta_m = LaunchConfiguration("nav_progress_delta_m")
+    nav_progress_stall_timeout_sec = LaunchConfiguration("nav_progress_stall_timeout_sec")
+    nav_hard_timeout_multiplier = LaunchConfiguration("nav_hard_timeout_multiplier")
+    nav_hard_timeout_min_extra_sec = LaunchConfiguration("nav_hard_timeout_min_extra_sec")
     unity_origin_offset_x = LaunchConfiguration("unity_origin_offset_x")
     unity_origin_offset_y = LaunchConfiguration("unity_origin_offset_y")
     unity_yaw_offset_rad = LaunchConfiguration("unity_yaw_offset_rad")
     unity_scale = LaunchConfiguration("unity_scale")
+    enable_clicked_point_recorder = LaunchConfiguration("enable_clicked_point_recorder")
+    clicked_point_topic = LaunchConfiguration("clicked_point_topic")
+    clicked_point_marker_topic = LaunchConfiguration("clicked_point_marker_topic")
+    clicked_point_pose_array_topic = LaunchConfiguration("clicked_point_pose_array_topic")
+    clicked_point_persist_file = LaunchConfiguration("clicked_point_persist_file")
+    clicked_point_max_points = LaunchConfiguration("clicked_point_max_points")
 
     enable_initial_pose_publish = LaunchConfiguration("enable_initial_pose_publish")
     initial_pose_x = LaunchConfiguration("initial_pose_x")
@@ -89,10 +99,26 @@ def generate_launch_description() -> LaunchDescription:
             DeclareLaunchArgument("nav_scan_topic", default_value="/scan_nav"),
             DeclareLaunchArgument("enable_unity_scan_bridge", default_value="true"),
             DeclareLaunchArgument("nav_scan_frame", default_value="base_scan"),
+            DeclareLaunchArgument("nav_progress_delta_m", default_value="0.08"),
+            DeclareLaunchArgument("nav_progress_stall_timeout_sec", default_value="15.0"),
+            DeclareLaunchArgument("nav_hard_timeout_multiplier", default_value="3.0"),
+            DeclareLaunchArgument("nav_hard_timeout_min_extra_sec", default_value="120.0"),
             DeclareLaunchArgument("unity_origin_offset_x", default_value="0.0"),
             DeclareLaunchArgument("unity_origin_offset_y", default_value="0.0"),
             DeclareLaunchArgument("unity_yaw_offset_rad", default_value="0.0"),
             DeclareLaunchArgument("unity_scale", default_value="1.0"),
+            DeclareLaunchArgument("enable_clicked_point_recorder", default_value="true"),
+            DeclareLaunchArgument("clicked_point_topic", default_value="/clicked_point"),
+            DeclareLaunchArgument(
+                "clicked_point_marker_topic",
+                default_value="/robot/debug/clicked_points_markers",
+            ),
+            DeclareLaunchArgument(
+                "clicked_point_pose_array_topic",
+                default_value="/robot/debug/clicked_points_pose_array",
+            ),
+            DeclareLaunchArgument("clicked_point_persist_file", default_value=""),
+            DeclareLaunchArgument("clicked_point_max_points", default_value="500"),
             DeclareLaunchArgument("enable_initial_pose_publish", default_value="true"),
             DeclareLaunchArgument("initial_pose_x", default_value="-8.010941721272749"),
             DeclareLaunchArgument("initial_pose_y", default_value="10.032504845484937"),
@@ -193,6 +219,23 @@ def generate_launch_description() -> LaunchDescription:
             ),
             Node(
                 package="robot_nav",
+                executable="clicked_point_recorder_node",
+                name="clicked_point_recorder_node",
+                output="screen",
+                condition=IfCondition(enable_clicked_point_recorder),
+                parameters=[
+                    {
+                        "clicked_point_topic": clicked_point_topic,
+                        "marker_topic": clicked_point_marker_topic,
+                        "pose_array_topic": clicked_point_pose_array_topic,
+                        "persist_file": clicked_point_persist_file,
+                        "max_points": clicked_point_max_points,
+                        "use_sim_time": use_sim_time,
+                    }
+                ],
+            ),
+            Node(
+                package="robot_nav",
                 executable="nav_adapter_node",
                 name="nav_adapter_node",
                 output="screen",
@@ -204,6 +247,10 @@ def generate_launch_description() -> LaunchDescription:
                         "arrival_yaw_tol_deg": 30.0,
                         "stable_sec": 0.5,
                         "localization_min_score": 0.4,
+                        "progress_delta_m": nav_progress_delta_m,
+                        "progress_stall_timeout_sec": nav_progress_stall_timeout_sec,
+                        "hard_timeout_multiplier": nav_hard_timeout_multiplier,
+                        "hard_timeout_min_extra_sec": nav_hard_timeout_min_extra_sec,
                         "default_home_zone": "hq",
                         "cmd_vel_topic": "/cmd_vel",
                         "unity_origin_offset_x": unity_origin_offset_x,

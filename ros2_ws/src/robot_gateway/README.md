@@ -34,6 +34,7 @@ ros2 run robot_gateway grpc_gateway_node
 ### 1. Waypoint mode
 - send a zone name in `target_zone`
 - robot side resolves it through `waypoints.yaml`
+- robot core resolves the zone to room graph nodes (`rooms.yaml`) and runs multi-segment Nav2 goals internally
 - recommended for normal operation
 
 Conditions:
@@ -94,11 +95,16 @@ python scripts/grpc_client/external_client.py --target 127.0.0.1:50051 execute \
 - `left_down_room`
 - `second_toilet`
 
+## Internal Navigation Resolution
+- external `target_zone` remains room/business semantics
+- graph node ids are internal-only and are not part of gRPC contract
+- direct coordinate mode (`target_x/target_y`) bypasses graph resolution
+
 ## Test Client Examples
 ```bash
 ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 status
-ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 execute --command-id cmd-1 --task-type 1 --target-zone hq --max-exec-sec 120
-ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 execute --command-id cmd-2 --task-type 1 --target-zone "" --target-x -6.0 --target-y 10.0 --target-yaw 0.0 --max-exec-sec 120
+ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 execute --command-id cmd-1 --task-type 1 --target-zone hq --max-exec-sec 600
+ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 execute --command-id cmd-2 --task-type 1 --target-zone "" --target-x -6.0 --target-y 10.0 --target-yaw 0.0 --max-exec-sec 600
 ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 cancel --command-id cmd-2 --task-id task-1
 ros2 run robot_gateway grpc_test_client --target 127.0.0.1:50051 estop --command-id cmd-3 --reason emergency
 ```

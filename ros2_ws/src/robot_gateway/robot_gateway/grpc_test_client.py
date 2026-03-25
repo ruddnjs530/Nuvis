@@ -86,7 +86,7 @@ def main(argv=None) -> None:
     p_execute.add_argument("--module-type", type=int, default=0)
     p_execute.add_argument("--module-power", action="store_true")
     p_execute.add_argument("--module-level", type=int, default=0)
-    p_execute.add_argument("--max-exec-sec", type=int, default=120)
+    p_execute.add_argument("--max-exec-sec", type=int, default=600)
     p_execute.set_defaults(func=cmd_execute)
 
     p_cancel = sub.add_parser("cancel")
