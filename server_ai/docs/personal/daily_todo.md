@@ -60,7 +60,17 @@
 
 ## ✅ 최근 완료
 
-### 2026-03-24 (오늘)
+### 2026-03-25 (오늘)
+- [x] **[Feature]** 프로젝트 전반 보안 미들웨어 동적 설계 및 적용 완료
+  - FastAPI 계층에 `BaseHTTPMiddleware` 주입하여 백엔드 수정 없는 마이크로서비스 무중단 자체 방어 구축
+  - `ALLOWED_BACKEND_IPS` 환경변수 연동을 통한 인가 IP Whitelisting (12-Factor App)
+  - 악의적인 파일 용량 공격(10MB) 차단으로 서버 메모리 폭발(OOM) 완벽 보호
+  - Rate Limiting 300/min 차단으로 DDoS 방어 로직 완수
+- [x] **[Documentation]** AI 서버 컴포넌트 전체 소스코드 리팩토링 및 교육용 주석 전면 삽입 완료
+  - STT, Recommendation 메인 서버, 쉘 배포 스크립트, 통합 테스트 코드의 작동 원리를 전부 라인단위로 문서화
+- [x] `.env.example` 동기화 및 각종 개인 포트폴리오/로드맵/DevLog 기록 완료
+
+### 2026-03-24
 - [x] **[Refactor]** GPU 서버 프로젝트 구조 전면 계층화 및 도메인 기반 폴더링
   - `api/`, `scripts/`, `data/`, `tests/` 폴더 기반 역할 분리
   - `start_all_servers.sh` 및 모든 파이썬 스크립트 상대 경로 전수 보정 및 검증
