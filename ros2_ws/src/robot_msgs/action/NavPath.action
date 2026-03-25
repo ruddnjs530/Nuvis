@@ -1,0 +1,22 @@
+string task_id
+string command_id
+string[] node_ids
+geometry_msgs/PoseStamped[] poses
+uint32 timeout_sec
+---
+string task_id
+bool success
+uint32 result_code
+string message
+uint32 reached_count
+string final_node_id
+---
+string task_id
+float32 progress_pct
+geometry_msgs/PoseStamped current_pose
+int32 eta_sec
+string phase
+uint32 reached_count
+uint32 total_count
+string from_node
+string to_node

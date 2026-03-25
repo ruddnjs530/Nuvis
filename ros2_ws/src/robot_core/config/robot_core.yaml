@@ -41,3 +41,17 @@ task_executor_node:
     default_timeout_sec: 300
     always_return_home: false
     simulation_step_sec: 0.5
+    navigation_path_mode: "graph"
+    nav_execution_mode: "through_poses"
+    waypoints_file: ""
+    routes_file: ""
+    graph_file: ""
+    rooms_file: ""
+    graph_snap_radius: 2.5
+    graph_stick_radius: 0.8
+    default_home_zone: "hq"
+    graph_path_cache_enabled: true
+    graph_path_cache_max_entries: 512
+    segment_timeout_min_sec: 30
+    segment_timeout_base_sec: 10
+    segment_timeout_per_meter_sec: 8.0

@@ -1,0 +1,148 @@
+nodes:
+  - id: hq_dock
+    kind: dock
+    x: 0.988
+    y: -3.996
+    yaw: 0.0
+    room_zone: hq
+
+  - id: pc_work
+    kind: room_work
+    x: -6.969
+    y: -1.025
+    yaw: 0.0
+    room_zone: pc
+  - id: tv_work
+    kind: room_work
+    x: -3.010
+    y: -0.066
+    yaw: 0.0
+    room_zone: tv
+  - id: living_room_entry
+    kind: junction
+    x: 1.032
+    y: 0.036
+    yaw: 0.0
+  - id: center_entry
+    kind: junction
+    x: 1.028
+    y: 2.473
+    yaw: 0.0
+  - id: hall_entry
+    kind: junction
+    x: 2.490
+    y: 5.986
+    yaw: 0.0
+
+  - id: entrance_work
+    kind: room_work
+    x: -5.011
+    y: 9.975
+    yaw: 0.0
+    room_zone: entrance
+  - id: entrance_start_anchor
+    kind: junction
+    x: -8.000
+    y: 10.000
+    yaw: 0.0
+  - id: entrance_entry
+    kind: room_entry
+    x: -5.010
+    y: 6.995
+    yaw: 0.0
+    room_zone: entrance
+  - id: entrance_next_room_work
+    kind: room_work
+    x: -5.043
+    y: 3.973
+    yaw: 0.0
+    room_zone: entrance_next_room
+  - id: entrance_next_room_entry
+    kind: room_entry
+    x: -4.049
+    y: 2.424
+    yaw: 0.0
+    room_zone: entrance_next_room
+
+  - id: kitchen_work
+    kind: room_work
+    x: 5.032
+    y: -0.006
+    yaw: 0.0
+    room_zone: kitchen
+
+  - id: toilet_next_room_entry
+    kind: room_entry
+    x: 2.447
+    y: 10.108
+    yaw: 0.0
+    room_zone: toilet_next_room
+  - id: toilet_next_room_work
+    kind: room_work
+    x: 5.474
+    y: 10.006
+    yaw: 0.0
+    room_zone: toilet_next_room
+
+  - id: left_up_room_entry
+    kind: room_entry
+    x: 2.527
+    y: 12.580
+    yaw: 0.0
+    room_zone: left_up_room
+  - id: left_up_room_work
+    kind: room_work
+    x: 5.122
+    y: 12.695
+    yaw: 0.0
+    room_zone: left_up_room
+  - id: left_down_room_entry
+    kind: room_entry
+    x: 0.017
+    y: 12.943
+    yaw: 0.0
+    room_zone: left_down_room
+  - id: left_down_room_work
+    kind: room_work
+    x: -0.998
+    y: 15.939
+    yaw: 0.0
+    room_zone: left_down_room
+
+edges:
+  - from: pc_work
+    to: tv_work
+  - from: tv_work
+    to: living_room_entry
+  - from: hq_dock
+    to: living_room_entry
+  - from: living_room_entry
+    to: center_entry
+  - from: living_room_entry
+    to: kitchen_work
+
+  - from: entrance_work
+    to: entrance_entry
+  - from: entrance_start_anchor
+    to: entrance_work
+  - from: entrance_entry
+    to: entrance_next_room_work
+  - from: entrance_next_room_work
+    to: entrance_next_room_entry
+  - from: entrance_next_room_entry
+    to: center_entry
+
+  - from: center_entry
+    to: hall_entry
+  - from: hall_entry
+    to: toilet_next_room_entry
+  - from: toilet_next_room_entry
+    to: toilet_next_room_work
+  - from: toilet_next_room_entry
+    to: left_up_room_entry
+  - from: left_up_room_entry
+    to: left_up_room_work
+  - from: left_up_room_entry
+    to: left_down_room_entry
+  - from: left_down_room_entry
+    to: left_down_room_work

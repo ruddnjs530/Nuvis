@@ -18,6 +18,7 @@
 권장 기준:
 - 정해진 장소로 이동: `target_zone` 사용
 - 임시 디버깅/미세 테스트: `target_x`, `target_y`, `target_yaw` 사용
+- `target_zone` 요청은 내부 topology graph에 따라 여러 segment로 분해될 수 있음
 
 ## 2. ExecuteTask 주요 필드
 `ExecuteTaskRequest`에서 목표 지정과 직접 관련된 필드는 아래입니다.
@@ -46,9 +47,10 @@
 `target_zone`에 zone 이름을 넣어 보내는 방식입니다.
 
 특징:
-- 로봇 내부 `waypoints.yaml`을 조회해 실제 좌표로 변환
+- 로봇 내부 `rooms.yaml` + `graph.yaml`을 조회해 실제 segment 좌표로 변환
 - 좌표계 해석 실수를 줄일 수 있음
 - 운영/백엔드 연동에서 가장 안전함
+- `rooms.yaml`과 `graph.yaml`에 따라 내부적으로 여러 nav segment로 나뉘어 실행될 수 있음
 
 사용 조건:
 - `target_zone`이 비어있지 않음
@@ -148,7 +150,13 @@ GUI 입력 기준:
 |`left_down_room`|-4.8|17.8|0.0|
 |`second_toilet`|0.1|19.3|0.0|
 
-## 8. 사용 예시 모음
+## 8. 내부 graph 해석 방식
+- 외부 `target_zone`은 room/business 의미를 유지합니다.
+- robot_core는 `rooms.yaml`에서 `target_zone`의 `entry/work` node를 조회합니다.
+- 현재 로봇 pose를 graph node로 snap한 뒤 최단 경로를 계산합니다.
+- 계산된 node path를 Nav2 segment로 순차 실행합니다.
+
+## 9. 사용 예시 모음
 ### 예시 1. `entrance`로 이동
 ```bash
 python scripts/grpc_client/external_client.py --target 127.0.0.1:50051 execute \
@@ -192,7 +200,7 @@ python scripts/grpc_client/external_client.py --target 127.0.0.1:50051 execute \
   --max-exec-sec 180
 ```
 
-## 9. 자주 하는 실수
+## 10. 자주 하는 실수
 ### 실수 1. `target_zone`와 `target_x/y`를 같이 보냄
 결과:
 - zone 이동이라고 생각했지만 실제로는 좌표 이동으로 처리될 수 있음
@@ -214,10 +222,18 @@ python scripts/grpc_client/external_client.py --target 127.0.0.1:50051 execute \
 권장:
 - 웨이포인트 방식 테스트 시 `target_x/y/yaw`를 모두 `0.0`으로 초기화
 
-## 10. 운영 권장안
+### 실수 4. zone 하나를 보냈는데 중간 이동 로그가 보임
+결과:
+- 오류가 아니라 내부 graph 경로 분해가 적용된 정상 동작일 수 있음
+
+권장:
+- `TaskFeedback.note` 또는 ROS 로그에서 `segment n/m` 메시지를 확인
+
+## 11. 운영 권장안
 운영/백엔드 연동에서는 아래 원칙을 권장합니다.
 
 - 정해진 장소 이동은 `target_zone`만 사용
 - 좌표 방식은 디버깅/임시 테스트에만 사용
 - `waypoints.yaml` 변경 시 문서와 백엔드 enum/string 목록을 같이 갱신
+- `graph.yaml`/`rooms.yaml`이 바뀌면 운영 문서와 테스트 시나리오를 같이 갱신
 - 클라이언트에서는 zone 입력 시 좌표 필드를 자동으로 `0.0`으로 초기화하는 것이 안전

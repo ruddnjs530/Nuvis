@@ -2,18 +2,18 @@ import math
 import threading
 import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import rclpy
 import yaml
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped, Quaternion, Twist
-from nav2_msgs.action import NavigateToPose
+from nav2_msgs.action import NavigateThroughPoses, NavigateToPose
 from rclpy.action import ActionClient, ActionServer, CancelResponse, GoalResponse
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
-from robot_msgs.action import NavToGoal, ReturnHome
+from robot_msgs.action import NavPath, NavToGoal, ReturnHome
 from robot_msgs.msg import RobotStatus, SensorState
 from robot_msgs.srv import Relocalize
 from std_msgs.msg import String, UInt8
@@ -28,6 +28,10 @@ class NavAdapterNode(Node):
         self.declare_parameter("arrival_yaw_tol_deg", 30.0)
         self.declare_parameter("stable_sec", 0.5)
         self.declare_parameter("localization_min_score", 0.4)
+        self.declare_parameter("progress_delta_m", 0.08)
+        self.declare_parameter("progress_stall_timeout_sec", 15.0)
+        self.declare_parameter("hard_timeout_multiplier", 3.0)
+        self.declare_parameter("hard_timeout_min_extra_sec", 120.0)
         self.declare_parameter("default_home_zone", "hq")
         self.declare_parameter("cmd_vel_topic", "/cmd_vel")
         self.declare_parameter("unity_origin_offset_x", 0.0)
@@ -43,6 +47,18 @@ class NavAdapterNode(Node):
         self.stable_sec = self.get_parameter("stable_sec").get_parameter_value().double_value
         self.localization_min_score = (
             self.get_parameter("localization_min_score").get_parameter_value().double_value
+        )
+        self.progress_delta_m = (
+            self.get_parameter("progress_delta_m").get_parameter_value().double_value
+        )
+        self.progress_stall_timeout_sec = (
+            self.get_parameter("progress_stall_timeout_sec").get_parameter_value().double_value
+        )
+        self.hard_timeout_multiplier = (
+            self.get_parameter("hard_timeout_multiplier").get_parameter_value().double_value
+        )
+        self.hard_timeout_min_extra_sec = (
+            self.get_parameter("hard_timeout_min_extra_sec").get_parameter_value().double_value
         )
         self.default_home_zone = (
             self.get_parameter("default_home_zone").get_parameter_value().string_value
@@ -83,11 +99,26 @@ class NavAdapterNode(Node):
             "/navigate_to_pose",
             callback_group=self._cb_group,
         )
+        self._navigate_through_poses_client = ActionClient(
+            self,
+            NavigateThroughPoses,
+            "/navigate_through_poses",
+            callback_group=self._cb_group,
+        )
         self._nav_server = ActionServer(
             self,
             NavToGoal,
             "/robot/nav_to_goal",
             execute_callback=self._execute_nav_goal,
+            goal_callback=self._on_goal,
+            cancel_callback=self._on_cancel,
+            callback_group=self._cb_group,
+        )
+        self._path_server = ActionServer(
+            self,
+            NavPath,
+            "/robot/nav_path",
+            execute_callback=self._execute_nav_path_goal,
             goal_callback=self._on_goal,
             cancel_callback=self._on_cancel,
             callback_group=self._cb_group,
@@ -105,7 +136,9 @@ class NavAdapterNode(Node):
             Relocalize, "/robot/relocalize", self._handle_relocalize
         )
 
-        self.get_logger().info("nav_adapter_node started (Nav2 /navigate_to_pose mode)")
+        self.get_logger().info(
+            "nav_adapter_node started (Nav2 /navigate_to_pose + /navigate_through_poses mode)"
+        )
 
     def _on_safety_state(self, msg: UInt8) -> None:
         self._safety_state = msg.data
@@ -167,6 +200,65 @@ class NavAdapterNode(Node):
         except Exception as exc:  # noqa: BLE001
             self.get_logger().error(f"nav_to_goal execution error: {exc}")
             return self._finish_nav_failed(goal_handle, goal_handle.request.task_id, 9001, str(exc))
+
+    def _execute_nav_path_goal(self, goal_handle) -> NavPath.Result:
+        try:
+            self._publish_nav_state("NAVIGATING")
+            goal = goal_handle.request
+            if not goal.poses:
+                return self._finish_nav_path_failed(
+                    goal_handle, goal.task_id, 1001, "Invalid target path: poses is empty"
+                )
+            if goal.node_ids and len(goal.node_ids) != len(goal.poses):
+                return self._finish_nav_path_failed(
+                    goal_handle,
+                    goal.task_id,
+                    1001,
+                    "Invalid target path: node_ids and poses length mismatch",
+                )
+
+            targets = list(goal.poses)
+            if not targets:
+                return self._finish_nav_path_failed(
+                    goal_handle, goal.task_id, 1001, "Invalid target path: poses is empty"
+                )
+            if any(not pose.header.frame_id for pose in targets):
+                return self._finish_nav_path_failed(
+                    goal_handle, goal.task_id, 1001, "Invalid target path: empty frame_id"
+                )
+
+            timeout = int(goal.timeout_sec if goal.timeout_sec > 0 else 120)
+            ok, canceled, code, message, reached_count, final_node = self._navigate_path_via_nav2(
+                parent_goal_handle=goal_handle,
+                task_id=goal.task_id,
+                command_id=goal.command_id,
+                targets=targets,
+                node_ids=list(goal.node_ids),
+                timeout_sec=timeout,
+            )
+            if canceled:
+                return self._finish_nav_path_canceled(
+                    goal_handle, goal.task_id, code, message, reached_count, final_node
+                )
+            if not ok:
+                return self._finish_nav_path_failed(
+                    goal_handle, goal.task_id, code, message, reached_count, final_node
+                )
+
+            self._publish_nav_state("ARRIVED")
+            result = NavPath.Result()
+            result.task_id = goal.task_id
+            result.success = True
+            result.result_code = 0
+            result.message = "Arrived"
+            result.reached_count = int(reached_count)
+            result.final_node_id = final_node
+            goal_handle.succeed()
+            self._release_busy()
+            return result
+        except Exception as exc:  # noqa: BLE001
+            self.get_logger().error(f"nav_path execution error: {exc}")
+            return self._finish_nav_path_failed(goal_handle, goal_handle.request.task_id, 9001, str(exc))
 
     def _execute_return_goal(self, goal_handle) -> ReturnHome.Result:
         try:
@@ -260,9 +352,18 @@ class NavAdapterNode(Node):
             return False, False, 2001, "Nav2 rejected navigate_to_pose goal"
 
         started = time.time()
+        nominal_deadline = started + float(timeout_sec)
+        hard_deadline = started + max(
+            float(timeout_sec) * max(1.0, float(self.hard_timeout_multiplier)),
+            float(timeout_sec) + max(0.0, float(self.hard_timeout_min_extra_sec)),
+        )
+        best_distance = initial_distance
+        last_progress_ts = started
         result_future = nav_goal_handle.get_result_async()
         canceled_by_client = False
         canceled_by_safety = False
+        arrived_since: Optional[float] = None
+        stable_required = max(0.0, float(self.stable_sec))
         while not result_future.done():
             if parent_goal_handle.is_cancel_requested:
                 canceled_by_client = True
@@ -272,11 +373,54 @@ class NavAdapterNode(Node):
                 canceled_by_safety = True
                 nav_goal_handle.cancel_goal_async()
                 break
-            if time.time() - started > timeout_sec:
+            now = time.time()
+            pose_for_arrival = (
+                self._last_feedback_pose
+                if self._last_feedback_pose is not None
+                else self._current_pose
+            )
+            current_distance = self._distance(pose_for_arrival, target)
+            if current_distance < (best_distance - max(0.01, float(self.progress_delta_m))):
+                best_distance = current_distance
+                last_progress_ts = now
+            if self._is_arrived(pose_for_arrival, target):
+                if arrived_since is None:
+                    arrived_since = now
+                elif now - arrived_since >= stable_required:
+                    self.get_logger().info(
+                        "Arrival tolerance satisfied from feedback "
+                        f"(stable_sec={stable_required:.2f}); finish segment early"
+                    )
+                    nav_goal_handle.cancel_goal_async()
+                    settle_deadline = now + 1.0
+                    while not result_future.done() and time.time() < settle_deadline:
+                        time.sleep(0.05)
+                    if self._last_feedback_pose is not None:
+                        self._current_pose = self._last_feedback_pose
+                        self._pose_pub.publish(self._current_pose)
+                    self._publish_cmd_vel_stop()
+                    self._release_busy()
+                    return True, False, 0, "Arrived (feedback tolerance)"
+            else:
+                arrived_since = None
+
+            if now > hard_deadline:
                 nav_goal_handle.cancel_goal_async()
                 self._publish_cmd_vel_stop()
                 self._release_busy()
-                return False, False, 2001, "Navigation timeout"
+                return (
+                    False,
+                    False,
+                    2001,
+                    "Navigation timeout (hard deadline exceeded)",
+                )
+            if now > nominal_deadline and now - last_progress_ts > max(
+                1.0, float(self.progress_stall_timeout_sec)
+            ):
+                nav_goal_handle.cancel_goal_async()
+                self._publish_cmd_vel_stop()
+                self._release_busy()
+                return False, False, 2001, "Navigation timeout (progress stalled)"
             time.sleep(0.05)
 
         wrapped_result = self._wait_future_result(result_future, timeout_sec=5.0)
@@ -309,6 +453,140 @@ class NavAdapterNode(Node):
             self._current_pose = self._last_feedback_pose
             self._pose_pub.publish(self._current_pose)
         return True, False, 0, "ok"
+
+    def _navigate_path_via_nav2(
+        self,
+        parent_goal_handle,
+        task_id: str,
+        command_id: str,
+        targets: List[PoseStamped],
+        node_ids: List[str],
+        timeout_sec: int,
+    ) -> Tuple[bool, bool, int, str, int, str]:
+        del command_id
+        if self._localization_score < self.localization_min_score:
+            self._publish_cmd_vel_stop()
+            self._release_busy()
+            return False, False, 3001, "Localization score below threshold", 0, ""
+
+        if not self._navigate_through_poses_client.wait_for_server(timeout_sec=5.0):
+            self._publish_cmd_vel_stop()
+            self._release_busy()
+            return False, False, 2001, "/navigate_through_poses action server unavailable", 0, ""
+
+        self._last_feedback_pose = None
+        initial_distance = max(0.001, self._path_distance(self._current_pose, targets))
+        total_poses = len(targets)
+        reached_count = 0
+        final_node = node_ids[-1] if node_ids else ""
+        progress_state = {"reached_count": 0}
+
+        nav_goal = NavigateThroughPoses.Goal()
+        nav_goal.poses = targets
+
+        send_future = self._navigate_through_poses_client.send_goal_async(
+            nav_goal,
+            feedback_callback=lambda fb: self._on_nav2_path_feedback(
+                parent_goal_handle=parent_goal_handle,
+                task_id=task_id,
+                feedback=fb.feedback,
+                target=targets[-1],
+                initial_distance=initial_distance,
+                node_ids=node_ids,
+                progress_state=progress_state,
+            ),
+        )
+        nav_goal_handle = self._wait_future_result(send_future, timeout_sec=3.0)
+        if nav_goal_handle is None:
+            self._publish_cmd_vel_stop()
+            self._release_busy()
+            return False, False, 2001, "Timeout waiting /navigate_through_poses goal acceptance", 0, ""
+        if not nav_goal_handle.accepted:
+            self._publish_cmd_vel_stop()
+            self._release_busy()
+            return False, False, 2001, "Nav2 rejected navigate_through_poses goal", 0, ""
+
+        started = time.time()
+        nominal_deadline = started + float(timeout_sec)
+        hard_deadline = started + max(
+            float(timeout_sec) * max(1.0, float(self.hard_timeout_multiplier)),
+            float(timeout_sec) + max(0.0, float(self.hard_timeout_min_extra_sec)),
+        )
+        best_distance = initial_distance
+        last_progress_ts = started
+        result_future = nav_goal_handle.get_result_async()
+        canceled_by_client = False
+        canceled_by_safety = False
+
+        while not result_future.done():
+            if parent_goal_handle.is_cancel_requested:
+                canceled_by_client = True
+                nav_goal_handle.cancel_goal_async()
+                break
+            if self._safety_state == RobotStatus.SAFETY_ESTOP:
+                canceled_by_safety = True
+                nav_goal_handle.cancel_goal_async()
+                break
+            now = time.time()
+            reached_count = int(progress_state.get("reached_count", reached_count))
+            pose_for_arrival = (
+                self._last_feedback_pose
+                if self._last_feedback_pose is not None
+                else self._current_pose
+            )
+            current_distance = self._distance(pose_for_arrival, targets[-1])
+            if current_distance < (best_distance - max(0.01, float(self.progress_delta_m))):
+                best_distance = current_distance
+                last_progress_ts = now
+
+            if now > hard_deadline:
+                nav_goal_handle.cancel_goal_async()
+                self._publish_cmd_vel_stop()
+                self._release_busy()
+                return False, False, 2001, "Navigation timeout (hard deadline exceeded)", reached_count, final_node
+            if now > nominal_deadline and now - last_progress_ts > max(
+                1.0, float(self.progress_stall_timeout_sec)
+            ):
+                nav_goal_handle.cancel_goal_async()
+                self._publish_cmd_vel_stop()
+                self._release_busy()
+                return False, False, 2001, "Navigation timeout (progress stalled)", reached_count, final_node
+            time.sleep(0.05)
+
+        wrapped_result = self._wait_future_result(result_future, timeout_sec=5.0)
+        self._publish_cmd_vel_stop()
+        if wrapped_result is None:
+            self._release_busy()
+            return False, False, 2001, "Failed to get Nav2 result", reached_count, final_node
+
+        status_code = int(wrapped_result.status)
+        reached_count = int(progress_state.get("reached_count", reached_count))
+        if canceled_by_client or status_code == GoalStatus.STATUS_CANCELED:
+            self._release_busy()
+            return False, True, 4001, "Canceled by request", reached_count, final_node
+        if canceled_by_safety:
+            self._release_busy()
+            return False, False, 5001, "Emergency stop active", reached_count, final_node
+        if status_code != GoalStatus.STATUS_SUCCEEDED:
+            fallback_pose = self._last_feedback_pose if self._last_feedback_pose is not None else self._current_pose
+            if self._is_arrived(fallback_pose, targets[-1]):
+                self.get_logger().warn(
+                    "Nav2 returned non-success status "
+                    f"(status={status_code}) but pose is within arrival tolerance "
+                    f"(pos_tol={self.arrival_pos_tol:.2f}m, yaw_tol={self.arrival_yaw_tol_deg:.1f}deg). "
+                    "Treating path navigation as ARRIVED."
+                )
+                if self._last_feedback_pose is not None:
+                    self._current_pose = self._last_feedback_pose
+                    self._pose_pub.publish(self._current_pose)
+                return True, False, 0, "Arrived (tolerance fallback)", total_poses, final_node
+            self._release_busy()
+            return False, False, 2001, f"Nav2 failed (status={status_code})", reached_count, final_node
+
+        if self._last_feedback_pose is not None:
+            self._current_pose = self._last_feedback_pose
+            self._pose_pub.publish(self._current_pose)
+        return True, False, 0, "ok", total_poses, final_node
 
     def _on_nav2_feedback(
         self,
@@ -346,6 +624,55 @@ class NavAdapterNode(Node):
         msg.phase = "moving"
         parent_goal_handle.publish_feedback(msg)
 
+    def _on_nav2_path_feedback(
+        self,
+        parent_goal_handle,
+        task_id: str,
+        feedback: NavigateThroughPoses.Feedback,
+        target: PoseStamped,
+        initial_distance: float,
+        node_ids: List[str],
+        progress_state: Dict[str, int],
+    ) -> None:
+        current_pose = feedback.current_pose
+        self._current_pose = current_pose
+        self._pose_pub.publish(current_pose)
+        self._last_feedback_pose = current_pose
+
+        distance_remaining = float(getattr(feedback, "distance_remaining", 0.0))
+        current_distance = max(0.0, distance_remaining)
+        if current_distance <= 0.0:
+            current_distance = self._distance(current_pose, target)
+        progress = max(0.0, min(100.0, (1.0 - (current_distance / initial_distance)) * 100.0))
+        eta_sec = self._duration_to_seconds(feedback.estimated_time_remaining)
+
+        total_count = len(node_ids)
+        remaining_raw = getattr(feedback, "number_of_poses_remaining", None)
+        if remaining_raw is None:
+            reached_count = int(round((progress / 100.0) * float(total_count)))
+        else:
+            remaining_count = int(remaining_raw)
+            reached_count = max(0, total_count - max(0, remaining_count))
+        reached_count = min(total_count, max(0, reached_count))
+        progress_state["reached_count"] = int(reached_count)
+
+        from_node = node_ids[reached_count - 1] if reached_count > 0 and total_count > 0 else ""
+        to_node = node_ids[reached_count] if reached_count < total_count else (
+            node_ids[-1] if total_count > 0 else ""
+        )
+
+        msg = NavPath.Feedback()
+        msg.task_id = task_id
+        msg.progress_pct = float(progress)
+        msg.current_pose = current_pose
+        msg.eta_sec = int(max(0, eta_sec))
+        msg.phase = "moving"
+        msg.reached_count = int(reached_count)
+        msg.total_count = int(total_count)
+        msg.from_node = from_node
+        msg.to_node = to_node
+        parent_goal_handle.publish_feedback(msg)
+
     def _finish_nav_failed(
         self, goal_handle, task_id: str, code: int, message: str
     ) -> NavToGoal.Result:
@@ -370,6 +697,50 @@ class NavAdapterNode(Node):
         result.success = False
         result.result_code = int(code)
         result.message = message
+        goal_handle.canceled()
+        self._release_busy()
+        return result
+
+    def _finish_nav_path_failed(
+        self,
+        goal_handle,
+        task_id: str,
+        code: int,
+        message: str,
+        reached_count: int = 0,
+        final_node_id: str = "",
+    ) -> NavPath.Result:
+        self._publish_nav_state("FAILED")
+        self._publish_cmd_vel_stop()
+        result = NavPath.Result()
+        result.task_id = task_id
+        result.success = False
+        result.result_code = int(code)
+        result.message = message
+        result.reached_count = int(max(0, reached_count))
+        result.final_node_id = final_node_id
+        goal_handle.abort()
+        self._release_busy()
+        return result
+
+    def _finish_nav_path_canceled(
+        self,
+        goal_handle,
+        task_id: str,
+        code: int,
+        message: str,
+        reached_count: int = 0,
+        final_node_id: str = "",
+    ) -> NavPath.Result:
+        self._publish_nav_state("CANCELED")
+        self._publish_cmd_vel_stop()
+        result = NavPath.Result()
+        result.task_id = task_id
+        result.success = False
+        result.result_code = int(code)
+        result.message = message
+        result.reached_count = int(max(0, reached_count))
+        result.final_node_id = final_node_id
         goal_handle.canceled()
         self._release_busy()
         return result
@@ -497,6 +868,14 @@ class NavAdapterNode(Node):
         dx = a.pose.position.x - b.pose.position.x
         dy = a.pose.position.y - b.pose.position.y
         return math.sqrt(dx * dx + dy * dy)
+
+    def _path_distance(self, start: PoseStamped, goals: List[PoseStamped]) -> float:
+        if not goals:
+            return 0.0
+        total = self._distance(start, goals[0])
+        for prev_pose, next_pose in zip(goals[:-1], goals[1:]):
+            total += self._distance(prev_pose, next_pose)
+        return total
 
     def _is_arrived(self, current: PoseStamped, target: PoseStamped) -> bool:
         pos_err = self._distance(current, target)

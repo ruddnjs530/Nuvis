@@ -4,6 +4,7 @@ Navigation adapter package for map-based Nav2 navigation.
 
 ## Responsibilities
 - Optional zone-to-pose mapping (`waypoints.yaml`, disabled by default)
+- Topology graph configuration for room navigation (`graph.yaml`, `rooms.yaml`)
 - Nav2 bridge (`/robot/nav_to_goal` -> `/navigate_to_pose`)
 - Return-home action endpoint (`/robot/return_home` -> `/navigate_to_pose`)
 - Relocalization service endpoint (`/robot/relocalize`)
@@ -12,6 +13,7 @@ Navigation adapter package for map-based Nav2 navigation.
 - Unity scan timestamp bridge (`/scan` -> `/scan_nav`)
 - AMCL initial pose one-shot publishing (`/initialpose`)
 - Unity-to-ROS coordinate conversion for incoming Unity-frame goals
+- RViz `Publish Point` persistence (`/clicked_point` -> `/robot/debug/clicked_points_markers`)
 
 ## Launch
 ```bash
@@ -24,6 +26,15 @@ ros2 launch robot_nav robot_nav.launch.py
   - `nav2_params_file=config/nav2_params.yaml`
   - `use_slam:=false`
 - `waypoints_file` default is empty, so zone-based targets are disabled unless you pass a valid YAML file.
+- Graph routing runs in `robot_core.task_executor_node`; `nav_adapter_node` still executes one goal at a time.
+- `target_zone` is resolved through `rooms.yaml` to room entry/work graph nodes.
+- `target_pose` direct requests bypass graph routing and go to Nav2 as a single goal.
+- `routes.yaml` remains as ingress fallback data, not the default path model.
+- `clicked_point_recorder_node` is enabled by default (`enable_clicked_point_recorder:=true`)
+  and keeps clicked points visible as marker + coordinate text.
+- Optional arguments:
+  - `clicked_point_persist_file` (save clicked points to YAML; default disabled)
+  - `clicked_point_max_points` (max retained points; default `500`)
 - SLAM mode is available with `use_slam:=true`.
 - Nav2 is the only motion command generator; controller output goes directly to `/cmd_vel`.
 - Obstacle avoidance is handled by Nav2 local/global costmaps with `/scan_nav`.

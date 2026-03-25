@@ -1,0 +1,36 @@
+rooms:
+  hq:
+    entry_node: living_room_entry
+    work_node: hq_dock
+
+  entrance:
+    entry_node: entrance_entry
+    work_node: entrance_work
+
+  entrance_next_room:
+    entry_node: entrance_next_room_entry
+    work_node: entrance_next_room_work
+
+  pc:
+    entry_node: tv_work
+    work_node: pc_work
+
+  tv:
+    entry_node: living_room_entry
+    work_node: tv_work
+
+  kitchen:
+    entry_node: living_room_entry
+    work_node: kitchen_work
+
+  toilet_next_room:
+    entry_node: toilet_next_room_entry
+    work_node: toilet_next_room_work
+
+  left_up_room:
+    entry_node: left_up_room_entry
+    work_node: left_up_room_work
+
+  left_down_room:
+    entry_node: left_down_room_entry
+    work_node: left_down_room_work

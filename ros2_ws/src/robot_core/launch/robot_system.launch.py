@@ -43,6 +43,29 @@ def generate_launch_description() -> LaunchDescription:
                 [FindPackageShare("robot_nav"), "config", "waypoints.yaml"]
             ),
         ),
+        DeclareLaunchArgument(
+            "nav_routes_file",
+            default_value=PathJoinSubstitution(
+                [FindPackageShare("robot_nav"), "config", "routes.yaml"]
+            ),
+        ),
+        DeclareLaunchArgument(
+            "nav_graph_file",
+            default_value=PathJoinSubstitution(
+                [FindPackageShare("robot_nav"), "config", "graph.yaml"]
+            ),
+        ),
+        DeclareLaunchArgument(
+            "nav_rooms_file",
+            default_value=PathJoinSubstitution(
+                [FindPackageShare("robot_nav"), "config", "rooms.yaml"]
+            ),
+        ),
+        DeclareLaunchArgument("nav_path_mode", default_value="graph"),
+        DeclareLaunchArgument("nav_execution_mode", default_value="through_poses"),
+        DeclareLaunchArgument("nav_graph_snap_radius", default_value="2.5"),
+        DeclareLaunchArgument("nav_graph_stick_radius", default_value="0.8"),
+        DeclareLaunchArgument("nav_default_home_zone", default_value="hq"),
         DeclareLaunchArgument("unity_odom_publish_tf", default_value="true"),
         DeclareLaunchArgument("unity_pose_topic", default_value="/unity/robot_pose"),
         DeclareLaunchArgument("unity_scan_topic", default_value="/scan"),
@@ -69,6 +92,15 @@ def generate_launch_description() -> LaunchDescription:
                 "unity_origin_offset_y": LaunchConfiguration("unity_origin_offset_y"),
                 "unity_yaw_offset_rad": LaunchConfiguration("unity_yaw_offset_rad"),
                 "unity_scale": LaunchConfiguration("unity_scale"),
+                "navigation_path_mode": LaunchConfiguration("nav_path_mode"),
+                "nav_execution_mode": LaunchConfiguration("nav_execution_mode"),
+                "waypoints_file": LaunchConfiguration("nav_waypoints_file"),
+                "routes_file": LaunchConfiguration("nav_routes_file"),
+                "graph_file": LaunchConfiguration("nav_graph_file"),
+                "rooms_file": LaunchConfiguration("nav_rooms_file"),
+                "graph_snap_radius": LaunchConfiguration("nav_graph_snap_radius"),
+                "graph_stick_radius": LaunchConfiguration("nav_graph_stick_radius"),
+                "default_home_zone": LaunchConfiguration("nav_default_home_zone"),
             }.items(),
         ),
         IncludeLaunchDescription(
