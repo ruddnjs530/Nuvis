@@ -76,12 +76,17 @@ export class RoomService {
       let mapData = room.mapData;
       if (!mapData) {
         mapData = {
-          width: 4000,
-          height: 4000,
           resolution: 0.05,
           origin: { x: -10.0, y: -10.0, theta: 0.0 },
-          // 실제 서비스에서는 S3 주소 등을 반환
           mapImageUrl: `https://dummyimage.com/4000x4000/cccccc/000000&text=${encodeURIComponent(room.name + ' Map')}`,
+          // MOCK: Generate some arbitrary box coordinates based on roomId
+          boundaries: [
+            { x: room.roomId * 2.0, y: 1.0 },
+            { x: room.roomId * 2.0 + 2.0, y: 1.0 },
+            { x: room.roomId * 2.0 + 2.0, y: -1.0 },
+            { x: room.roomId * 2.0, y: -1.0 }
+          ],
+          centerPoint: { x: room.roomId * 2.0 + 1.0, y: 0.0, theta: 0.0 }
         };
       }
 

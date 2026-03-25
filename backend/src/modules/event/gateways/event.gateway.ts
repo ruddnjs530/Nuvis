@@ -9,10 +9,10 @@ export class EventGateway {
 
   constructor(private readonly service: EventService) {}
 
-  @SubscribeMessage('create')
-  handleCreate(@MessageBody() data: any): string {
-    const item = this.service.create(data);
-    this.server.emit('created', item);
-    return 'Created';
-  }
+  // @SubscribeMessage('create')
+  // handleCreate(@MessageBody() data: any): string {
+  //   const item = this.service.create(data);
+  //   this.server.emit('created', item);
+  //   return 'Created';
+  // }
 }

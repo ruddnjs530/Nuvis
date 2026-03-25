@@ -6,8 +6,8 @@ import { EventService } from '../services/event.service';
 export class EventGrpcController {
   constructor(private readonly service: EventService) {}
 
-  @GrpcMethod('EventService', 'CreateEvent')
-  create(data: any) {
-    return this.service.create(data);
-  }
+  // @GrpcMethod('EventService', 'CreateEvent')
+  // create(data: any) {
+  //   return this.service.create(data);
+  // }
 }
