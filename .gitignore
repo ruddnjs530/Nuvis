@@ -107,3 +107,6 @@ crashlytics-build.properties
 # End of https://www.toptal.com/developers/gitignore/api/unity,ros2
 
 **/node_modules/
+.env
+.env.*
+!.env.example
