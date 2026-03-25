@@ -1,21 +1,24 @@
-import type { APIClientParams, TokenProvider } from './types';
+import type { APIClientParams } from './types';
 import ky, { HTTPError } from 'ky';
+import { useAuthStore } from '~/store/auth-store';
 import { APIError } from './error';
-
-let getToken: TokenProvider = () => null;
-
-export function setTokenProvider(provider: TokenProvider) {
-  getToken = provider;
-}
 
 export const instance = ky.create({
   prefixUrl: import.meta.env.VITE_API_URL,
   hooks: {
     beforeRequest: [
       (request) => {
-        const token = getToken();
+        const token = useAuthStore.getState().accessToken;
         if (token) {
           request.headers.set('Authorization', `Bearer ${token}`);
+        }
+      },
+    ],
+    afterResponse: [
+      (_request, _options, response) => {
+        if (response.status === 401) {
+          useAuthStore.getState().logout();
+          window.location.href = '/login';
         }
       },
     ],

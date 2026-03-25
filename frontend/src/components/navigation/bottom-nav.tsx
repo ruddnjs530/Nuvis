@@ -4,10 +4,11 @@ import {
   RobotIcon,
   ZapIcon,
 } from '@hugeicons/core-free-icons';
-import { HugeiconsIcon } from '@hugeicons/react';
 import { Link, useLocation } from 'react-router';
+import Icon from '~/components/common/icon';
 import { cn } from '~/lib/utils';
 
+// ── Data ──────────────────────────────────────────────────────────────────────
 const items = [
   { to: '/', label: '홈', icon: Home01Icon },
   { to: '/control', label: '제어', icon: RobotIcon },
@@ -21,26 +22,35 @@ function isActive(pathname: string, to: string) {
   return pathname.startsWith(to);
 }
 
+// ── Component ─────────────────────────────────────────────────────────────────
 export default function BottomNav() {
   const location = useLocation();
 
   return (
-    <nav className="border-border bg-background/95 sticky bottom-0 z-20 border-t backdrop-blur">
-      <ul className="mx-auto grid h-16 max-w-md grid-cols-4">
+    // height: --h-bottom-nav(83px) = pt-3(12px) + nav-item(46px) + pb-6(24px)
+    // border: --color-border-muted / bg: surface + /90 + backdrop-blur-sm
+    <nav className="fixed bottom-0 left-1/2 z-50 w-full -translate-x-1/2 border-t border-border-muted bg-[color-mix(in_srgb,var(--color-surface)_90%,transparent)] backdrop-blur-md transition-all">
+      {/* max-w: --layout-max-w(448px) / h: --h-bottom-nav */}
+      <ul className="mx-auto grid max-w-[448px] grid-cols-4 px-4 pt-3 pb-6">
         {items.map((item) => {
           const active = isActive(location.pathname, item.to);
-          const icon = item.icon;
 
           return (
             <li key={item.to}>
               <Link
                 to={item.to}
+                // h: --h-nav-item(46px) / gap: --space-1(4px)
+                // active: --color-brand / inactive: --color-fg-subtle
                 className={cn(
-                  'flex h-full flex-col items-center justify-center gap-1 text-xs',
-                  active ? 'text-foreground' : 'text-muted-foreground',
+                  'flex h-[46px] flex-col items-center justify-center gap-1 text-xs transition-colors',
+                  active ? 'text-brand' : 'text-fg-subtle',
                 )}
               >
-                <HugeiconsIcon icon={icon} size={20} strokeWidth={1.8} />
+                <Icon
+                  icon={item.icon}
+                  size="md"
+                  strokeWidth={active ? 2 : 1.5}
+                />
                 <span>{item.label}</span>
               </Link>
             </li>
