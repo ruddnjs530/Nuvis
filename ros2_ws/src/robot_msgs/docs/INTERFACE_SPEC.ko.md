@@ -9,10 +9,14 @@
 - `/robot/heartbeat` (`robot_msgs/Heartbeat`) 1 Hz
 - `/robot/sensor_state` (`robot_msgs/SensorState`) 2 Hz
 - `/robot/error_report` (`robot_msgs/ErrorReport`) 이벤트 발생 시
+- `/robot/module/state` (`robot_msgs/ModuleState`) 1 Hz
+- `/robot/module/swap_event` (`robot_msgs/ModuleSwapEvent`) 이벤트 발생 시
+- `/robot/module/operation_event` (`robot_msgs/ModuleOperationEvent`) 이벤트 발생 시
 
 ## 액션
 - `/robot/execute_task` (`robot_msgs/action/ExecuteTask`)
 - `/robot/nav_to_goal` (`robot_msgs/action/NavToGoal`)
+- `/robot/nav_path` (`robot_msgs/action/NavPath`) 내부 멀티세그먼트 이동용
 - `/robot/return_home` (`robot_msgs/action/ReturnHome`)
 
 ## 서비스
@@ -21,6 +25,13 @@
 - `/robot/manual_control` (`robot_msgs/srv/SetManualControl`)
 - `/robot/module/set` (`robot_msgs/srv/SetModuleState`)
 - `/robot/relocalize` (`robot_msgs/srv/Relocalize`)
+
+`SetModuleState.srv` 요청 필드:
+- `module_type`
+- `power_on`
+- `level`
+- `task_id`
+- `command_id`
 
 ## ID 및 추적
 - `command_id`: 백엔드/게이트웨이가 생성하는 멱등 처리용 ID
