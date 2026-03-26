@@ -120,9 +120,17 @@ export class RobotService implements OnModuleInit {
   }
 
   private formatStatus(status: any) {
-    // Hardcode module info based on ROS2 ModuleState definitions
+    const batteryPct = status.batteryPct != null ? Number(status.batteryPct.toFixed(1)) : 0;
+    const poseX = status.poseX != null ? Number(status.poseX.toFixed(3)) : 0;
+    const poseY = status.poseY != null ? Number(status.poseY.toFixed(3)) : 0;
+    const poseYaw = status.poseYaw != null ? Number((status.poseYaw * (180 / Math.PI)).toFixed(1)) : 0;
+
     return {
       ...status,
+      batteryPct,
+      poseX,
+      poseY,
+      poseYaw,
       attached_module: {
         type: 1,
         name: 'AIR_PURIFIER',
