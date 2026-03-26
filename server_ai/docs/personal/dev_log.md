@@ -525,7 +525,7 @@
     - 20GB 학습 최종 수치: `eval_cer 1.02%`, `eval_loss 0.0146`, `train_loss 0.03998`
     - 동일 조건 비교: `base 77.8% (7/9)`, `v2_full 100.0% (9/9)`
     - 시연 기준으로 `v2_full` 채택
-    - 실제 `/api/stt/transcribe` 응답에서 `roomId=1`, `module=air_purifier`, `state=on` 확인
+    - 실제 `/api/stt/transcribe` 응답에서 backend seed 기준 `roomId=2`, `module=air_purifier`, `state=on` 확인
     - `GET /api/stt/health` 응답에서 `device=cuda`, `model_path=v2_full`, `room_map_source=fallback` 확인
     - 학습 산출물 운영 기준을 별도 문서로 정리해, 모델/로그/메타데이터 보존 범위와 GPU 서버 후속 정리 절차를 문서화
     - GPU 서버에서 `bash stt/package_stt_artifacts.sh`로 백업 패키지를 생성할 수 있게 됨
@@ -577,7 +577,7 @@
   - **E2E 테스트 완료 (test_client.py)**
     - 추천 API(포트 9000): 이벤트 및 스케줄 추천 통신 성공 (각각 0.2초 이하 응답 속도 확인)
     - STT API(포트 9001): `"거실에 가서 공기청소기 켜 줘."` 입력 테스트
-      - 백엔드 미연동(`roomId` API 부재) 상황에서도 Fallback 방어 로직이 작동하여 "거실"을 `roomId=1`로 맵핑(Crash 회피 완벽 확인)
+      - 백엔드 미연동(`roomId` API 부재) 상황에서도 Fallback 방어 로직이 작동하여 "거실"을 backend seed 기준 `roomId=2`로 맵핑(Crash 회피 완벽 확인)
       - 오인식 파서 보정 로직이 "공기청소기"를 `air_purifier` 모듈로 인식 및 전송 확인 (1.62초 초고속 추론)
 - 다음 작업
   - `be-main` 브랜치의 백엔드 API가 `master`에 병합(Merge)되는 시점에 라이브 데이터(Live Data) 연동 테스트 모니터링

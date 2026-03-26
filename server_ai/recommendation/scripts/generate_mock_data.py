@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from pathlib import Path
 import os
 
 # ==============================================================================
@@ -11,10 +12,12 @@ import os
 #       현실과 매우 유사한 패턴을 띄는(규칙적인) 가상 데이터를 대량으로 생성하는 스크립트입니다.
 # ==============================================================================
 
-def generate_mock_json_payload(filename=None, days=14):
+def generate_mock_json_payload(filename=None, days=14, room_id=2):
     if filename is None:
-        # __file__ 이란 이 파이썬 파일 자체의 물리적 경로를 의미합니다. 현재 스크립트 위치 기준으로 mock 파일 절대 경로를 잡습니다.
-        filename = os.path.join(os.path.dirname(__file__), "mock_payload.json")
+        # test_client.py가 실제로 읽는 recommendation/data/mock_payload.json 경로를 기본값으로 맞춥니다.
+        filename = Path(__file__).resolve().parent.parent / "data" / "mock_payload.json"
+    else:
+        filename = Path(filename)
     
     print(f"Generating {days} days of mock sensor payload to {filename}...")
     
@@ -77,7 +80,7 @@ def generate_mock_json_payload(filename=None, days=14):
         # 완성된 타임라인 한 줄(row)을 딕셔너리로 만들어 배열(records)에 넣습니다.
         records.append({
             "timestamp": ts.isoformat(),       # ISO 표준 문자열 ("2026-03-25T08:30:00") 포맷
-            "room_id": 1,                      # 어떤 위치의 방인지 (예: 거실=1 등 Backend DB 제원에 맞춤)
+            "room_id": room_id,                # 기본값은 backend seed 기준 거실(roomId=2)로 고정
             "temperature": round(temp, 1),     # 소수점 1자리까지 모형화 후 절삭
             "humidity": round(hum, 1),
             "fine_dust": round(fine_dust, 1),  
@@ -88,12 +91,13 @@ def generate_mock_json_payload(filename=None, days=14):
         
     # 마지막 JSON 통 포맷 구성 (Spring/Node 등 백엔드 API와 통신할 때 협의된 데이터 구조 시뮬레이션 형식)
     payload = {
-        "user_id": 12345,      # 유저 아이디 (정수형)
+        "user_id": 1,          # backend seed 기준 기본 사용자 예시
         "sensor_data": records # 위에서 만들어둔 거대한 시계열 객체 리스트 전부가 이 value 영역에 들어가게 됨
     }
     
     import json
     # ensure_ascii=False 파라미터를 통해 나중에 혹시 모를 한글/유니코드 데이터가 깨지지 않고 저장되도록 합니다.
+    filename.parent.mkdir(parents=True, exist_ok=True)
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(payload, f, ensure_ascii=False, indent=2) # indent=2 옵션으로 JSON을 보기 좋게 들여쓰기해서 파일에 씁니다.
         
