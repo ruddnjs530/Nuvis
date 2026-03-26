@@ -1,123 +1,142 @@
 import { useEffect, useRef, useState } from 'react';
+import { webrtcApi } from '../api/api';
 
-// 시그널링 서버와 주고받을 메시지 타입 (백엔드 통신 스펙에 맞춰 수정 필요)
-interface SignalingMessage {
-  type: 'offer' | 'answer' | 'candidate';
-  sdp?: RTCSessionDescriptionInit;
-  candidate?: RTCIceCandidateInit;
-}
-
-export function useWebRTC(signalingUrl: string) {
+export function useWebRTC(sessionId: string) {
   const [isConnected, setIsConnected] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
-    // 실제 서버 주소가 설정되지 않은 경우 (UI 작업 단계를 위해) 실행 방지
-    if (!signalingUrl)
+    if (!sessionId)
       return;
 
-    try {
-      const ws = new WebSocket(signalingUrl);
-      wsRef.current = ws;
+    let isUnmounted = false;
+    let offerTimer: ReturnType<typeof setTimeout>;
+    let candidateTimer: ReturnType<typeof setTimeout>;
 
-      // 1. WebRTC PeerConnection 생성
-      // 구글 퍼블릭 STUN 서버 사용 (ICE Candidate 수집용)
-      const pc = new RTCPeerConnection({
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-      });
-      pcRef.current = pc;
-
-      // 2. 외부에서 수신된 미디어 트랙을 비디오 태그에 연결
-      pc.ontrack = (event) => {
-        if (videoRef.current && event.streams[0]) {
-          videoRef.current.srcObject = event.streams[0];
-          // 트랙이 들어오면 화면이 나왔다고 간주
-          setIsConnected(true);
-        }
-      };
-
-      // 3. ICE 상태 변경 감지 및 UI 업데이트
-      pc.oniceconnectionstatechange = () => {
-        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-          setIsConnected(false);
-          setErrorMsg('WebRTC 연결이 끊어졌습니다.');
-        }
-        else if (pc.iceConnectionState === 'connected') {
-          setIsConnected(true);
-          setErrorMsg(null);
-        }
-      };
-
-      // 4. 내 네트워크 주소(ICE)가 파악되면 시그널링 서버를 통해 상대방에게 전달
-      pc.onicecandidate = (event) => {
-        if (event.candidate && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'candidate', candidate: event.candidate }));
-        }
-      };
-
-      // 5. 시그널링 서버 연결 성공 시 핸들러
-      ws.onopen = () => {
-        setErrorMsg(null);
-
-        // [클라이언트가 먼저 Offer를 보내는 구조일 경우 활성화]
-        /*
-        pc.createOffer().then(offer => {
-           pc.setLocalDescription(offer);
-           ws.send(JSON.stringify({ type: 'offer', sdp: offer }));
+    const startWebRTC = async () => {
+      try {
+        const pc = new RTCPeerConnection({
+          iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
         });
-        */
-      };
+        pcRef.current = pc;
 
-      // 6. 시그널링 서버로부터 메시지(Offer, Answer, Candidate) 수신 시 핸들러
-      ws.onmessage = async (event) => {
-        try {
-          const message: SignalingMessage = JSON.parse(event.data);
-
-          // 유니티 쪽에서 먼저 Offer를 보냈을 경우
-          if (message.type === 'offer' && message.sdp) {
-            await pc.setRemoteDescription(new RTCSessionDescription(message.sdp));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            ws.send(JSON.stringify({ type: 'answer', sdp: answer }));
+        pc.ontrack = (event) => {
+          if (videoRef.current && event.streams[0]) {
+            videoRef.current.srcObject = event.streams[0];
           }
-          // 내가 보낸 Offer에 대한 Answer를 받았을 경우
-          else if (message.type === 'answer' && message.sdp) {
-            await pc.setRemoteDescription(new RTCSessionDescription(message.sdp));
+        };
+
+        pc.oniceconnectionstatechange = () => {
+          if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+            setIsConnected(false);
+            setErrorMsg('WebRTC 연결이 끊어졌습니다.');
           }
-          // 상대방의 네트워크 주소(ICE)를 받았을 경우 등록
-          else if (message.type === 'candidate' && message.candidate) {
-            await pc.addIceCandidate(new RTCIceCandidate(message.candidate));
+          else if (pc.iceConnectionState === 'connected') {
+            setIsConnected(true);
+            setErrorMsg(null);
+            clearTimeout(candidateTimer);
           }
-        }
-        catch (err) {
-          console.error('Signaling message parsing failed:', err);
-        }
-      };
+        };
 
-      ws.onerror = () => {
-        setErrorMsg('시그널링 서버 연결에 실패했습니다.');
-        setIsConnected(false);
-      };
+        const { connectionId } = await webrtcApi.createConnection(sessionId).catch((err) => {
+          setErrorMsg('시뮬레이터를 먼저 연결해 주세요.');
+          throw err;
+        });
 
-      ws.onclose = () => {
-        setIsConnected(false);
-      };
+        if (isUnmounted)
+          return;
 
-      // 컴포넌트 언마운트 시 자원 정리 (메모리 누수 방지)
-      return () => {
-        pc.close();
-        ws.close();
-      };
-    }
-    catch (err: any) {
-      const timer = setTimeout(setErrorMsg, 0, err.message);
-      return () => clearTimeout(timer);
-    }
-  }, [signalingUrl]);
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            webrtcApi.sendCandidate(sessionId, {
+              connectionId,
+              candidate: event.candidate.candidate,
+              sdpMLineIndex: event.candidate.sdpMLineIndex,
+              sdpMid: event.candidate.sdpMid,
+            }).catch(console.error);
+          }
+        };
+
+        const pollOffer = async (lastTime: number) => {
+          if (isUnmounted)
+            return;
+          try {
+            const { offers } = await webrtcApi.getOffers(sessionId, lastTime);
+            const currentTime = Date.now();
+            const myOffer = offers.find(o => o.connectionId === connectionId);
+
+            if (myOffer) {
+              await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: myOffer.sdp }));
+              const answer = await pc.createAnswer();
+              await pc.setLocalDescription(answer);
+
+              // 추가된 부분: sdp가 없는 경우를 방어하는 타입 가드
+              if (!answer.sdp) {
+                throw new Error('SDP 생성에 실패했습니다.');
+              }
+
+              // 이제 TypeScript가 answer.sdp를 확실한 string으로 인식해
+              await webrtcApi.sendAnswer(sessionId, { connectionId, sdp: answer.sdp });
+
+              pollCandidate(0);
+            }
+            else {
+              offerTimer = setTimeout(pollOffer, 1000, currentTime);
+            }
+          }
+          catch (err) {
+            console.error('Offer Polling Error:', err);
+            offerTimer = setTimeout(pollOffer, 1000, lastTime);
+          }
+        };
+
+        const pollCandidate = async (lastTime: number) => {
+          if (isUnmounted)
+            return;
+          try {
+            const { candidates } = await webrtcApi.getCandidates(sessionId, lastTime);
+            const currentTime = Date.now();
+            const myCandidatesData = candidates.find(c => c.connectionId === connectionId);
+
+            if (myCandidatesData && myCandidatesData.candidates) {
+              for (const cand of myCandidatesData.candidates) {
+                await pc.addIceCandidate(new RTCIceCandidate({
+                  candidate: cand.candidate,
+                  sdpMLineIndex: cand.sdpMLineIndex,
+                  sdpMid: cand.sdpMid,
+                }));
+              }
+            }
+
+            if (pc.iceConnectionState !== 'connected') {
+              candidateTimer = setTimeout(pollCandidate, 1000, currentTime);
+            }
+          }
+          catch (err) {
+            console.error('Candidate Polling Error:', err);
+            candidateTimer = setTimeout(pollCandidate, 1000, lastTime);
+          }
+        };
+
+        pollOffer(0);
+      }
+      catch {
+        setErrorMsg('WebRTC 초기화 중 오류가 발생했습니다.');
+      }
+    };
+
+    startWebRTC();
+
+    return () => {
+      isUnmounted = true;
+      clearTimeout(offerTimer);
+      clearTimeout(candidateTimer);
+      pcRef.current?.close();
+    };
+  }, [sessionId]);
 
   return { videoRef, isConnected, errorMsg };
 }

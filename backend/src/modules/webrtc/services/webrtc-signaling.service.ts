@@ -16,7 +16,7 @@ export class WebrtcSignalingService {
   private sessions = new Map<string, SessionData>();
 
   createSession(): { sessionId: string } {
-    const sessionId = randomUUID();
+    const sessionId = "test-session-id";
     this.sessions.set(sessionId, {
       sessionId,
       connections: [],
