@@ -106,8 +106,8 @@ class DevicePredictorLSTM(nn.Module):
 # ==============================================================================
 def train_lstm_on_gpu(data_file=None):
     if data_file is None:
-        # __file__ 이란 이 파이썬 파일 자체의 위치를 의미합니다. 그 위치에서 'mock_payload.json'을 찾습니다.
-        data_file = str(Path(__file__).parent / "mock_payload.json")
+        # recommendation/data/mock_payload.json 을 기본 학습 데이터 경로로 사용합니다.
+        data_file = str(Path(__file__).resolve().parent.parent / "data" / "mock_payload.json")
     
     # GPU(CUDA)가 사용 가능하면 GPU 속도를 누리고, 없으면 일반 코어 CPU를 사용하도록 자동 세팅합니다.
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

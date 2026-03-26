@@ -157,7 +157,7 @@ def fetch_room_map_from_backend() -> dict:
 def initialize_room_map() -> None:
     """
     이 AI 웹서버가 맨 처음 부팅될 때 딱 한번 자동으로 실행되어 
-    백엔드의 최신 방 현황 정보 구조체(예: 안방=1, 거실=2)를 땡겨와 파서에게 미리 외우게 가르쳐두는 초기화 함수
+    백엔드의 최신 방 현황 정보 구조체(예: 스테이션(HQ)=1, 거실=2, 침실=3, 주방=4)를 땡겨와 파서에게 미리 외우게 가르쳐두는 초기화 함수
     """
     global ROOM_MAP_SOURCE
     try:

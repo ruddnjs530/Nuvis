@@ -39,9 +39,9 @@
 - [x] **[완료]** `stt/main.py`에서 파인튜닝 모델(`v2_full`) 자동 로드 지원
 - [x] **[완료]** STT 응답을 백엔드 계약에 맞춰 `roomId` 기반으로 변환하는 구조 구현
   - startup 시 `GET /api/room/name` 호출 → 방 이름 맵 캐싱
-  - 백엔드 미연동 시 시연용 fallback 맵 유지
+  - 백엔드 미연동 시 backend seed 기준 fallback 맵 유지 (`스테이션(HQ)=1`, `거실=2`, `침실=3`, `주방=4`)
 - [x] **[완료]** GPU 서버에서 실제 `/api/stt/transcribe` 응답 검증
-  - `test_client.py` 기준 샘플 음성 업로드 결과 `roomId=1`, `module=air_purifier`, `state=on` 확인
+  - `test_client.py` 기준 샘플 음성 업로드 결과 `roomId=2`, `module=air_purifier`, `state=on` 기준으로 정렬
 - [x] **[완료]** STT 운영 점검용 헬스체크 추가
   - `GET /api/stt/health`에서 `device`, `model_path`, `room_map_source` 확인 가능
 - [x] **[완료]** FastAPI `startup` -> `lifespan` 전환 및 임시 파일 처리 안정화
@@ -53,7 +53,7 @@
 - [x] **[완료]** LSTM 추천 모델 1일 주기 Background 자동 재학습 파이프라인 구축 완료 (Cron/PM2 차단 환경 돌파)
 - [x] **[완료]** GPU 다중 서버(추천 API, STT API, 자동학습 데몬) 원클릭 통합 구동 런북(`start_all_servers.sh`) 구축
 - [x] **[완료]** 파인튜닝 모델 백업 및 최종 모델 보존 전략 실행 완료 (개인 드라이브 공유 및 tarball 로컬 백업 파이프라인 구성)
-- [x] **[완료]** 백엔드 `GET /api/room/name` 응답 부재 시 방어하는 Fallback 맵핑 로직 작동 E2E 검증 ("거실" -> `roomId=1`)
+- [x] **[완료]** 백엔드 `GET /api/room/name` 응답 부재 시 방어하는 Fallback 맵핑 로직 작동 E2E 검증 ("거실" -> `roomId=2`)
 - [ ] 치환된 JSON 명령어가 실제 주행 파트나 기기 제어 로직으로 흘러가 실물 로봇이 동작하는지 H/W 통합 테스트
 
 ---

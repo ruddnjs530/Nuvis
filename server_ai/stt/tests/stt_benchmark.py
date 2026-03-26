@@ -50,7 +50,7 @@ MODEL_CHOICES = {
 TEST_CASES = [
     {
         "text": "거실로 가서 공기청정기 켜줘",
-        "expected": {"action": "move_and_operate", "roomId": 1, "module": "air_purifier", "state": "on"}
+        "expected": {"action": "move_and_operate", "roomId": 2, "module": "air_purifier", "state": "on"}
     },
     {
         "text": "안방 가습기 좀 꺼줄래",
@@ -58,7 +58,7 @@ TEST_CASES = [
     },
     {
         "text": "그냥 주방으로 이동해",
-        "expected": {"action": "move", "roomId": 2, "module": None, "state": None}
+        "expected": {"action": "move", "roomId": 4, "module": None, "state": None}
     },
     {
         "text": "제습기 작동", # 주어(방)가 생략된 경우
@@ -72,6 +72,10 @@ TEST_CASES = [
         "text": "내방으로 와",
         "expected": {"action": "move", "roomId": 3, "module": None, "state": None}
     },
+    {
+        "text": "스테이션으로 돌아가",
+        "expected": {"action": "move", "roomId": 1, "module": None, "state": None}
+    },
     # 예외 상황 및 복합명령 헷갈리는 테스트 (과연 가습기를 켤까?)
     {
         "text": "거실 말고 안방 가습기 편하게 켜줄래",
@@ -79,7 +83,7 @@ TEST_CASES = [
     },
     {
         "text": "주방 공기청정기 켜지마",
-        "expected": {"action": "move_and_operate", "roomId": 2, "module": "air_purifier", "state": "off"}
+        "expected": {"action": "move_and_operate", "roomId": 4, "module": "air_purifier", "state": "off"}
     },
     # 예외 상황 테스트 (아예 스마트홈 로봇이 지원 안하는 등록되지 않은 기기 '보일러')
     {
