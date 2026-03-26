@@ -118,6 +118,7 @@ services:
       # .env 파일의 값을 불러옵니다.
       - DATABASE_URL=${DATABASE_URL}
       - ROBOT_GRPC_URL=ros2-run:50051
+      - SECRET_KEY=${SECRET_KEY}
     depends_on:
       db:
         condition: service_healthy
