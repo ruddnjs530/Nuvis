@@ -35,7 +35,7 @@
 - [x] FastAPI `startup` -> `lifespan` 전환
 - [x] 업로드 오디오를 메모리에서 우선 디코딩하고, 필요 시에만 임시 파일로 fallback 하도록 최적화
 - [x] 실제 `/api/stt/transcribe` 응답 확인
-  - `roomId=1`, `module=air_purifier`, `state=on`
+  - backend seed 기준 `roomId=2`, `module=air_purifier`, `state=on`
 - [x] `GET /api/stt/health` 추가 및 GPU 서버 응답 확인
   - `device=cuda`
   - `model_path=v2_full`
@@ -109,7 +109,7 @@
 - [x] `켜지 마` 형태 부정 표현 처리 강화
 - [x] `stt_benchmark.py --compare` 비교 옵션 추가
 - [x] GPU 서버에서 실제 `/api/stt/transcribe` 응답 확인
-  - `roomId=1`, `module=air_purifier`, `state=on`
+  - backend seed 기준 `roomId=2`, `module=air_purifier`, `state=on`
 - [x] `test_client.py`가 실제 샘플 음성을 우선 사용하도록 정리
 - [x] FastAPI `startup` -> `lifespan` 전환
 - [x] `NamedTemporaryFile` 기반 업로드 처리로 임시 파일 충돌 위험 완화

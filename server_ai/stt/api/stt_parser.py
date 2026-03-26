@@ -11,24 +11,27 @@ import re
 #       프로토콜 포맷(JSON)으로 분해 조립해주는 똑똑한 중간 번역(Parser) 레이어 모듈입니다.
 # ==============================================================================
 
-# 시연 및 테스트 환경을 위한 '하드코딩된 기본 방 번호' 맵. 
+# 백엔드 Prisma seed 기준 기본 방 맵.
 # 나중에 STT 시스템이 가동되면 메인 서버 API(DB)와 연동돼 최신 정보로 덮어쓰기(Set) 당합니다.
 DEFAULT_ROOM_MAP = {
-    "거실": 1,
-    "주방": 2,
-    "안방": 3,
+    "스테이션 (HQ)": 1,
+    "거실": 2,
+    "침실": 3,
+    "주방": 4,
 }
 
 # 유저들이 일상에서 섞어 쓰는 흔한 동의어(Alias) 그룹 묶음
-# 예: 누군가는 안방이라 부르고 누군가는 침실, 누군가는 내방이라고 부르지만 백엔드에선 결국 다 똑같은 "3번 방"입니다.
+# 백엔드 대표 이름은 유지하고, 사용자 발화만 별칭으로 흡수합니다.
 ROOM_ALIAS_GROUPS = (
-    ("안방", "침실", "내방"),
+    ("스테이션 (HQ)", "스테이션", "hq", "HQ", "에이치큐", "충전소"),
+    ("침실", "안방", "내방"),
+    ("주방", "부엌"),
 )
 
 def _expand_room_aliases(base_room_map: dict) -> dict:
     """
-    주어진 방 데이터베이스(예: 거실=1, 안방=3)를 바탕으로,
-    방금 위에서 선언한 그룹("침실", "내방") 동의어들에 대해서도 똑같이 "3번"이라는 지식을 확장 및 파생 이식해 두는 함수입니다.
+    주어진 방 데이터베이스(예: 거실=2, 침실=3)를 바탕으로,
+    방금 위에서 선언한 그룹("안방", "내방") 동의어들에 대해서도 똑같은 roomId 지식을 확장 및 파생 이식해 두는 함수입니다.
     이래야 유저가 사투리나 동의어를 써도 똑같은 AI 모델로 찰떡같이 백엔드와 연결시켜줍니다.
     """
     expanded_map = dict(base_room_map)
@@ -82,7 +85,7 @@ def get_room_map() -> dict:
 
 def normalize_text(text: str) -> str:
     """문자열에서 한글, 알파벳, 숫자만 모조리 남기고, 복잡한 띄어쓰기 탭 기호 쉼표 등 '모든' 특수 기호를 완전 정규식 변환으로 밀어버리는 클렌징 함수"""
-    return re.sub(r"[^가-힣a-zA-Z0-9]", "", text)
+    return re.sub(r"[^가-힣a-zA-Z0-9]", "", text).lower()
 
 def detect_module(filtered_text: str, normalized_text: str) -> str | None:
     """
@@ -128,7 +131,8 @@ def parse_voice_command(stt_text: str) -> str:
     # [Step 2: 타겟 위치 방 추출 (어디로 갈까?)]
     for kor_room, room_id in ROOM_MAP.items():
         # "주방" 이라는 글씨가 파형에 존재한다면!
-        if kor_room in filtered_text or kor_room in no_space_text:
+        normalized_room = normalize_text(kor_room)
+        if kor_room in filtered_text or normalized_room in no_space_text:
             command["roomId"] = room_id
             command["action"] = "move" # 방 이름이 일단 언급됐다면 로봇은 무조건 현재위치를 버리고 거기로 바퀴를 굴려 '이동명령'을 내려야 하므로 state를 진화시킴
             break # 목적지는 하나이므로 반복 돌 필요없이 탈출
@@ -177,7 +181,8 @@ if __name__ == "__main__":
         "거실로 가서 공기청정기 켜줘",
         "거실 말고 안방 가습기 꺼줄래",
         "안방 공기청정기 켜지마",
-        "그냥 주방으로 이동해"
+        "그냥 주방으로 이동해",
+        "HQ로 돌아가",
     ]
     
     print("=== 자연어 명령 파싱 테스트 (Mock) ===\n")
