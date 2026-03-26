@@ -10,7 +10,6 @@ import { api } from '~/lib/api/client';
 export const webrtcApi = {
   createConnection: (sessionId: string) =>
     api<WebRTCConnectionResponse>({
-      apiPrefix: '',
       method: 'put',
       url: 'signaling/connection',
       options: { headers: { 'session-id': sessionId } },
@@ -18,7 +17,6 @@ export const webrtcApi = {
 
   getOffers: (sessionId: string, fromtime: number) =>
     api<WebRTCOfferResponse>({
-      apiPrefix: '',
       method: 'get',
       url: 'signaling/offer',
       options: {
@@ -29,7 +27,6 @@ export const webrtcApi = {
 
   sendAnswer: (sessionId: string, data: WebRTCSdpData) =>
     api<{ message: string }>({
-      apiPrefix: '',
       method: 'post',
       url: 'signaling/answer',
       options: {
@@ -40,7 +37,6 @@ export const webrtcApi = {
 
   sendCandidate: (sessionId: string, data: { connectionId: string } & WebRTCIceCandidate) =>
     api<{ message: string }>({
-      apiPrefix: '',
       method: 'post',
       url: 'signaling/candidate',
       options: {
@@ -51,7 +47,6 @@ export const webrtcApi = {
 
   getCandidates: (sessionId: string, fromtime: number) =>
     api<WebRTCCandidateResponse>({
-      apiPrefix: '',
       method: 'get',
       url: 'signaling/candidate',
       options: {
