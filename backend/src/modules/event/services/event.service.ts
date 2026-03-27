@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { EventRepository } from '../repositories/event.repository';
 import { RobotService } from '../../robot/services/robot.service';
+import { keysToCamel } from 'src/common/utils/case.util';
 
 @Injectable()
 export class EventService {
@@ -41,7 +42,7 @@ export class EventService {
         throw new Error(`AI Server error status: ${response.status}`);
       }
 
-      return await response.json();
+      return keysToCamel(await response.json());
     } catch (error: any) {
       console.warn('[AI Fallback] AI 서버 응답 실패:', error.message);
       return {

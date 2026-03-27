@@ -110,3 +110,7 @@ crashlytics-build.properties
 .env
 .env.*
 !.env.example
+
+# pnpm store (Docker 로컬 개발 시 frontend 폴더 안에 생성됨)
+.pnpm-store/
+**/.pnpm-store/
