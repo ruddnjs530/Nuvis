@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import { Injectable, Logger, Inject, OnModuleInit } from '@nestjs/common';
 import { RobotRepository } from '../repositories/robot.repository';
 import { Observable, Subject, lastValueFrom } from 'rxjs';
@@ -27,7 +29,17 @@ export class RobotService implements OnModuleInit {
   }
 
   async getAiDataset(userId: number, days: number) {
-    return { userId, days, data: [] };
+    // [시연용 목업] DB에 이력이 없는 동안 mock_payload.json 파일을 읽어 반환합니다.
+    // 정식 연동 시 ROOM_CONDITIONS_HISTORY / MODULE_CONTROL_LOGS 기반 실제 쿼리로 교체 필요.
+    const filePath = path.join(process.cwd(), 'src', 'modules', 'robot', 'data', 'mock_payload.json');
+    const raw = fs.readFileSync(filePath, 'utf-8');
+    const mock = JSON.parse(raw);
+
+    // AI 서버 AnalysisRequest 규격: { user_id: int, sensor_data: [...] }
+    return {
+      user_id: userId,
+      sensor_data: mock.sensor_data,
+    };
   }
 
   create(data: any) {

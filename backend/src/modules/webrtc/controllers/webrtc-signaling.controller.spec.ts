@@ -52,7 +52,7 @@ describe('WebrtcSignalingController', () => {
     });
 
     it('deleteSession should skip if no header element exists', () => {
-      controller.deleteSession(undefined);
+      controller.deleteSession(undefined as any);
       expect(service.deleteSession).not.toHaveBeenCalled();
     });
 
@@ -99,7 +99,7 @@ describe('WebrtcSignalingController', () => {
     });
 
     it('should get candidates', () => {
-      controller.getCandidates('123', undefined);
+      controller.getCandidates('123', undefined as any);
       // undefined should parse to 0
       expect(service.getCandidates).toHaveBeenCalledWith('123', 0);
     });
