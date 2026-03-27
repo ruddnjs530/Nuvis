@@ -344,6 +344,17 @@ def analyze_environmental_anomalies(df: pd.DataFrame) -> dict:
         return {"status": "error", "message": "위기 감지 분석 중 오류가 발생했습니다."}
 
 
+@app.get("/health")
+@app.get("/api/recommendation/health")
+async def health_check():
+    """서버가 정상적으로 구동 중인지 확인하는 헬스체크 엔드포인트"""
+    return {
+        "status": "ok",
+        "service": "recommendation-ai",
+        "timestamp": time.time(),
+        "allowed_ips_configured": list(SecurityMiddleware(app).get_allowed_ips())
+    }
+
 # ─────────────────────────────────────────
 # FastAPI 라우터 엔드포인트 세팅부
 # 클라이언트(메인서버)가 호출할 웹 주소(URL Path)와 처리 메서드를 연결합니다.
@@ -365,7 +376,7 @@ async def get_event_suggestions(request: AnalysisRequest):
             )
 
         # 수신된 Pydantic 모델 객체들을 분석 편의성이 100배 좋은 통계 전용 Pandas DataFrame 2차원 표로 변환
-        df = pd.DataFrame([record.dict() for record in clipped_data])
+        df = pd.DataFrame([record.model_dump() for record in clipped_data])
         suggestions = {}
 
         # 모든 등록된 기기(공청기, 가습기, 제습기 등) 리스트를 순회하며 분석 시행
@@ -438,7 +449,7 @@ async def get_schedule_suggestions(request: AnalysisRequest):
                 f"최신 {MAX_RECORDS}건만 분석에 사용합니다."
             )
 
-        df = pd.DataFrame([record.dict() for record in clipped_data])
+        df = pd.DataFrame([record.model_dump() for record in clipped_data])
         suggestions = {}
 
         for device_type, config in DEVICE_CONFIG.items():

@@ -624,3 +624,43 @@
     - 백엔드 팀에 전달할 구체적인 요청 메시지(인증 우회, 실데이터 패킷 구현) 작성 완료
 - 다음 작업
   - 백엔드 팀과 STT 서버 인증 이슈 및 실데이터(`ROOM_CONDITIONS_HISTORY`) 연동 논의
+
+---
+
+### 2026-03-27 - [chore][recommendation] Pydantic v2 deprecation warning 정리
+- 브랜치
+  - 작업 브랜치: 현재 작업 트리 기준 후속 정리
+  - 대상 브랜치: `master`
+- 작업 배경
+  - GPU 서버 추천 로그 확인 중 `/api/schedule/ai-suggestions` 정상 응답(`200 OK`) 이후에도 Pydantic v2 deprecation warning이 반복 출력되는 것을 확인했습니다.
+  - 기능 장애는 아니었지만, 라이브러리 업그레이드 시 제거 예정인 API를 계속 사용하면 추후 운영 리스크가 될 수 있어 선제 정리가 필요했습니다.
+- 목표(DoD)
+  - 추천 서버 로그에서 `record.dict()` 관련 deprecation warning 발생 원인을 제거할 것
+  - 현재 추천 분석 흐름의 동작 의미는 바꾸지 않고 직렬화 방식만 최신 표준으로 교체할 것
+- 결정 사항
+  - Pydantic 모델 직렬화는 `dict()` 대신 `model_dump()` 기준으로 통일
+  - 로그성 경고도 운영 품질의 일부로 보고, 시연 전 단계에서 미리 제거
+- 선택 근거
+  - Pydantic v2에서 `dict()`는 deprecated이며, 공식 대체 메서드는 `model_dump()`입니다.
+  - 지금은 경고 수준이지만 이후 메이저 버전에서 제거될 수 있어, 기능 문제가 없을 때 미리 바꾸는 편이 더 안전합니다.
+- 구현 상세
+  - `recommendation/api/main.py`
+    - 이벤트 추천 DataFrame 변환 구간: `record.dict()` -> `record.model_dump()`
+    - 스케줄 추천 DataFrame 변환 구간: `record.dict()` -> `record.model_dump()`
+- 변경 파일
+  - `server_ai/recommendation/api/main.py`
+  - `server_ai/docs/personal/dev_log.md`
+  - `server_ai/docs/personal/daily_todo.md`
+- 테스트 및 검증
+  - 명령
+    - `rg -n "\\.dict\\(" server_ai/recommendation/api/main.py`
+    - `python3 -m py_compile server_ai/recommendation/api/main.py`
+  - 결과
+    - 추천 서버 메인 파일 기준 `.dict()` 사용처 0건 확인
+    - 문법 검사 통과
+  - 제약
+    - 실제 GPU 서버 로그 재확인은 서버 재기동 후 동일 요청 재실행이 필요
+- 이슈/메모
+  - 로그에서 보인 `수신 673건 -> 최신 500건만 분석` 경고는 payload 상한선 보호 로직이 정상 동작한 결과이며, 이번 수정 대상은 해당 경고가 아니라 Pydantic deprecation warning이었습니다.
+- 다음 작업
+  - GPU 서버 재기동 후 `/api/schedule/ai-suggestions` 재호출 시 deprecation warning 미출력 여부 확인
