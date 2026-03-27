@@ -21,6 +21,12 @@
 - [x] 메인 서버 DB와 AI 전용 서버(`FastAPI`) 간 데이터 통신망(Stateless API) 요구사항/규격 구축 완료
 - [x] 백엔드 환경변수 / HTTP 클라이언트 기준으로 GPU 서버 AI 주소 연동(`backend_integration_proposal.md`) 방안 수립 완료
 - [x] 통계/Rule/패턴 기반 모델로 1차 추천 (`api/event/ai-suggestions`, `api/schedule`) 시스템 납품 및 0.2초 내 응답 E2E 점검 완료
+- [x] **[완료]** 기존 요청 형식 유지 기반 `room_id`별 다중 방 추천 응답 구조 확장
+  - 추천 서버가 단일 사용자 전체 이력을 `room_id`별로 분리 분석하도록 변경
+  - 이벤트/스케줄 추천 응답을 `room_id`별 결과 맵으로 반환하도록 정리
+- [x] **[완료]** 다중 방 시뮬레이션용 mock payload 생성기 고도화
+  - `generate_mock_data.py`를 9개 방 패턴 기반 멀티룸 생성기로 확장
+  - `server_ai/recommendation/data/mock_payload.json` 기준으로 총 `1521`건 생성 검증 완료
 - [x] *(고도화)* Scikit-learn / LSTM(딥러닝) 활용 다중 머신러닝 이상 탐지 및 시계열 스케줄 예측 백그라운드 자동화(MLOps) 구축 완료
 - [ ] 로봇 대시보드(FrontEnd) 화면에 AI 추천 결과가 최종적으로 올바르게 렌더링되는지 연동 확인 모니터링
 
