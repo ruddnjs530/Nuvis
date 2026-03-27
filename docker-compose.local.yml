@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8
+    container_name: smarthome_db_local
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: smarthome
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data_local:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  backend:
+    image: node:22-alpine
+    container_name: smarthome_backend_local
+    working_dir: /usr/src/app
+    volumes:
+      - ./backend:/usr/src/app
+      - backend_node_modules:/usr/src/app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      # Override the local DATABASE_URL so it can talk to the db container
+      - DATABASE_URL=mysql://user:password@db:3306/smarthome
+      # EC2 Jupyter AI 서버 주소 (.env.local에서 주입)
+      - AI_RECOMMENDATION_BASE_URL=${AI_RECOMMENDATION_BASE_URL}
+    # Install dependencies, generate Prisma client, and start dev server with hot reloading
+    command: sh -c "npm install && npx prisma generate && npm run start:dev"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    image: node:22-alpine
+    container_name: smarthome_frontend_local
+    working_dir: /usr/src/app
+    volumes:
+      - ./frontend:/usr/src/app
+      - frontend_node_modules:/usr/src/app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_URL=http://localhost:3000
+    # Install pnpm, project dependencies, and start Vite dev server listening on all interfaces
+    command: sh -c "npm install -g pnpm && pnpm install && pnpm run dev --host 0.0.0.0"
+    depends_on:
+      - backend
+
+volumes:
+  db_data_local:
+  backend_node_modules:
+  frontend_node_modules:
