@@ -179,9 +179,10 @@ export class RobotService implements OnModuleInit {
       is_charging: false,
       safety_state: 0, // NORMAL
       last_error_code: 0,
-      pose_x: 10.5,
-      pose_y: 20.3,
-      pose_yaw: 1.57,
+      // ROS2 waypoints.yaml 기준 hq(스테이션) 좌표
+      pose_x: 1.0,
+      pose_y: -4.5,
+      pose_yaw: 0.0,
       stamp: new Date().toISOString(),
     };
   }
