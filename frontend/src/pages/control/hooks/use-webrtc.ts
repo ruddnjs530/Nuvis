@@ -16,6 +16,9 @@ export function useWebRTC(sessionId: string) {
     let offerTimer: ReturnType<typeof setTimeout>;
     let candidateTimer: ReturnType<typeof setTimeout>;
 
+    // 유니티가 발급한 커넥션 ID를 저장할 변수
+    let activeConnectionId: string | null = null;
+
     const startWebRTC = async () => {
       try {
         const pc = new RTCPeerConnection({
@@ -41,18 +44,11 @@ export function useWebRTC(sessionId: string) {
           }
         };
 
-        const { connectionId } = await webrtcApi.createConnection(sessionId).catch((err) => {
-          setErrorMsg('시뮬레이터를 먼저 연결해 주세요.');
-          throw err;
-        });
-
-        if (isUnmounted)
-          return;
-
+        // 내 네트워크 경로가 발견되면 유니티의 Connection ID를 타겟으로 전송
         pc.onicecandidate = (event) => {
-          if (event.candidate) {
+          if (event.candidate && activeConnectionId) {
             webrtcApi.sendCandidate(sessionId, {
-              connectionId,
+              connectionId: activeConnectionId,
               candidate: event.candidate.candidate,
               sdpMLineIndex: event.candidate.sdpMLineIndex,
               sdpMid: event.candidate.sdpMid,
@@ -60,30 +56,39 @@ export function useWebRTC(sessionId: string) {
           }
         };
 
+        // 유니티가 올린 Offer 찾기
         const pollOffer = async (lastTime: number) => {
           if (isUnmounted)
             return;
           try {
             const { offers } = await webrtcApi.getOffers(sessionId, lastTime);
             const currentTime = Date.now();
-            const myOffer = offers.find(o => o.connectionId === connectionId);
 
-            if (myOffer) {
-              await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: myOffer.sdp }));
+            // 배열에 Offer가 하나라도 들어왔다면 가장 최신 것을 선택
+            if (offers && offers.length > 0) {
+              const targetOffer = offers.at(-1)!;
+
+              // 핵심: 유니티가 만든 커넥션 ID를 리액트가 그대로 흡수함
+              activeConnectionId = targetOffer.connectionId;
+
+              await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: targetOffer.sdp }));
               const answer = await pc.createAnswer();
               await pc.setLocalDescription(answer);
 
-              // 추가된 부분: sdp가 없는 경우를 방어하는 타입 가드
-              if (!answer.sdp) {
-                throw new Error('SDP 생성에 실패했습니다.');
-              }
+              if (!answer.sdp)
+                throw new Error('SDP 생성 실패');
 
-              // 이제 TypeScript가 answer.sdp를 확실한 string으로 인식해
-              await webrtcApi.sendAnswer(sessionId, { connectionId, sdp: answer.sdp });
+              // 유니티의 커넥션 ID를 달아서 Answer 전송
+              await webrtcApi.sendAnswer(sessionId, {
+                connectionId: activeConnectionId,
+                sdp: answer.sdp,
+              });
 
+              // Answer 전송 후 유니티의 Candidate 정보 폴링 시작
               pollCandidate(0);
             }
             else {
+              // 배열이 비어있으면 1초 뒤 다시 시도
               offerTimer = setTimeout(pollOffer, 1000, currentTime);
             }
           }
@@ -93,16 +98,19 @@ export function useWebRTC(sessionId: string) {
           }
         };
 
+        // 유니티의 Candidate 가져오기
         const pollCandidate = async (lastTime: number) => {
-          if (isUnmounted)
+          if (isUnmounted || !activeConnectionId)
             return;
           try {
             const { candidates } = await webrtcApi.getCandidates(sessionId, lastTime);
             const currentTime = Date.now();
-            const myCandidatesData = candidates.find(c => c.connectionId === connectionId);
 
-            if (myCandidatesData && myCandidatesData.candidates) {
-              for (const cand of myCandidatesData.candidates) {
+            // 유니티의 커넥션 ID와 일치하는 데이터만 추출
+            const targetCandidatesData = candidates.find(c => c.connectionId === activeConnectionId);
+
+            if (targetCandidatesData && targetCandidatesData.candidates) {
+              for (const cand of targetCandidatesData.candidates) {
                 await pc.addIceCandidate(new RTCIceCandidate({
                   candidate: cand.candidate,
                   sdpMLineIndex: cand.sdpMLineIndex,
@@ -121,10 +129,13 @@ export function useWebRTC(sessionId: string) {
           }
         };
 
+        // 최초 실행: Offer 폴링 시작
         pollOffer(0);
       }
       catch {
-        setErrorMsg('WebRTC 초기화 중 오류가 발생했습니다.');
+        if (!errorMsg) {
+          setErrorMsg('WebRTC 초기화 중 오류가 발생했습니다.');
+        }
       }
     };
 
@@ -136,7 +147,7 @@ export function useWebRTC(sessionId: string) {
       clearTimeout(candidateTimer);
       pcRef.current?.close();
     };
-  }, [sessionId]);
+  }, [errorMsg, sessionId]);
 
   return { videoRef, isConnected, errorMsg };
 }

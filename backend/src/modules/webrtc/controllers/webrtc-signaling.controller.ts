@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { WebrtcSignalingService } from '../services/webrtc-signaling.service';
 
 @ApiTags('WebRTC Signaling')
-@Controller('signaling')
+@Controller('api/signaling')
 export class WebrtcSignalingController {
   constructor(private readonly signalingService: WebrtcSignalingService) {}
 

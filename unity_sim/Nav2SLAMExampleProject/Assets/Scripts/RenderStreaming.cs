@@ -59,6 +59,7 @@ namespace Unity.RenderStreaming
         private ISignaling m_signaling;
         private readonly Dictionary<string, RTCPeerConnection> m_mapConnectionIdAndPeer = new Dictionary<string, RTCPeerConnection>();
         private readonly Dictionary<RTCPeerConnection, DataChannelDictionary> m_mapPeerAndChannelDictionary = new Dictionary<RTCPeerConnection, DataChannelDictionary>();
+        private readonly Dictionary<RTCPeerConnection, HashSet<MediaStreamTrack>> m_mapPeerAndLocalTracks = new Dictionary<RTCPeerConnection, HashSet<MediaStreamTrack>>();
         private readonly Dictionary<RemoteInput, SimpleCameraController> m_remoteInputAndCameraController = new Dictionary<RemoteInput, SimpleCameraController>();
         private readonly Dictionary<RTCDataChannel, RemoteInput> m_mapChannelAndRemoteInput = new Dictionary<RTCDataChannel, RemoteInput>();
         private readonly List<SimpleCameraController> m_listController = new List<SimpleCameraController>();
@@ -86,6 +87,8 @@ namespace Unity.RenderStreaming
             m_defaultInput = new DefaultInput();
             EnhancedTouchSupport.Enable();
             m_mainThreadContext = SynchronizationContext.Current;
+            m_conf = default;
+            m_conf.iceServers = iceServers;
         }
 
         public void OnDestroy()
@@ -100,10 +103,13 @@ namespace Unity.RenderStreaming
 
         public void Start()
         {
-            m_audioStream = Unity.WebRTC.Audio.CaptureStream();
-            m_conf = default;
-            m_conf.iceServers = iceServers;
+            if (enableAudioStream)
+            {
+                m_audioStream = Unity.WebRTC.Audio.CaptureStream();
+            }
+
             StartCoroutine(WebRTC.WebRTC.Update());
+            TryAttachLocalTracksToOfferPeer();
         }
 
         void OnEnable()
@@ -139,12 +145,24 @@ namespace Unity.RenderStreaming
 
         public void AddVideoStreamTrack(VideoStreamTrack track)
         {
+            if (track == null || m_listVideoStreamTrack.Contains(track))
+            {
+                return;
+            }
+
             m_listVideoStreamTrack.Add(track);
+            TryAttachTrackToOfferPeer(track);
         }
 
         public void RemoveVideoStreamTrack(VideoStreamTrack track)
         {
+            if (track == null)
+            {
+                return;
+            }
+
             m_listVideoStreamTrack.Remove(track);
+            m_mapTrackAndSenderList.Remove(track);
         }
 
         public void AddVideoReceiveStream(MediaStream stream)
@@ -172,7 +190,12 @@ namespace Unity.RenderStreaming
 
         public void ChangeVideoParameters(VideoStreamTrack track, ulong? bitrate, uint? framerate)
         {
-            foreach (var sender in m_mapTrackAndSenderList[track])
+            if (!m_mapTrackAndSenderList.TryGetValue(track, out List<RTCRtpSender> senders))
+            {
+                return;
+            }
+
+            foreach (var sender in senders)
             {
                 RTCRtpSendParameters parameters = sender.GetParameters();
                 foreach (var encoding in parameters.Encodings)
@@ -182,6 +205,76 @@ namespace Unity.RenderStreaming
                 }
                 sender.SetParameters(parameters);
             }
+        }
+
+        private void TryAttachLocalTracksToOfferPeer()
+        {
+            if (TryGetOfferPeer(out var pc))
+            {
+                AddLocalTracksToPeer(pc);
+            }
+        }
+
+        private void TryAttachTrackToOfferPeer(MediaStreamTrack track)
+        {
+            if (TryGetOfferPeer(out var pc))
+            {
+                AddLocalTrackToPeer(pc, track);
+            }
+        }
+
+        private bool TryGetOfferPeer(out RTCPeerConnection pc)
+        {
+            pc = null;
+            return !string.IsNullOrEmpty(m_connectionId)
+                && m_mapConnectionIdAndPeer.TryGetValue(m_connectionId, out pc);
+        }
+
+        // Sender peer must own at least one local track for negotiationneeded to fire.
+        private void AddLocalTracksToPeer(RTCPeerConnection pc)
+        {
+            foreach (var track in m_listVideoStreamTrack)
+            {
+                AddLocalTrackToPeer(pc, track);
+            }
+
+            if (m_audioStream == null)
+            {
+                return;
+            }
+
+            foreach (var track in m_audioStream.GetTracks())
+            {
+                AddLocalTrackToPeer(pc, track);
+            }
+        }
+
+        private void AddLocalTrackToPeer(RTCPeerConnection pc, MediaStreamTrack track)
+        {
+            if (pc == null || track == null)
+            {
+                return;
+            }
+
+            if (!m_mapPeerAndLocalTracks.TryGetValue(pc, out HashSet<MediaStreamTrack> tracks))
+            {
+                tracks = new HashSet<MediaStreamTrack>();
+                m_mapPeerAndLocalTracks.Add(pc, tracks);
+            }
+
+            if (!tracks.Add(track))
+            {
+                return;
+            }
+
+            RTCRtpSender sender = pc.AddTrack(track);
+            if (!m_mapTrackAndSenderList.TryGetValue(track, out List<RTCRtpSender> senders))
+            {
+                senders = new List<RTCRtpSender>();
+                m_mapTrackAndSenderList.Add(track, senders);
+            }
+
+            senders.Add(sender);
         }
 
         void OnDisable()
@@ -237,27 +330,7 @@ namespace Unity.RenderStreaming
             //     list.Add(sender);
             // }
 
-            foreach (var track in m_listVideoStreamTrack)
-            {
-                RTCRtpSender sender = pc.AddTrack(track);
-                if (!m_mapTrackAndSenderList.TryGetValue(track, out List<RTCRtpSender> list))
-                {
-                    list = new List<RTCRtpSender>();
-                    m_mapTrackAndSenderList.Add(track, list);
-                }
-                list.Add(sender);
-            }
-
-            foreach (var track in m_audioStream.GetTracks())
-            {
-                RTCRtpSender sender = pc.AddTrack(track);
-                if (!m_mapTrackAndSenderList.TryGetValue(track, out List<RTCRtpSender> list))
-                {
-                    list = new List<RTCRtpSender>();
-                    m_mapTrackAndSenderList.Add(track, list);
-                }
-                list.Add(sender);
-            }
+            AddLocalTracksToPeer(pc);
 
             RTCAnswerOptions options = default;
             var op = pc.CreateAnswer(ref options);
@@ -287,6 +360,7 @@ namespace Unity.RenderStreaming
             if (m_mapConnectionIdAndPeer.TryGetValue(connectionId, out var peer))
             {
                 peer.Close();
+                m_mapPeerAndLocalTracks.Remove(peer);
             }
 
             var pc = new RTCPeerConnection();
@@ -303,6 +377,7 @@ namespace Unity.RenderStreaming
                 if (state == RTCIceConnectionState.Disconnected)
                 {
                     pc.Close();
+                    m_mapPeerAndLocalTracks.Remove(pc);
                     m_mapConnectionIdAndPeer.Remove(connectionId);
                 }
             });
@@ -316,6 +391,12 @@ namespace Unity.RenderStreaming
             };
 
             pc.OnNegotiationNeeded = () => StartCoroutine(OnNegotiationNeeded(signaling, connectionId, isOffer));
+
+            if (isOffer)
+            {
+                AddLocalTracksToPeer(pc);
+            }
+
             return pc;
         }
 
