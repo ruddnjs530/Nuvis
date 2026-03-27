@@ -18,6 +18,99 @@ services:
       timeout: 20s
       retries: 10
 
+  # ROS2 인터랙티브 개발 쉘 (bash 접속용)
+  ros2-dev:
+    build:
+      context: .
+      dockerfile: docker/ros2/Dockerfile
+    image: b110-ros2:humble
+    container_name: b110-ros2-dev-local
+    working_dir: /workspace/ros2_ws
+    stdin_open: true
+    tty: true
+    environment:
+      ROS_DOMAIN_ID: "42"
+      RMW_IMPLEMENTATION: "rmw_fastrtps_cpp"
+      PYTHONUNBUFFERED: "1"
+      ROS_TCP_ENDPOINT_PORT: "10000"
+    volumes:
+      - ./ros2_ws:/workspace/ros2_ws
+      - ./scripts:/workspace/scripts
+    command: bash
+
+  # ROS2 빌드 + 런치 (gRPC 50051, ROS TCP 10000 포트 오픈)
+  ros2-run:
+    build:
+      context: .
+      dockerfile: docker/ros2/Dockerfile
+    image: b110-ros2:humble
+    container_name: b110-ros2-run-local
+    working_dir: /workspace/ros2_ws
+    stdin_open: true
+    tty: true
+    environment:
+      ROS_DOMAIN_ID: "42"
+      RMW_IMPLEMENTATION: "rmw_fastrtps_cpp"
+      PYTHONUNBUFFERED: "1"
+      ROS_TCP_ENDPOINT_PORT: "10000"
+    ports:
+      - "50051:50051"
+      - "10000:10000"
+    volumes:
+      - ./ros2_ws:/workspace/ros2_ws
+      - ./scripts:/workspace/scripts
+    command: >
+      bash -lc "cd /workspace/ros2_ws &&
+       colcon build --symlink-install --packages-select ros_tcp_endpoint robot_msgs robot_core robot_nav robot_gateway &&
+       source install/setup.bash &&
+       ros2 launch robot_core robot_system.launch.py"
+
+  # ROS2 RViz2 시각화 (WSLg 환경 필요)
+  ros2-rviz:
+    build:
+      context: .
+      dockerfile: docker/ros2/Dockerfile
+    image: b110-ros2:humble
+    container_name: b110-ros2-rviz-local
+    working_dir: /workspace/ros2_ws
+    stdin_open: true
+    tty: true
+    depends_on:
+      - ros2-run
+    environment:
+      ROS_DOMAIN_ID: "42"
+      RMW_IMPLEMENTATION: "rmw_fastrtps_cpp"
+      DISPLAY: ${DISPLAY:-:0}
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY:-wayland-0}
+      XDG_RUNTIME_DIR: ${XDG_RUNTIME_DIR:-/mnt/wslg/runtime-dir}
+      PULSE_SERVER: ${PULSE_SERVER:-/mnt/wslg/PulseServer}
+      QT_QPA_PLATFORM: "xcb"
+      QT_X11_NO_MITSHM: "1"
+      XAUTHORITY: ${XAUTHORITY:-/mnt/wslg/.Xauthority}
+    volumes:
+      - ./ros2_ws:/workspace/ros2_ws
+      - ./scripts:/workspace/scripts
+      - /mnt/wslg/.X11-unix:/tmp/.X11-unix
+      - /mnt/wslg:/mnt/wslg
+    command: >
+      bash -lc "cd /workspace/ros2_ws &&
+       export DISPLAY=${DISPLAY:-:0} &&
+       export WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-wayland-0} &&
+       export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/mnt/wslg/runtime-dir} &&
+       if [ ! -S /tmp/.X11-unix/X0 ]; then
+         echo '[ros2-rviz] ERROR: X11 socket /tmp/.X11-unix/X0 not found.';
+         echo '[ros2-rviz] Run docker compose from a WSL shell with WSLg enabled.';
+         exit 1;
+       fi &&
+       for i in {1..600}; do
+         [ -f install/setup.bash ] && break;
+         echo '[ros2-rviz] waiting for install/setup.bash...';
+         sleep 1;
+       done &&
+       [ -f install/setup.bash ] &&
+       source install/setup.bash &&
+       rviz2 -d /workspace/ros2_ws/src/robot_nav/config/nav_debug.rviz"
+
   backend:
     image: node:22-alpine
     container_name: smarthome_backend_local
@@ -30,6 +123,8 @@ services:
     environment:
       # Override the local DATABASE_URL so it can talk to the db container
       - DATABASE_URL=mysql://user:password@db:3306/smarthome
+      # ROS2 gRPC 연결 주소
+      - ROBOT_GRPC_URL=ros2-run:50051
       # EC2 Jupyter AI 서버 주소 (.env.local에서 주입)
       - AI_RECOMMENDATION_BASE_URL=${AI_RECOMMENDATION_BASE_URL}
     # Install dependencies, generate Prisma client, push schema to DB, seed, then start dev server
@@ -59,3 +154,4 @@ volumes:
   db_data_local:
   backend_node_modules:
   frontend_node_modules:
+
