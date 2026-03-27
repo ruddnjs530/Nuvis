@@ -376,7 +376,7 @@ async def get_event_suggestions(request: AnalysisRequest):
             )
 
         # 수신된 Pydantic 모델 객체들을 분석 편의성이 100배 좋은 통계 전용 Pandas DataFrame 2차원 표로 변환
-        df = pd.DataFrame([record.dict() for record in clipped_data])
+        df = pd.DataFrame([record.model_dump() for record in clipped_data])
         suggestions = {}
 
         # 모든 등록된 기기(공청기, 가습기, 제습기 등) 리스트를 순회하며 분석 시행
@@ -449,7 +449,7 @@ async def get_schedule_suggestions(request: AnalysisRequest):
                 f"최신 {MAX_RECORDS}건만 분석에 사용합니다."
             )
 
-        df = pd.DataFrame([record.dict() for record in clipped_data])
+        df = pd.DataFrame([record.model_dump() for record in clipped_data])
         suggestions = {}
 
         for device_type, config in DEVICE_CONFIG.items():
