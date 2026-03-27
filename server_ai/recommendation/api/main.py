@@ -344,6 +344,17 @@ def analyze_environmental_anomalies(df: pd.DataFrame) -> dict:
         return {"status": "error", "message": "위기 감지 분석 중 오류가 발생했습니다."}
 
 
+@app.get("/health")
+@app.get("/api/recommendation/health")
+async def health_check():
+    """서버가 정상적으로 구동 중인지 확인하는 헬스체크 엔드포인트"""
+    return {
+        "status": "ok",
+        "service": "recommendation-ai",
+        "timestamp": time.time(),
+        "allowed_ips_configured": list(SecurityMiddleware(app).get_allowed_ips())
+    }
+
 # ─────────────────────────────────────────
 # FastAPI 라우터 엔드포인트 세팅부
 # 클라이언트(메인서버)가 호출할 웹 주소(URL Path)와 처리 메서드를 연결합니다.
