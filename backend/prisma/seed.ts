@@ -22,12 +22,17 @@ async function main() {
 
   console.log(`User created: ${user.email} (ID: ${user.userId})`);
 
-  // 2. Create targetZone mapping according to ROS2 waypoints.yaml
+  // 2. Create targetZone mapping according to ROS2 rooms.yaml AND AI STT hardcoded map
   const roomsData = [
-    { name: '스테이션 (HQ)', targetZone: 'hq' },
-    { name: '거실', targetZone: 'living_room' },
-    { name: '침실', targetZone: 'bedroom' },
-    { name: '주방', targetZone: 'kitchen' },
+    { name: '스테이션 (HQ)', targetZone: 'hq' },                   // ID 1
+    { name: '거실', targetZone: 'tv' },                            // ID 2
+    { name: '침실1 (좌측 상단)', targetZone: 'left_up_room' },       // ID 3 (STT: 침실)
+    { name: '주방', targetZone: 'kitchen' },                       // ID 4
+    { name: '침실2 (좌측 하단)', targetZone: 'left_down_room' },     // ID 5
+    { name: 'PC방', targetZone: 'pc' },                            // ID 6
+    { name: '현관', targetZone: 'entrance' },                      // ID 7
+    { name: '현관 옆방', targetZone: 'entrance_next_room' },          // ID 8
+    { name: '화장실 옆방', targetZone: 'toilet_next_room' },          // ID 9
   ];
 
   for (const { name, targetZone } of roomsData) {
@@ -82,7 +87,7 @@ async function main() {
 
     // mock_payload room_id(2) → seed에서 생성된 거실의 실제 roomId를 조회
     const livingRoom = await prisma.room.findFirst({
-      where: { userId: user.userId, targetZone: 'living_room' },
+      where: { userId: user.userId, targetZone: 'tv' },
     });
 
     if (!livingRoom) {

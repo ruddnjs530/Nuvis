@@ -22,6 +22,7 @@ export class RoomRepository {
       select: {
         roomId: true,
         name: true,
+        targetZone: true,
         mapData: true,
       },
       orderBy: { roomId: 'asc' },
