@@ -71,22 +71,38 @@ export class RoomService {
   async getRoomMaps(userId: number): Promise<RoomMapListResponseDto> {
     const rooms = await this.roomRepository.findAllMaps(userId);
 
+    // ROS2 waypoints.yaml 기반 실제 좌표 (map frame 기준)
+    // 지도 범위: x(-8.767 ~ 8.513), y(-5.532 ~ 21.121)
+    const WAYPOINT_MAP: Record<string, { x: number; y: number; yaw: number }> = {
+      hq:                   { x:  1.0, y: -4.5, yaw: 0.0 },
+      tv:                   { x: -3.1, y: -1.8, yaw: 0.0 },   // 거실
+      kitchen:              { x:  5.5, y: -0.6, yaw: 0.0 },   // 주방
+      entrance:             { x: -6.0, y: 10.0, yaw: 0.0 },   // 현관
+      entrance_next_room:   { x: -3.8, y:  3.6, yaw: 0.0 },   // 현관 옆방
+      pc:                   { x: -6.3, y: -1.3, yaw: 0.0 },   // PC방
+      toilet_next_room:     { x:  6.0, y:  9.1, yaw: 0.0 },   // 화장실 옆방
+      left_up_room:         { x:  5.2, y: 15.6, yaw: 0.0 },   // 침실1
+      left_down_room:       { x: -4.8, y: 17.8, yaw: 0.0 },   // 침실2
+    };
+
     const data = rooms.map((room) => {
-      // DB에 mapData가 없으면 Unity 연동 데모를 위해 기본(MOCK) 맵 데이터 제공
+      // DB에 mapData가 없으면 실제 waypoints.yaml 좌표 기반 Mock 데이터 제공
       let mapData = room.mapData;
       if (!mapData) {
+        const wp = WAYPOINT_MAP[(room as any).targetZone] ?? { x: 0.0, y: 0.0, yaw: 0.0 };
+        const halfW = 1.5; // 방 경계 박스 반너비 (미터)
+        const halfH = 1.5; // 방 경계 박스 반높이 (미터)
         mapData = {
           resolution: 0.05,
-          origin: { x: -10.0, y: -10.0, theta: 0.0 },
+          origin: { x: -8.767, y: -5.532, theta: 0.0 },
           mapImageUrl: `https://dummyimage.com/4000x4000/cccccc/000000&text=${encodeURIComponent(room.name + ' Map')}`,
-          // MOCK: Generate some arbitrary box coordinates based on roomId
           boundaries: [
-            { x: room.roomId * 2.0, y: 1.0 },
-            { x: room.roomId * 2.0 + 2.0, y: 1.0 },
-            { x: room.roomId * 2.0 + 2.0, y: -1.0 },
-            { x: room.roomId * 2.0, y: -1.0 }
+            { x: wp.x - halfW, y: wp.y + halfH },
+            { x: wp.x + halfW, y: wp.y + halfH },
+            { x: wp.x + halfW, y: wp.y - halfH },
+            { x: wp.x - halfW, y: wp.y - halfH },
           ],
-          centerPoint: { x: room.roomId * 2.0 + 1.0, y: 0.0, theta: 0.0 }
+          centerPoint: { x: wp.x, y: wp.y, theta: wp.yaw },
         };
       }
 
