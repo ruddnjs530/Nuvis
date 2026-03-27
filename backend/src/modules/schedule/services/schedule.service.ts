@@ -136,6 +136,8 @@ export class ScheduleService implements OnApplicationBootstrap {
       });
 
       if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`[AI Request Failed] Status: ${response.status}, Body:`, errorBody);
         throw new Error(`AI Server error status: ${response.status}`);
       }
 

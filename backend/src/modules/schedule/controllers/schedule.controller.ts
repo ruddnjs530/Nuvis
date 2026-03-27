@@ -33,7 +33,6 @@ export class ScheduleController {
   }
 
   @Get('ai-suggestions')
-  @UseGuards(RankGuard)
   @ApiOperation({ summary: 'AI 스케줄 추천', description: '14일치 센서 이력을 기반으로 AI 서버에서 자동화 스케줄을 추천받습니다.' })
   @ApiResponse({ status: 200, description: 'AI 추천 결과 반환' })
   async getAiSuggestions(@GetUser() user: User) {

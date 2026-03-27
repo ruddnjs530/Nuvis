@@ -125,8 +125,8 @@ services:
       - DATABASE_URL=mysql://user:password@db:3306/smarthome
       # ROS2 gRPC 연결 주소
       - ROBOT_GRPC_URL=ros2-run:50051
-      # EC2 Jupyter AI 서버 주소 (.env.local에서 주입)
-      - AI_RECOMMENDATION_BASE_URL=${AI_RECOMMENDATION_BASE_URL}
+      # Windows/WSL 환경에서 파일 변경 감지를 위한 설정
+      - CHOKIDAR_USEPOLLING=true
     # Install dependencies, generate Prisma client, push schema to DB, seed, then start dev server
     command: sh -c "npm install && npx prisma generate && npx prisma db push --accept-data-loss && npx prisma db seed && npm run start:dev"
     depends_on:
