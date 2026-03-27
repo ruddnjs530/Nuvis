@@ -664,3 +664,64 @@
   - 로그에서 보인 `수신 673건 -> 최신 500건만 분석` 경고는 payload 상한선 보호 로직이 정상 동작한 결과이며, 이번 수정 대상은 해당 경고가 아니라 Pydantic deprecation warning이었습니다.
 - 다음 작업
   - GPU 서버 재기동 후 `/api/schedule/ai-suggestions` 재호출 시 deprecation warning 미출력 여부 확인
+
+---
+
+### 2026-03-27 - [feat][recommendation] 다중 방(room_id) 추천 응답 구조 및 목 데이터 생성기 확장
+- 브랜치
+  - 작업 브랜치: `fix/ai/room-id`
+  - 대상 브랜치: `master`
+- 작업 배경
+  - 추천 서버가 `room_id` 필드를 입력으로는 받고 있었지만, 실제 분석은 전체 데이터를 하나의 생활 패턴으로 합쳐 처리하고 있었습니다.
+  - 그 결과 여러 방 데이터가 함께 들어오면 방별 추천이 아니라 섞인 추천이 반환되는 구조였고, 기존 `mock_payload.json`도 거실 `room_id=2` 단일 방 데이터에 고정되어 있었습니다.
+- 목표(DoD)
+  - 기존 요청 형식은 유지한 채, 추천 서버가 `room_id`별로 방 데이터를 분리하여 이벤트/스케줄 추천을 계산할 것
+  - 다중 방 추천 테스트가 가능하도록 `mock_payload.json` 생성기를 9개 방 기준 멀티룸 데이터 생성 구조로 확장할 것
+  - 목 데이터 생성 결과는 AI 서버 기준 경로(`server_ai/recommendation/data/mock_payload.json`)에만 반영할 것
+- 결정 사항
+  - 요청 스키마(`user_id`, `sensor_data[]`, `room_id`)는 유지하고, 응답만 `room_id`별 결과 맵으로 확장
+  - 추천 분석은 전체 `DataFrame` 1개가 아니라 `room_id`별 `DataFrame` 묶음 기준으로 수행
+  - 다중 방 payload는 최근 500건 제한 구간에서도 방별 데이터가 함께 남도록 2시간 간격(`120min`) 기준으로 생성
+- 선택 근거
+  - 백엔드와의 요청 계약을 바꾸지 않으면 AI 서버만 선행 고도화해도 연동 리스크를 최소화할 수 있습니다.
+  - 응답만 확장하면 이후 백엔드가 방별 추천 UI를 붙일 때도 `room_id` 기준으로 점진 전환이 가능합니다.
+  - 기존 목 데이터처럼 단일 거실 패턴만 유지하면 다중 방 추천 구조 검증이 불가능하므로, 방별 생활 패턴이 분리된 mock 시계열이 필요했습니다.
+- 구현 상세
+  - `recommendation/api/main.py`
+    - `build_room_dataframes()` 추가: 요청 본문의 센서 이력을 `room_id`별 `DataFrame`으로 분리
+    - `analyze_event_for_room()` 추가: 단일 방 기준 이벤트 추천 + 이상 탐지 수행
+    - `analyze_schedule_for_room()` 추가: 단일 방 기준 스케줄 추천 수행
+    - `/api/event/ai-suggestions`: 기존 단일 `data` 대신 `room_id`별 결과 맵 반환
+    - `/api/schedule/ai-suggestions`: 기존 단일 `data` 대신 `room_id`별 결과 맵 반환
+  - `recommendation/scripts/generate_mock_data.py`
+    - 표준 라이브러리 기반 다중 방 mock 생성기로 재작성
+    - 9개 방(`room_id=1..9`)별 환경 편향과 기기 사용 패턴을 분리 정의
+    - 기본 출력 경로를 `server_ai/recommendation/data/mock_payload.json` 단일 파일로 정리
+    - `--days`, `--interval-minutes`, `--seed` CLI 옵션 지원
+- 변경 파일
+  - `server_ai/recommendation/api/main.py`
+  - `server_ai/recommendation/scripts/generate_mock_data.py`
+  - `server_ai/recommendation/data/mock_payload.json`
+  - `server_ai/docs/personal/dev_log.md`
+  - `server_ai/docs/personal/daily_todo.md`
+  - `server_ai/docs/personal/ai_roadmap.md`
+  - `server_ai/docs/personal/portfolio.md`
+- 테스트 및 검증
+  - 명령
+    - `python3 -m py_compile server_ai/recommendation/api/main.py`
+    - `python3 -m py_compile server_ai/recommendation/scripts/generate_mock_data.py`
+    - `python3 server_ai/recommendation/scripts/generate_mock_data.py --days 14 --interval-minutes 120 --seed 42`
+    - `python3 - <<'PY' ... payload의 room_id 분포 확인 ... PY`
+  - 결과
+    - 추천 서버 메인 파일 문법 검사 통과
+    - 다중 방 mock 생성기 문법 검사 통과
+    - `mock_payload.json` 총 `1521`건 생성 완료
+    - `room_id=1..9`가 모두 포함되고, 방별 `169`건씩 균등 분포 확인
+  - 제약
+    - 현재 로컬 실행 환경에는 `fastapi` 패키지가 없어 실제 추천 엔드포인트 스모크 테스트는 수행하지 못했습니다.
+- 이슈/메모
+  - backend 쪽 `mock_payload.json`은 자동 동기화하지 않고, AI 서버 쪽 생성 파일만 갱신했습니다.
+  - 다중 방 응답 구조는 AI 서버 기준으로 준비되었으므로, 이를 소비하는 쪽은 `data[roomId]` 형태를 전제로 읽어야 합니다.
+- 다음 작업
+  - GPU 서버 가상환경 기준으로 `/api/event/ai-suggestions`, `/api/schedule/ai-suggestions` 실호출 스모크 테스트 수행
+  - 백엔드/프론트가 방별 추천 응답 구조를 어떻게 소비할지 최종 계약 정리

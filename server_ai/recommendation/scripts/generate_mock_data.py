@@ -1,107 +1,289 @@
-import pandas as pd
-import numpy as np
+import argparse
+import json
+import math
+import random
 from datetime import datetime, timedelta
 from pathlib import Path
-import os
 
 # ==============================================================================
-# [교육용 주석] 가짜(Mock) 센서 데이터 생성기
+# [교육용 주석] 다중 방(Mock) 센서 데이터 생성기
 # ==============================================================================
-# 목적: 실제 집의 사물인터넷(IoT) 센서 데이터가 클라우드로 수집되기 전 단계에서,
-#       백엔드 시스템 또는 인공지능 모델(LSTM)을 미리 학습하고 테스트해볼 수 있도록
-#       현실과 매우 유사한 패턴을 띄는(규칙적인) 가상 데이터를 대량으로 생성하는 스크립트입니다.
+# 목적:
+#   실제 IoT 수집 전 단계에서 AI 추천 서버가 여러 room_id를 동시에 받아도
+#   방별 생활 패턴을 학습/테스트할 수 있도록 가짜 시계열 데이터를 생성합니다.
 # ==============================================================================
 
-def generate_mock_json_payload(filename=None, days=14, room_id=2):
-    if filename is None:
-        # test_client.py가 실제로 읽는 recommendation/data/mock_payload.json 경로를 기본값으로 맞춥니다.
-        filename = Path(__file__).resolve().parent.parent / "data" / "mock_payload.json"
-    else:
-        filename = Path(filename)
-    
-    print(f"Generating {days} days of mock sensor payload to {filename}...")
-    
-    # 현재 시간 기준으로 days 일(예: 14일) 전부터 시작해서 지금(end_time)까지의 시간 범위를 만듭니다.
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "server_ai" / "recommendation" / "data" / "mock_payload.json"
+
+ROOM_PROFILES = [
+    {
+        "room_id": 1,
+        "name": "스테이션 (HQ)",
+        "temp_bias": -0.5,
+        "hum_bias": -4.0,
+        "dust_bias": 4.0,
+        "pattern": "hq_air",
+    },
+    {
+        "room_id": 2,
+        "name": "거실",
+        "temp_bias": 0.2,
+        "hum_bias": -1.5,
+        "dust_bias": 6.0,
+        "pattern": "living_air",
+    },
+    {
+        "room_id": 3,
+        "name": "주방",
+        "temp_bias": 1.2,
+        "hum_bias": 5.5,
+        "dust_bias": 18.0,
+        "pattern": "kitchen_air",
+    },
+    {
+        "room_id": 4,
+        "name": "현관",
+        "temp_bias": -1.0,
+        "hum_bias": 3.0,
+        "dust_bias": 16.0,
+        "pattern": "entrance_air",
+    },
+    {
+        "room_id": 5,
+        "name": "현관 옆방",
+        "temp_bias": 0.3,
+        "hum_bias": 8.0,
+        "dust_bias": 3.0,
+        "pattern": "humid_dehum_room",
+    },
+    {
+        "room_id": 6,
+        "name": "PC방",
+        "temp_bias": 1.6,
+        "hum_bias": -3.0,
+        "dust_bias": 9.0,
+        "pattern": "pc_air",
+    },
+    {
+        "room_id": 7,
+        "name": "화장실 옆방",
+        "temp_bias": 0.8,
+        "hum_bias": 13.0,
+        "dust_bias": 2.0,
+        "pattern": "toilet_dehum",
+    },
+    {
+        "room_id": 8,
+        "name": "침실1 (좌측 상단)",
+        "temp_bias": -0.4,
+        "hum_bias": -11.0,
+        "dust_bias": 1.0,
+        "pattern": "bedroom_humidifier_a",
+    },
+    {
+        "room_id": 9,
+        "name": "침실2 (좌측 하단)",
+        "temp_bias": -0.2,
+        "hum_bias": -9.5,
+        "dust_bias": 2.5,
+        "pattern": "bedroom_humidifier_b",
+    },
+]
+
+
+def resolve_output_paths(filename: str | None = None) -> list[Path]:
+    if filename:
+        return [Path(filename)]
+    return [DEFAULT_OUTPUT_PATH]
+
+
+def simulate_environment(ts: datetime, profile: dict, rng: random.Random) -> tuple[float, float, float]:
+    hour = ts.hour
+    day_angle = hour / 24.0 * 2 * math.pi
+
+    temp = (
+        22.0
+        + profile["temp_bias"]
+        + math.sin(day_angle - math.pi / 2) * 4.2
+        + rng.gauss(0, 0.45)
+    )
+    hum = (
+        48.0
+        + profile["hum_bias"]
+        + math.cos(day_angle) * 8.0
+        + rng.gauss(0, 1.8)
+    )
+    fine_dust = max(0.0, rng.gauss(22.0 + profile["dust_bias"], 7.0))
+
+    # 공간 특성에 따라 센서값을 조금 더 극적으로 만들어 방별 패턴을 분리합니다.
+    if profile["pattern"] == "kitchen_air" and hour in {8, 10, 18, 20}:
+        fine_dust += rng.uniform(18, 42)
+        hum += rng.uniform(2, 5)
+    elif profile["pattern"] == "entrance_air" and hour in {6, 8, 18, 20, 22}:
+        fine_dust += rng.uniform(14, 36)
+    elif profile["pattern"] == "toilet_dehum" and hour in {6, 8, 22}:
+        hum += rng.uniform(8, 15)
+    elif profile["pattern"] in {"bedroom_humidifier_a", "bedroom_humidifier_b"} and hour in {0, 2, 4, 6}:
+        hum -= rng.uniform(5, 9)
+    elif profile["pattern"] == "pc_air" and hour in {20, 22, 0}:
+        temp += rng.uniform(0.8, 1.6)
+        fine_dust += rng.uniform(6, 14)
+
+    if rng.random() < 0.03:
+        fine_dust += rng.uniform(35, 70)
+
+    return round(temp, 1), round(hum, 1), round(fine_dust, 1)
+
+
+def simulate_device_usage(
+    ts: datetime,
+    profile: dict,
+    temperature: float,
+    humidity: float,
+    fine_dust: float,
+    rng: random.Random,
+) -> tuple[int, int, int]:
+    hour = ts.hour
+    is_weekend = ts.weekday() >= 5
+    pattern = profile["pattern"]
+
+    air_on = 0
+    hum_on = 0
+    dehum_on = 0
+
+    if pattern == "hq_air":
+        if not is_weekend and hour in {8, 10, 12} and rng.random() < 0.72:
+            air_on = 1
+    elif pattern == "living_air":
+        if not is_weekend and hour in {18, 20, 22} and rng.random() < 0.85:
+            air_on = 1
+        if is_weekend and hour in {14, 16, 20} and rng.random() < 0.55:
+            air_on = 1
+    elif pattern == "kitchen_air":
+        if hour in {8, 10, 18, 20} and rng.random() < 0.88:
+            air_on = 1
+    elif pattern == "entrance_air":
+        if hour in {6, 8, 18, 20, 22} and rng.random() < 0.78:
+            air_on = 1
+    elif pattern == "humid_dehum_room":
+        if hour in {12, 14, 16} and humidity > 54 and rng.random() < 0.82:
+            dehum_on = 1
+    elif pattern == "pc_air":
+        if hour in {20, 22, 0} and rng.random() < 0.84:
+            air_on = 1
+    elif pattern == "toilet_dehum":
+        if hour in {6, 8, 22} and rng.random() < 0.9:
+            dehum_on = 1
+    elif pattern == "bedroom_humidifier_a":
+        if hour in {0, 2, 4, 6} and humidity < 46 and rng.random() < 0.92:
+            hum_on = 1
+    elif pattern == "bedroom_humidifier_b":
+        if hour in {22, 0, 2, 4, 6} and humidity < 48 and rng.random() < 0.88:
+            hum_on = 1
+
+    # 센서 급변에 따른 긴급 반응 규칙
+    if fine_dust > 68:
+        air_on = 1
+    if humidity < 33 and pattern in {"living_air", "bedroom_humidifier_a", "bedroom_humidifier_b"}:
+        hum_on = 1
+    if humidity > 67 and pattern in {"kitchen_air", "humid_dehum_room", "toilet_dehum"}:
+        dehum_on = 1
+    if temperature > 28 and pattern == "pc_air":
+        air_on = 1
+
+    return air_on, hum_on, dehum_on
+
+
+def generate_mock_json_payload(
+    filename: str | None = None,
+    days: int = 14,
+    interval_minutes: int = 120,
+    user_id: int = 1,
+    seed: int = 42,
+    room_profiles: list[dict] | None = None,
+) -> dict:
+    output_paths = resolve_output_paths(filename)
+    profiles = room_profiles or ROOM_PROFILES
+
+    print(
+        f"Generating {days} days of multi-room mock sensor payload "
+        f"({len(profiles)} rooms, {interval_minutes}min interval)..."
+    )
+
+    rng = random.Random(seed)
+
     start_time = datetime.now() - timedelta(days=days)
     end_time = datetime.now()
-    
-    # Pandas의 date_range를 활용, freq='30min'를 통해 30분 단위 간격으로 타임라인 배열을 촘촘하게 찍습니다.
-    timestamps = pd.date_range(start=start_time, end=end_time, freq='30min')
-    num_records = len(timestamps)
-    
+
     records = []
-    
-    # 각 시점(ts) 마다 환경 요소(온도/습도 등)와 기기 작동 여부를 조건문으로 시뮬레이션 합니다.
-    for ts in timestamps:
-        hour = ts.hour # 현재 시점의 '시간'
-        is_weekend = ts.weekday() >= 5 # 요일 인덱스가 5,6 이면 주말 (0: 월요일, 6: 일요일)
-        
-        # ─────────────────────────────────────────
-        # 1. 기본 환경 데이터 시뮬레이션 (삼각함수로 곡선 유도)
-        # ─────────────────────────────────────────
-        # 온도(Temperature): 하루 중 시간에 따라 사인 곡선(np.sin)을 그리며 오르내리게 만듭니다. + np.random.normal(정규분포)로 미세한 노이즈를 더해 현실감을 부여합니다.
-        temp = 22.0 + np.sin(hour / 24.0 * 2 * np.pi - np.pi/2) * 5 + np.random.normal(0, 0.5)
-        # 습도(Humidity): 코사인 곡선을 그리며 밤낮으로 변동되는 계절성/주기성을 모방합니다.
-        hum = 45.0 + np.cos(hour / 24.0 * 2 * np.pi) * 10 + np.random.normal(0, 2)
-        
-        # 미세먼지(fine_dust): np.clip을 통해 0 미만(마이너스)이 되는 현상을 방지하면서 정규분포에 기반해 랜덤으로 뿌려줍니다.
-        fine_dust = np.clip(np.random.normal(25, 10), 0, None) 
-        
-        # 간헐적 미세먼지 스파이크: 5% 확률(np.random.random() < 0.05)로 뜬금없이 미세먼지 수치가 급증
-        # (이는 창문 열어둠, 요리 같은 일상적인 돌발 상황을 AI 모델에게 학습시키기 위한 인과적인 장치입니다.)
-        if np.random.random() < 0.05:
-            fine_dust += np.random.uniform(50, 100)
-            
-        # ─────────────────────────────────────────
-        # 2. 기기 작동 로직 (생활 패턴 반영 -> 즉, 인공지능이 맞춰야 할 정답(Label) 생성)
-        # ─────────────────────────────────────────
-        # 처음에는 아무 제어가 없도록 모든 기기의 작동상태를 꺼짐(0)으로 셋팅합니다.
-        air_on = 0
-        hum_on = 0
-        dehum_on = 0
-        
-        # [패턴 A: 퇴근 후 공기청정기] 평일(not 주말) 18시~20시 사이에 80% 확률로 켠다는 유저 페르소나
-        if not is_weekend and 18 <= hour <= 20 and np.random.random() < 0.8:
-            air_on = 1
-            
-        # [패턴 B: 수면 중 가습기] 매일 밤 23시~새벽 6시에 공기가 건조(습도 < 50)하면 90% 확률로 켠다는 방어적 루틴
-        if (hour >= 23 or hour <= 6) and hum < 50.0 and np.random.random() < 0.9:
-            hum_on = 1
-            
-        # [패턴 C: 주말 낮 제습기] 주말 오후 13시~15시, 공기가 무겁고 습하면(습도 > 50) 제습기를 높은 확률로 켠다는 패턴
-        if is_weekend and 13 <= hour <= 15 and hum > 50.0 and np.random.random() < 0.85:
-            dehum_on = 1
-            
-        # [환경적 의존성 긴급 룰] 단순히 시간에만 의존하지 않고, 수치가 너무 극단적으로 나쁘면 사용자가 즉각 반응(스위치 ON)하는 룰을 삽입합니다.
-        if fine_dust > 80: air_on = 1
-        if hum < 30: hum_on = 1
-        if hum > 70: dehum_on = 1
-            
-        # 완성된 타임라인 한 줄(row)을 딕셔너리로 만들어 배열(records)에 넣습니다.
-        records.append({
-            "timestamp": ts.isoformat(),       # ISO 표준 문자열 ("2026-03-25T08:30:00") 포맷
-            "room_id": room_id,                # 기본값은 backend seed 기준 거실(roomId=2)로 고정
-            "temperature": round(temp, 1),     # 소수점 1자리까지 모형화 후 절삭
-            "humidity": round(hum, 1),
-            "fine_dust": round(fine_dust, 1),  
-            "air_purifier_on": air_on,         # 0 또는 1이 들어감 (이 값들이 바로 AI에게 지도학습 시킬 정답 변수 Y 3종입니다)
-            "humidifier_on": hum_on,
-            "dehumidifier_on": dehum_on
-        })
-        
-    # 마지막 JSON 통 포맷 구성 (Spring/Node 등 백엔드 API와 통신할 때 협의된 데이터 구조 시뮬레이션 형식)
+
+    ts = start_time
+    while ts <= end_time:
+        for profile in profiles:
+            temperature, humidity, fine_dust = simulate_environment(ts, profile, rng)
+            air_on, hum_on, dehum_on = simulate_device_usage(
+                ts,
+                profile,
+                temperature,
+                humidity,
+                fine_dust,
+                rng,
+            )
+
+            records.append(
+                {
+                    "timestamp": ts.isoformat(),
+                    "room_id": profile["room_id"],
+                    "temperature": temperature,
+                    "humidity": humidity,
+                    "fine_dust": fine_dust,
+                    "air_purifier_on": air_on,
+                    "humidifier_on": hum_on,
+                    "dehumidifier_on": dehum_on,
+                }
+            )
+        ts += timedelta(minutes=interval_minutes)
+
+    records.sort(key=lambda row: (row["timestamp"], row["room_id"]))
+
     payload = {
-        "user_id": 1,          # backend seed 기준 기본 사용자 예시
-        "sensor_data": records # 위에서 만들어둔 거대한 시계열 객체 리스트 전부가 이 value 영역에 들어가게 됨
+        "user_id": user_id,
+        "sensor_data": records,
     }
-    
-    import json
-    # ensure_ascii=False 파라미터를 통해 나중에 혹시 모를 한글/유니코드 데이터가 깨지지 않고 저장되도록 합니다.
-    filename.parent.mkdir(parents=True, exist_ok=True)
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(payload, f, ensure_ascii=False, indent=2) # indent=2 옵션으로 JSON을 보기 좋게 들여쓰기해서 파일에 씁니다.
-        
-    print(f"✅ Generated {num_records} records to '{filename}'.")
+
+    for path in output_paths:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as file:
+            json.dump(payload, file, ensure_ascii=False, indent=2)
+        print(f"  - wrote {len(records)} records to {path}")
+
+    print(f"✅ Generated total {len(records)} records across {len(profiles)} rooms.")
+    return payload
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate multi-room mock recommendation payload.")
+    parser.add_argument("--filename", type=str, default=None, help="Optional output filename override.")
+    parser.add_argument("--days", type=int, default=14, help="How many days of history to generate.")
+    parser.add_argument(
+        "--interval-minutes",
+        type=int,
+        default=120,
+        help="Sampling interval in minutes. Default keeps multi-room payload compact enough for AI tests.",
+    )
+    parser.add_argument("--user-id", type=int, default=1, help="User ID to embed in the payload.")
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducible mock data.")
+    return parser.parse_args()
+
 
 if __name__ == "__main__":
-    generate_mock_json_payload()
+    args = parse_args()
+    generate_mock_json_payload(
+        filename=args.filename,
+        days=args.days,
+        interval_minutes=args.interval_minutes,
+        user_id=args.user_id,
+        seed=args.seed,
+    )
