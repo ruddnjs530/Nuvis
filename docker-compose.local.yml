@@ -65,7 +65,7 @@ services:
        source install/setup.bash &&
        ros2 launch robot_core robot_system.launch.py"
 
-  # ROS2 RViz2 시각화 (WSLg 환경 필요)
+  # ROS2 RViz2 시각화 (WSLg 환경 필요 — Windows에서는 자동 종료됨)
   ros2-rviz:
     build:
       context: .

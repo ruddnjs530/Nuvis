@@ -35,10 +35,10 @@ export class RobotService implements OnModuleInit {
     const raw = fs.readFileSync(filePath, 'utf-8');
     const mock = JSON.parse(raw);
 
-    // AI 서버 AnalysisRequest 규격: { user_id: int, sensor_data: [...] }
+    // AI 서버 AnalysisRequest 규격: { userId: int, data: [...] }
     return {
-      user_id: userId,
-      sensor_data: mock.sensor_data,
+      userId: userId,
+      data: mock.sensor_data,
     };
   }
 

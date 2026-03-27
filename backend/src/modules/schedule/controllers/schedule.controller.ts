@@ -32,6 +32,14 @@ export class ScheduleController {
     return { data };
   }
 
+  @Get('ai-suggestions')
+  @UseGuards(RankGuard)
+  @ApiOperation({ summary: 'AI 스케줄 추천', description: '14일치 센서 이력을 기반으로 AI 서버에서 자동화 스케줄을 추천받습니다.' })
+  @ApiResponse({ status: 200, description: 'AI 추천 결과 반환' })
+  async getAiSuggestions(@GetUser() user: User) {
+    return this.scheduleService.getScheduleSuggestions(user.userId);
+  }
+
   @Put(':scheduleId')
   @UseGuards(RankGuard)
   @ApiOperation({ summary: '기존 스케줄 수정', description: '기존에 등록된 스케줄을 수정합니다.' })
@@ -48,14 +56,6 @@ export class ScheduleController {
   async deleteSchedule(@Param('scheduleId') scheduleId: string) {
     await this.scheduleService.delete(Number(scheduleId));
     return { message: 'Schedule deleted successfully' };
-  }
-
-  @Get('ai-suggestions')
-  @UseGuards(RankGuard)
-  @ApiOperation({ summary: 'AI 스케줄 추천', description: '14일치 센서 이력을 기반으로 AI 서버에서 자동화 스케줄을 추천받습니다.' })
-  @ApiResponse({ status: 200, description: 'AI 추천 결과 반환' })
-  async getAiSuggestions(@GetUser() user: User) {
-    return this.scheduleService.getScheduleSuggestions(user.userId);
   }
 }
 
