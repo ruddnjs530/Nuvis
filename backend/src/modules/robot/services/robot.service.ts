@@ -132,22 +132,35 @@ export class RobotService implements OnModuleInit {
   }
 
   private formatStatus(status: any) {
-    const batteryPct = status.batteryPct != null ? Number(status.batteryPct.toFixed(1)) : 0;
-    const poseX = status.poseX != null ? Number(status.poseX.toFixed(3)) : 0;
-    const poseY = status.poseY != null ? Number(status.poseY.toFixed(3)) : 0;
-    const poseYaw = status.poseYaw != null ? Number((status.poseYaw * (180 / Math.PI)).toFixed(1)) : 0;
+    // gRPC 응답은 camelCase (poseX, batteryPct), mock은 snake_case (pose_x, battery_pct)
+    // 둘 다 처리하여 응답을 camelCase로 통일해서 반환
+    const batteryPct = Number(
+      ((status.batteryPct ?? status.battery_pct) ?? 0).toFixed(1)
+    );
+    const poseX = Number(((status.poseX ?? status.pose_x) ?? 0).toFixed(3));
+    const poseY = Number(((status.poseY ?? status.pose_y) ?? 0).toFixed(3));
+    const rawYaw = (status.poseYaw ?? status.pose_yaw) ?? 0;
+    // gRPC는 라디안(radian) 값이 오므로 degree 변환, mock은 이미 0.0이므로 그대로 사용
+    const poseYaw = Number((rawYaw * (180 / Math.PI)).toFixed(1));
 
     return {
-      ...status,
+      robotId: status.robot_id ?? status.robotId ?? 'robot-R1',
+      mode: status.mode ?? 0,
+      taskState: status.task_state ?? status.taskState ?? 0,
+      activeTaskId: status.active_task_id ?? status.activeTaskId ?? '',
       batteryPct,
+      isCharging: status.is_charging ?? status.isCharging ?? false,
+      safetyState: status.safety_state ?? status.safetyState ?? 0,
+      lastErrorCode: status.last_error_code ?? status.lastErrorCode ?? 0,
       poseX,
       poseY,
       poseYaw,
-      attached_module: {
+      stamp: status.stamp ?? new Date().toISOString(),
+      attachedModule: status.attachedModule ?? status.attached_module ?? {
         type: 1,
         name: 'AIR_PURIFIER',
-        is_available: true
-      }
+        isAvailable: true,
+      },
     };
   }
 
@@ -179,9 +192,10 @@ export class RobotService implements OnModuleInit {
       is_charging: false,
       safety_state: 0, // NORMAL
       last_error_code: 0,
-      pose_x: 10.5,
-      pose_y: 20.3,
-      pose_yaw: 1.57,
+      // ROS2 waypoints.yaml 기준 hq(스테이션) 좌표
+      pose_x: 1.0,
+      pose_y: -4.5,
+      pose_yaw: 0.0,
       stamp: new Date().toISOString(),
     };
   }
