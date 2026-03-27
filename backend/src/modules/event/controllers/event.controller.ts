@@ -53,4 +53,12 @@ export class EventController {
     const data = await this.eventService.remove(eventId, user.userId);
     return { data };
   }
+
+  @ApiOperation({ summary: 'AI 이벤트 추천', description: '14일치 센서 이력을 기반으로 AI 서버에서 자동화 이벤트 조건을 추천받습니다.' })
+  @ApiResponse({ status: 200, description: 'AI 추천 결과 반환' })
+  @Get('ai-suggestions')
+  async getAiSuggestions(@GetUser() user: User) {
+    return this.eventService.getEventSuggestions(user.userId);
+  }
 }
+
