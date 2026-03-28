@@ -14,21 +14,21 @@ export interface RoomDataResponse {
 export interface AttachedModule {
   type: number;
   name: string;
-  is_available: boolean;
+  isAvailable: boolean;
 }
 
 export interface RobotStatusResponse {
-  robot_id: string;
+  robotId: string;
   mode: number;
-  task_state: number;
-  active_task_id: string;
-  battery_pct: number;
-  is_charging: boolean;
-  safety_state: number;
-  last_error_code: number;
-  pose_x: number;
-  pose_y: number;
-  pose_yaw: number;
+  taskState: number;
+  activeTaskId: string;
+  batteryPct: number;
+  isCharging: boolean;
+  safetyState: number;
+  lastErrorCode: number;
+  poseX: number;
+  poseY: number;
+  poseYaw: number;
   stamp: string;
-  attached_module: AttachedModule;
+  attachedModule: AttachedModule;
 }

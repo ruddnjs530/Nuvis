@@ -1,4 +1,5 @@
 import type {
+  WebRTCAnswerResponse,
   WebRTCCandidateResponse,
   WebRTCConnectionResponse,
   WebRTCIceCandidate,
@@ -49,6 +50,26 @@ export const webrtcApi = {
     api<WebRTCCandidateResponse>({
       method: 'get',
       url: 'signaling/candidate',
+      options: {
+        headers: { 'session-id': sessionId },
+        searchParams: { fromtime: fromtime.toString() },
+      },
+    }),
+
+  sendOffer: (sessionId: string, data: WebRTCSdpData) =>
+    api<{ message: string }>({
+      method: 'post',
+      url: 'signaling/offer',
+      options: {
+        headers: { 'session-id': sessionId },
+        json: data,
+      },
+    }),
+
+  getAnswers: (sessionId: string, fromtime: number) =>
+    api<WebRTCAnswerResponse>({
+      method: 'get',
+      url: 'signaling/answer',
       options: {
         headers: { 'session-id': sessionId },
         searchParams: { fromtime: fromtime.toString() },

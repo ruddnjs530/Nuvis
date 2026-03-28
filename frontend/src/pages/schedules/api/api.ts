@@ -1,4 +1,4 @@
-import type { CreateScheduleRequest, Schedule, UpdateScheduleRequest } from './types';
+import type { AiResponse, CreateScheduleRequest, Schedule, UpdateScheduleRequest } from './types';
 import type { ApiResponse } from '~/lib/api/types';
 import { api } from '~/lib/api/client';
 
@@ -14,4 +14,7 @@ export const scheduleApi = {
 
   delete: (scheduleId: number) =>
     api<void>({ method: 'delete', url: `schedule/${scheduleId}` }),
+
+  getAiSuggestions: () =>
+    api<AiResponse>({ method: 'get', url: 'event/ai-suggestions' }),
 };

@@ -14,3 +14,23 @@ export interface Schedule {
 
 export type CreateScheduleRequest = Omit<Schedule, 'scheduleId' | 'userId' | 'actionModulePower' | 'actionModuleLevel'>;
 export type UpdateScheduleRequest = CreateScheduleRequest;
+
+export interface AiDeviceResponse {
+  recommended_schedule?: {
+    time: string;
+    actionModuleType: string;
+    action: string;
+  };
+  analysis_details?: {
+    top_lifestyle_pattern: string;
+    [key: string]: any;
+  };
+  reason?: string;
+  message?: string;
+}
+
+export interface AiResponse {
+  status: string;
+  user_id: number;
+  data: Record<string, AiDeviceResponse>;
+}
