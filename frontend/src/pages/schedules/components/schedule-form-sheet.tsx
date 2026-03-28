@@ -13,9 +13,9 @@ import { cn } from '~/lib/utils';
 
 // ── Options ──────────────────────────────────────────────────────────────────
 const ROOM_OPTIONS = [
-  { id: 1, label: '거실' },
-  { id: 2, label: '침실' },
-  { id: 3, label: '부엌' },
+  { id: 2, label: '거실' },
+  { id: 5, label: '침실' },
+  { id: 4, label: '부엌' },
 ];
 
 const MODULE_OPTIONS = [

@@ -16,5 +16,5 @@ export const scheduleApi = {
     api<void>({ method: 'delete', url: `schedule/${scheduleId}` }),
 
   getAiSuggestions: () =>
-    api<AiResponse>({ method: 'get', url: 'event/ai-suggestions' }),
+    api<AiResponse>({ method: 'get', url: 'schedule/ai-suggestions' }),
 };

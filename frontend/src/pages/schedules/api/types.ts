@@ -5,9 +5,9 @@ export interface Schedule {
   userId?: number;
   roomId: number;
   actionModuleType: ActionModuleType;
-  actionModulePower: boolean; // true = 켜기, false = 끄기
-  actionModuleLevel: number; // 1 ~ 3
-  startTime: string; // ISO 8601: "1970-01-01T14:30:00.000Z"
+  actionModulePower: boolean;
+  actionModuleLevel: number;
+  startTime: string; // ISO 8601
   durationMinutes: number;
   isActive: boolean;
 }
@@ -16,21 +16,29 @@ export type CreateScheduleRequest = Omit<Schedule, 'scheduleId' | 'userId' | 'ac
 export type UpdateScheduleRequest = CreateScheduleRequest;
 
 export interface AiDeviceResponse {
-  recommended_schedule?: {
+  recommendedSchedule?: {
     time: string;
     actionModuleType: string;
     action: string;
   };
-  analysis_details?: {
-    top_lifestyle_pattern: string;
+  analysisDetails?: {
+    topLifestylePattern: string;
     [key: string]: any;
   };
   reason?: string;
   message?: string;
 }
 
+export interface AiRoomData {
+  roomId: number;
+  recordsAnalyzed: number;
+  suggestions: Record<string, AiDeviceResponse>;
+}
+
 export interface AiResponse {
   status: string;
-  user_id: number;
-  data: Record<string, AiDeviceResponse>;
+  userId: number;
+  roomCount?: number;
+  roomIds?: number[];
+  data: Record<string, AiRoomData>;
 }
