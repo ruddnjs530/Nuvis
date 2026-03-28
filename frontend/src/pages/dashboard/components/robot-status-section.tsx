@@ -17,9 +17,31 @@ const VIEWPORT_H = 220;
 const MAP_RENDER_W = VIEWPORT_W * 1.5;
 const MAP_RENDER_H = Math.round(MAP_RENDER_W * (MAP_NATURAL_H / MAP_NATURAL_W));
 
+// 시뮬레이터 로봇 좌표 기준값
+const SIM_X_MIN = -8.767;
+const SIM_X_MAX = 8.513;
+const SIM_Y_MIN = -5.532;
+const SIM_Y_MAX = 21.121;
+
+// ROS 좌표를 퍼센트(%)로 변환하는 함수
+function convertToPercentage(poseX: number, poseY: number) {
+  // 1. 가로축 (웹의 X, left): 시뮬레이터의 Y값이 담당
+  // Y가 최소일 때(좌측) 0%, 최대일 때(우측) 100%
+  const px = ((SIM_Y_MAX - poseY) / (SIM_Y_MAX - SIM_Y_MIN)) * 100;
+
+  // 2. 세로축 (웹의 Y, top): 시뮬레이터의 X값이 담당
+  // X가 최대일 때(상단) 0%, 최소일 때(하단) 100% (웹은 위에서 아래로 값이 커지므로 반전)
+  const py = ((SIM_X_MAX - poseX) / (SIM_X_MAX - SIM_X_MIN)) * 100;
+
+  return {
+    x: Math.max(0, Math.min(100, px)),
+    y: Math.max(0, Math.min(100, py)),
+  };
+}
+
 function FloorMap({ position }: { position: { x: number; y: number } }) {
-  const robotPxX = position.x * MAP_RENDER_W / 100;
-  const robotPxY = position.y * MAP_RENDER_H / 100;
+  const robotPxX = (position.x * MAP_RENDER_W) / 100;
+  const robotPxY = (position.y * MAP_RENDER_H) / 100;
 
   const offsetX = VIEWPORT_W / 2 - robotPxX;
   const offsetY = VIEWPORT_H / 2 - robotPxY;
@@ -68,7 +90,7 @@ function FloorMap({ position }: { position: { x: number; y: number } }) {
   );
 }
 
-// API에서 영어로 오는 모듈 이름을 한국어로 매핑하기 위한 객체
+// API에서 영어로 오는 모듈 이름을 한국어로 매핑하기 위한 객체 (원본 복구)
 const MODULE_NAME_MAP: Record<string, string> = {
   AIR_PURIFIER: '공기청정기',
 };
@@ -87,18 +109,18 @@ export default function RobotStatusSection() {
     );
   }
 
-  // 변경된 키 이름(battery_pct) 적용
-  const battery = robotStatus ? Math.floor(robotStatus.battery_pct) : 0;
+  const battery = robotStatus?.batteryPct ? Math.floor(robotStatus.batteryPct) : 0;
 
   const totalMinutes = Math.floor((battery / 100) * 12 * 60);
   const batteryHours = Math.floor(totalMinutes / 60);
   const batteryMinutes = totalMinutes % 60;
 
-  // pose_x, pose_y 개별 필드로 접근하도록 수정
-  const position = robotStatus ? { x: robotStatus.pose_x, y: robotStatus.pose_y } : { x: 0.5, y: 0.5 };
+  // 시뮬레이터 좌표를 웹 화면용 퍼센트 좌표로 변환
+  const position = robotStatus
+    ? convertToPercentage(robotStatus.poseX, robotStatus.poseY)
+    : { x: 0, y: 0 };
 
-  // API에서 모듈 정보 가져와서 매핑
-  const moduleName = robotStatus?.attached_module?.name;
+  const moduleName = robotStatus?.attachedModule?.name;
   const attachedModule = moduleName ? MODULE_NAME_MAP[moduleName] || moduleName : '모듈 없음';
 
   return (
@@ -107,11 +129,9 @@ export default function RobotStatusSection() {
 
       <div className="px-4">
         <AppCard className="overflow-hidden">
-
           <FloorMap position={position} />
 
           <div className="flex flex-col gap-4 p-4">
-
             {/* 장착 모듈 + 상태 보기 버튼 */}
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-0.5">
