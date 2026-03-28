@@ -1,14 +1,107 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { EventRepository } from '../repositories/event.repository';
 import { RobotService } from '../../robot/services/robot.service';
+import { RoomService } from '../../room/services/room.service';
 import { keysToCamel } from 'src/common/utils/case.util';
+import { TaskType } from '../../robot/dto/robot.dto';
 
 @Injectable()
 export class EventService {
+  private readonly logger = new Logger(EventService.name);
+  private lastTriggered = new Map<number, number>(); // eventId -> timestamp
+
   constructor(
     private readonly eventRepository: EventRepository,
     private readonly robotService: RobotService,
+    private readonly roomService: RoomService,
   ) {}
+
+  @Cron(CronExpression.EVERY_10_SECONDS)
+  async handleEventAutomation() {
+    try {
+      // 1. 활성화된(isActive) 모든 자동화 규칙 가져오기
+      const activeEvents = await this.eventRepository.findActiveEvents();
+      if (!activeEvents.length) return;
+
+      const userIds = [...new Set(activeEvents.map(e => e.userId))];
+
+      for (const userId of userIds) {
+        // 2. 현재 방 번호와 센서 상태 조회 (RoomService의 인메모리 Mock 활용)
+        const roomDataResult = await this.roomService.getRoomData(userId);
+        const roomsData = roomDataResult.data;
+
+        const userEvents = activeEvents.filter(e => e.userId === userId);
+        for (const event of userEvents) {
+          // 중복 스팸 방지 (5분 쿨타임)
+          const lastTime = this.lastTriggered.get(event.eventId) || 0;
+          if (Date.now() - lastTime < 5 * 60 * 1000) {
+            continue;
+          }
+
+          const room = roomsData.find(r => r.roomId === event.roomId);
+          if (!room || !room.condition) continue;
+
+          const conditionVal = this.getConditionValue(room.condition, event.conditionType);
+          if (conditionVal === null) continue;
+
+          // 3. 조건 검사
+          const isMet = this.evaluateCondition(conditionVal, event.conditionOperator, event.thresholdValue);
+          
+          if (isMet) {
+            this.logger.log(`[Event Automation] Event #${event.eventId} triggered! Room: ${room.name}, Target Module: ${event.actionModuleType}`);
+            // 실행 기록 (쿨타임 반영)
+            this.lastTriggered.set(event.eventId, Date.now());
+
+            // 4. 로봇에 실제 제어 명령(Command) 전송
+            try {
+              await this.robotService.executeTask({
+                commandId: `evt-${event.eventId}-${Date.now()}`,
+                taskId: `task-evt-${event.eventId}-${Date.now()}`,
+                taskType: TaskType.MOVE_AND_EXECUTE,
+                targetZone: (room as any).targetZone || '',
+                moduleType: this.getModuleTypeId(event.actionModuleType),
+                modulePower: event.actionModulePower ?? true,
+                moduleLevel: event.actionModuleLevel ?? 1,
+              });
+              this.logger.log(`[Event Automation] Robot command sent successfully.`);
+            } catch (e) {
+              this.logger.error(`[Event Automation] Failed to start robot task: ${e.message}`);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      this.logger.error(`[Event Automation] Error running task: ${e.message}`);
+    }
+  }
+
+  private getConditionValue(condition: any, type: string): number | null {
+    switch(type) {
+      case 'TEMP': return condition.temperature;
+      case 'HUMIDITY': return condition.humidity;
+      case 'FINE_DUST': return condition.fineDust;
+      default: return null;
+    }
+  }
+
+  private evaluateCondition(val: number, op: string, threshold: number): boolean {
+    switch(op) {
+      case 'GT': return val > threshold;
+      case 'LT': return val < threshold;
+      case 'EQ': return val === threshold;
+      default: return false;
+    }
+  }
+
+  private getModuleTypeId(name: string): number {
+    switch(name) {
+      case 'AIR_PURIFIER': return 1;
+      case 'HUMIDIFIER': return 2;
+      case 'DEHUMIDIFIER': return 3;
+      default: return 0;
+    }
+  }
 
   async findAll(userId: number) {
     return this.eventRepository.findAll(userId);
