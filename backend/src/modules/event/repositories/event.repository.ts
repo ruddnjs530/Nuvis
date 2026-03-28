@@ -12,6 +12,13 @@ export class EventRepository {
     });
   }
 
+  async findActiveEvents() {
+    return this.prisma.event.findMany({
+      where: { isActive: true },
+      include: { room: true },
+    });
+  }
+
   async create(userId: number, data: any) {
     return this.prisma.event.create({
       data: {
