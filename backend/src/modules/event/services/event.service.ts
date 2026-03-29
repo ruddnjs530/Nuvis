@@ -5,6 +5,7 @@ import { RobotService } from '../../robot/services/robot.service';
 import { RoomService } from '../../room/services/room.service';
 import { keysToCamel } from 'src/common/utils/case.util';
 import { TaskType } from '../../robot/dto/robot.dto';
+import { MODULE_TYPE_TO_ID } from 'src/common/constants/module-type';
 
 @Injectable()
 export class EventService {
@@ -101,12 +102,7 @@ export class EventService {
   }
 
   private getModuleTypeId(name: string): number {
-    switch(name) {
-      case 'AIR_PURIFIER': return 1;
-      case 'HUMIDIFIER': return 2;
-      case 'DEHUMIDIFIER': return 3;
-      default: return 0;
-    }
+    return MODULE_TYPE_TO_ID[name] ?? 0;
   }
 
   async findAll(userId: number) {
