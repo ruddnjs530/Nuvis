@@ -160,6 +160,107 @@ class AnalysisRequest(BaseModel):
 # 범용 AI 분석 함수군 (비즈니스 로직)
 # ─────────────────────────────────────────
 
+def build_room_dataframes(sensor_records: List[SensorRecord]) -> dict[int, pd.DataFrame]:
+    """
+    요청으로 들어온 센서 이력을 room_id 기준으로 분리하여 방별 DataFrame 묶음으로 변환합니다.
+    """
+    df = pd.DataFrame([record.model_dump() for record in sensor_records])
+    if df.empty or "room_id" not in df.columns:
+        return {}
+
+    df = df.sort_values("timestamp").reset_index(drop=True)
+    room_frames: dict[int, pd.DataFrame] = {}
+
+    for room_id, room_df in df.groupby("room_id", sort=True):
+        room_frames[int(room_id)] = room_df.reset_index(drop=True)
+
+    return room_frames
+
+
+async def analyze_event_for_room(room_id: int, df: pd.DataFrame) -> dict:
+    """
+    단일 방(room_id)의 시계열 이력에 대해 이벤트성 추천과 이상 탐지를 수행합니다.
+    """
+    suggestions = {}
+
+    for device_type, config in DEVICE_CONFIG.items():
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(analyze_event_for_device, df, config),
+                timeout=ANALYSIS_TIMEOUT,
+            )
+            suggestions[device_type] = result
+        except asyncio.TimeoutError:
+            logger.error(f"[event][room={room_id}] {device_type} 분석 타임아웃 ({ANALYSIS_TIMEOUT}초 초과)")
+            suggestions[device_type] = {
+                "status": "timeout",
+                "message": f"{config['label']} 분석이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+            }
+        except Exception as device_err:
+            logger.error(f"[event][room={room_id}] {device_type} 분석 오류: {device_err}")
+            suggestions[device_type] = {
+                "status": "error",
+                "message": f"{config['label']} 분석 중 오류가 발생했습니다."
+            }
+
+    try:
+        anomaly_result = await asyncio.wait_for(
+            asyncio.to_thread(analyze_environmental_anomalies, df),
+            timeout=ANALYSIS_TIMEOUT,
+        )
+        suggestions["anomaly_warnings"] = anomaly_result
+    except asyncio.TimeoutError:
+        logger.error(f"[event][room={room_id}] 이상 탐지 분석 타임아웃 ({ANALYSIS_TIMEOUT}초 초과)")
+        suggestions["anomaly_warnings"] = {
+            "status": "timeout",
+            "message": "위기 감지 분석이 지연되고 있습니다."
+        }
+    except Exception as e:
+        logger.error(f"[event][room={room_id}] 이상 탐지 분석 오류: {e}")
+        suggestions["anomaly_warnings"] = {
+            "status": "error",
+            "message": "위기 감지 분석 중 오류가 발생했습니다."
+        }
+
+    return {
+        "room_id": room_id,
+        "records_analyzed": int(len(df)),
+        "suggestions": suggestions,
+    }
+
+
+async def analyze_schedule_for_room(room_id: int, df: pd.DataFrame) -> dict:
+    """
+    단일 방(room_id)의 시계열 이력에 대해 방별 스케줄 추천을 수행합니다.
+    """
+    suggestions = {}
+
+    for device_type, config in DEVICE_CONFIG.items():
+        try:
+            result = await asyncio.wait_for(
+                asyncio.to_thread(analyze_schedule_for_device, df, config),
+                timeout=ANALYSIS_TIMEOUT,
+            )
+            suggestions[device_type] = result
+        except asyncio.TimeoutError:
+            logger.error(f"[schedule][room={room_id}] {device_type} 분석 타임아웃 ({ANALYSIS_TIMEOUT}초 초과)")
+            suggestions[device_type] = {
+                "status": "timeout",
+                "message": f"{config['label']} 스케줄 분석이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
+            }
+        except Exception as device_err:
+            logger.error(f"[schedule][room={room_id}] {device_type} 분석 오류: {device_err}")
+            suggestions[device_type] = {
+                "status": "error",
+                "message": f"{config['label']} 스케줄 분석 중 오류가 발생했습니다."
+            }
+
+    return {
+        "room_id": room_id,
+        "records_analyzed": int(len(df)),
+        "suggestions": suggestions,
+    }
+
 def analyze_event_for_device(df: pd.DataFrame, config: dict) -> dict:
     """
     [이벤트성 룰 추천 알고리즘]
@@ -344,6 +445,17 @@ def analyze_environmental_anomalies(df: pd.DataFrame) -> dict:
         return {"status": "error", "message": "위기 감지 분석 중 오류가 발생했습니다."}
 
 
+@app.get("/health")
+@app.get("/api/recommendation/health")
+async def health_check():
+    """서버가 정상적으로 구동 중인지 확인하는 헬스체크 엔드포인트"""
+    return {
+        "status": "ok",
+        "service": "recommendation-ai",
+        "timestamp": time.time(),
+        "allowed_ips_configured": list(SecurityMiddleware(app).get_allowed_ips())
+    }
+
 # ─────────────────────────────────────────
 # FastAPI 라우터 엔드포인트 세팅부
 # 클라이언트(메인서버)가 호출할 웹 주소(URL Path)와 처리 메서드를 연결합니다.
@@ -364,58 +476,32 @@ async def get_event_suggestions(request: AnalysisRequest):
                 f"최신 {MAX_RECORDS}건만 분석에 사용합니다."
             )
 
-        # 수신된 Pydantic 모델 객체들을 분석 편의성이 100배 좋은 통계 전용 Pandas DataFrame 2차원 표로 변환
-        df = pd.DataFrame([record.dict() for record in clipped_data])
-        suggestions = {}
-
-        # 모든 등록된 기기(공청기, 가습기, 제습기 등) 리스트를 순회하며 분석 시행
-        for device_type, config in DEVICE_CONFIG.items():
-            try:
-                # ② [핵심 비동기 디자인]: 
-                # pandas 연산(CPU 집약적 동작)은 메인 스레드를 정지시킵니다.
-                # 웹서버가 멈추지 않게 별도 스레드(to_thread)로 계산을 던져놓고 기다리되,
-                # 만약 해당 기기 분석이 ANALYSIS_TIMEOUT초 이내에 안 끝나면 쿨하게 포기하게(TimeoutError) 만듭니다.
-                result = await asyncio.wait_for(
-                    asyncio.to_thread(analyze_event_for_device, df, config),
-                    timeout=ANALYSIS_TIMEOUT,
-                )
-                suggestions[device_type] = result
-            except asyncio.TimeoutError:
-                logger.error(f"[event] {device_type} 분석 타임아웃 ({ANALYSIS_TIMEOUT}초 초과)")
-                # 5초 넘기면 에러로 앱이 터지지 않고 대신 이 문구를 반환
-                suggestions[device_type] = {
-                    "status": "timeout",
-                    "message": f"{config['label']} 분석이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
-                }
-            except Exception as device_err:
-                logger.error(f"[event] {device_type} 분석 오류: {device_err}")
-                suggestions[device_type] = {
-                    "status": "error",
-                    "message": f"{config['label']} 분석 중 오류가 발생했습니다."
-                }
-
-        # ③ 추가로, 위에서 분석된 환경 데이터를 바탕으로 위기 탐지(Isolation Forest) 모델 한 바퀴 가동
-        try:
-            anomaly_result = await asyncio.wait_for(
-                asyncio.to_thread(analyze_environmental_anomalies, df),
-                timeout=ANALYSIS_TIMEOUT,
-            )
-            suggestions["anomaly_warnings"] = anomaly_result
-        except asyncio.TimeoutError:
-            logger.error(f"[event] 이상 탐지 분석 타임아웃 ({ANALYSIS_TIMEOUT}초 초과)")
-            suggestions["anomaly_warnings"] = {
-                "status": "timeout",
-                "message": "위기 감지 분석이 지연되고 있습니다."
-            }
-        except Exception as e:
-            logger.error(f"[event] 이상 탐지 분석 오류: {e}")
-            suggestions["anomaly_warnings"] = {
-                "status": "error",
-                "message": "위기 감지 분석 중 오류가 발생했습니다."
+        room_frames = build_room_dataframes(clipped_data)
+        if not room_frames:
+            return {
+                "status": "success",
+                "user_id": request.user_id,
+                "room_count": 0,
+                "room_ids": [],
+                "data": {},
+                "rooms": {},
+                "message": "분석 가능한 room_id 데이터가 없습니다.",
             }
 
-        # 모든 연산이 끝나고 취합된 최상단 JSON 객체를 반환
-        return {"status": "success", "user_id": request.user_id, "data": suggestions}
+        room_results = {}
+        for room_id, room_df in room_frames.items():
+            room_results[str(room_id)] = await analyze_event_for_room(room_id, room_df)
+
+        room_ids = [int(room_id) for room_id in room_results.keys()]
+
+        return {
+            "status": "success",
+            "user_id": request.user_id,
+            "room_count": len(room_results),
+            "room_ids": room_ids,
+            "data": room_results,
+            "rooms": room_results,
+        }
 
     except Exception as e:
         logger.error(f"[event] 전체 처리 오류: {e}")
@@ -438,32 +524,32 @@ async def get_schedule_suggestions(request: AnalysisRequest):
                 f"최신 {MAX_RECORDS}건만 분석에 사용합니다."
             )
 
-        df = pd.DataFrame([record.dict() for record in clipped_data])
-        suggestions = {}
+        room_frames = build_room_dataframes(clipped_data)
+        if not room_frames:
+            return {
+                "status": "success",
+                "user_id": request.user_id,
+                "room_count": 0,
+                "room_ids": [],
+                "data": {},
+                "rooms": {},
+                "message": "분석 가능한 room_id 데이터가 없습니다.",
+            }
 
-        for device_type, config in DEVICE_CONFIG.items():
-            try:
-                # ② 각 종목 기기별 타임아웃 적용 및 스레딩 병렬 분석
-                result = await asyncio.wait_for(
-                    asyncio.to_thread(analyze_schedule_for_device, df, config),
-                    timeout=ANALYSIS_TIMEOUT,
-                )
-                suggestions[device_type] = result
-            except asyncio.TimeoutError:
-                logger.error(f"[schedule] {device_type} 분석 타임아웃 ({ANALYSIS_TIMEOUT}초 초과)")
-                suggestions[device_type] = {
-                    "status": "timeout",
-                    "message": f"{config['label']} 스케줄 분석이 지연되고 있습니다. 잠시 후 다시 시도해주세요."
-                }
-            except Exception as device_err:
-                logger.error(f"[schedule] {device_type} 분석 오류: {device_err}")
-                suggestions[device_type] = {
-                    "status": "error",
-                    "message": f"{config['label']} 스케줄 분석 중 오류가 발생했습니다."
-                }
+        room_results = {}
+        for room_id, room_df in room_frames.items():
+            room_results[str(room_id)] = await analyze_schedule_for_room(room_id, room_df)
 
-        # 추천된 스케줄 데이터 트리를 JSON 포맷으로 패키징하여 Return
-        return {"status": "success", "user_id": request.user_id, "data": suggestions}
+        room_ids = [int(room_id) for room_id in room_results.keys()]
+
+        return {
+            "status": "success",
+            "user_id": request.user_id,
+            "room_count": len(room_results),
+            "room_ids": room_ids,
+            "data": room_results,
+            "rooms": room_results,
+        }
 
     except Exception as e:
         logger.error(f"[schedule] 전체 처리 오류: {e}")

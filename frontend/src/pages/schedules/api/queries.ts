@@ -36,3 +36,9 @@ export function useDeleteScheduleMutation() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEY }),
   });
 }
+
+export function useAiScheduleSuggestionsMutation() {
+  return useMutation({
+    mutationFn: () => scheduleApi.getAiSuggestions(),
+  });
+}

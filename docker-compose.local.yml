@@ -19,24 +19,24 @@ services:
       retries: 10
 
   # ROS2 인터랙티브 개발 쉘 (bash 접속용)
-  ros2-dev:
-    build:
-      context: .
-      dockerfile: docker/ros2/Dockerfile
-    image: b110-ros2:humble
-    container_name: b110-ros2-dev-local
-    working_dir: /workspace/ros2_ws
-    stdin_open: true
-    tty: true
-    environment:
-      ROS_DOMAIN_ID: "42"
-      RMW_IMPLEMENTATION: "rmw_fastrtps_cpp"
-      PYTHONUNBUFFERED: "1"
-      ROS_TCP_ENDPOINT_PORT: "10000"
-    volumes:
-      - ./ros2_ws:/workspace/ros2_ws
-      - ./scripts:/workspace/scripts
-    command: bash
+  # ros2-dev:
+  #   build:
+  #     context: .
+  #     dockerfile: docker/ros2/Dockerfile
+  #   image: b110-ros2:humble
+  #   container_name: b110-ros2-dev-local
+  #   working_dir: /workspace/ros2_ws
+  #   stdin_open: true
+  #   tty: true
+  #   environment:
+  #     ROS_DOMAIN_ID: "42"
+  #     RMW_IMPLEMENTATION: "rmw_fastrtps_cpp"
+  #     PYTHONUNBUFFERED: "1"
+  #     ROS_TCP_ENDPOINT_PORT: "10000"
+  #   volumes:
+  #     - ./ros2_ws:/workspace/ros2_ws
+  #     - ./scripts:/workspace/scripts
+  #   command: bash
 
   # ROS2 빌드 + 런치 (gRPC 50051, ROS TCP 10000 포트 오픈)
   ros2-run:
@@ -127,6 +127,9 @@ services:
       - ROBOT_GRPC_URL=ros2-run:50051
       # Windows/WSL 환경에서 파일 변경 감지를 위한 설정
       - CHOKIDAR_USEPOLLING=true
+      # EC2 Jupyter AI 서버 주소 (.env.local에서 주입)
+      - AI_RECOMMENDATION_BASE_URL=${AI_RECOMMENDATION_BASE_URL}
+      - SECRET_KEY=nuvisPw110ssafysecretkey!
     # Install dependencies, generate Prisma client, push schema to DB, seed, then start dev server
     command: sh -c "npm install && npx prisma generate && npx prisma db push --accept-data-loss && npx prisma db seed && npm run start:dev"
     depends_on:
@@ -154,4 +157,3 @@ volumes:
   db_data_local:
   backend_node_modules:
   frontend_node_modules:
-

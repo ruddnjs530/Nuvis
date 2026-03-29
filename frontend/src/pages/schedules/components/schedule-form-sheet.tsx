@@ -1,4 +1,4 @@
-import type { CreateScheduleRequest, Schedule } from '../api/types';
+import type { ActionModuleType, CreateScheduleRequest, Schedule } from '../api/types';
 import { MinusSignIcon, PlusSignIcon } from '@hugeicons/core-free-icons';
 import { useState } from 'react';
 import Icon from '~/components/common/icon';
@@ -13,9 +13,9 @@ import { cn } from '~/lib/utils';
 
 // ── Options ──────────────────────────────────────────────────────────────────
 const ROOM_OPTIONS = [
-  { id: 1, label: '거실' },
-  { id: 2, label: '침실' },
-  { id: 3, label: '부엌' },
+  { id: 2, label: '거실' },
+  { id: 5, label: '침실' },
+  { id: 4, label: '부엌' },
 ];
 
 const MODULE_OPTIONS = [
@@ -23,16 +23,7 @@ const MODULE_OPTIONS = [
   { id: 'HUMIDIFIER', label: '가습기' },
 ];
 
-// ── Chip helper ───────────────────────────────────────────────────────────────
-function Chip({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
+function Chip({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
       type="button"
@@ -49,13 +40,10 @@ function Chip({
   );
 }
 
-// ── Time helpers ──────────────────────────────────────────────────────────────
-/** "HH:mm" → ISO 시간부 (1970-01-01T…Z) */
 function timeToIso(hhmm: string): string {
   return `1970-01-01T${hhmm}:00.000Z`;
 }
 
-/** ISO 시간부 → "HH:mm" */
 function isoToTime(iso: string): string {
   const d = new Date(iso);
   const hh = String(d.getUTCHours()).padStart(2, '0');
@@ -63,15 +51,22 @@ function isoToTime(iso: string): string {
   return `${hh}:${mm}`;
 }
 
-// ── Form state ────────────────────────────────────────────────────────────────
-interface FormState {
-  time: string; // "HH:mm"
+export interface ScheduleFormData {
+  time: string;
   durationMinutes: number;
   roomId: number;
-  actionModuleType: string;
+  actionModuleType: ActionModuleType;
 }
 
-function getInitialForm(schedule: Schedule | null): FormState {
+interface ScheduleFormSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  schedule: Schedule | null;
+  initialData?: Partial<ScheduleFormData> | null; // AI 데이터 주입용 추가
+  onSave: (data: CreateScheduleRequest) => void;
+}
+
+function getInitialForm(schedule: Schedule | null, initialData?: Partial<ScheduleFormData> | null): ScheduleFormData {
   if (schedule) {
     return {
       time: isoToTime(schedule.startTime),
@@ -81,29 +76,16 @@ function getInitialForm(schedule: Schedule | null): FormState {
     };
   }
   return {
-    time: '08:00',
-    durationMinutes: 60,
-    roomId: 1,
-    actionModuleType: 'AIR_PURIFIER',
+    time: initialData?.time ?? '08:00',
+    durationMinutes: initialData?.durationMinutes ?? 60,
+    roomId: initialData?.roomId ?? 1,
+    actionModuleType: initialData?.actionModuleType ?? 'AIR_PURIFIER',
   };
 }
 
-// ── Props / Component ─────────────────────────────────────────────────────────
-interface ScheduleFormSheetProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  schedule: Schedule | null;
-  onSave: (data: CreateScheduleRequest) => void;
-}
-
-export default function ScheduleFormSheet({
-  open,
-  onOpenChange,
-  schedule,
-  onSave,
-}: ScheduleFormSheetProps) {
+export default function ScheduleFormSheet({ open, onOpenChange, schedule, initialData, onSave }: ScheduleFormSheetProps) {
   const isEditMode = schedule !== null;
-  const [form, setForm] = useState<FormState>(() => getInitialForm(schedule));
+  const [form, setForm] = useState<ScheduleFormData>(() => getInitialForm(schedule, initialData));
 
   const handleOpenChange = (next: boolean) => {
     onOpenChange(next);
@@ -117,7 +99,7 @@ export default function ScheduleFormSheet({
       startTime: timeToIso(form.time),
       durationMinutes: form.durationMinutes,
       roomId: form.roomId,
-      actionModuleType: form.actionModuleType as CreateScheduleRequest['actionModuleType'],
+      actionModuleType: form.actionModuleType,
       isActive: isEditMode ? (schedule?.isActive ?? true) : true,
     });
   };
@@ -127,14 +109,13 @@ export default function ScheduleFormSheet({
       <SheetContent side="bottom" className="max-h-[90dvh] overflow-y-auto rounded-t-3xl px-6 pb-10 pt-6">
         <SheetHeader className="mb-6 flex flex-row items-center justify-between">
           <SheetTitle className="text-xl font-bold text-fg-strong">
-            {isEditMode ? '스케줄 수정' : '새 스케줄'}
+            {isEditMode ? '스케줄 수정' : initialData ? 'AI 추천 스케줄 등록' : '새 스케줄'}
           </SheetTitle>
         </SheetHeader>
 
         <div className="flex flex-col gap-7">
-          {/* 발동 시간 */}
           <div className="flex flex-col gap-2">
-            <label className="pl-1 text-sm font-bold text-fg-strong">발동 시간</label>
+            <label className="pl-1 text-sm font-bold text-fg-strong">가동 시작 시간</label>
             <input
               type="time"
               value={form.time}
@@ -143,7 +124,6 @@ export default function ScheduleFormSheet({
             />
           </div>
 
-          {/* 가동 시간 */}
           <div className="flex flex-col gap-2">
             <label className="pl-1 text-sm font-bold text-fg-strong">가동 시간 (분)</label>
             <div className="flex items-center justify-between rounded-xl border border-border-default bg-surface px-4 py-3">
@@ -152,7 +132,7 @@ export default function ScheduleFormSheet({
                 onClick={() => adjustDuration(-10)}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-sunken transition-colors hover:bg-border-default"
               >
-                <Icon icon={MinusSignIcon} size="sm" color="currentColor" strokeWidth={2} />
+                <Icon icon={MinusSignIcon} size="sm" color="currentColor" />
               </button>
               <span className="text-2xl font-bold tabular-nums text-fg-strong">
                 {form.durationMinutes}
@@ -163,48 +143,30 @@ export default function ScheduleFormSheet({
                 onClick={() => adjustDuration(10)}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-sunken transition-colors hover:bg-border-default"
               >
-                <Icon icon={PlusSignIcon} size="sm" color="currentColor" strokeWidth={2} />
+                <Icon icon={PlusSignIcon} size="sm" color="currentColor" />
               </button>
             </div>
           </div>
 
-          {/* 방 선택 */}
           <div className="flex flex-col gap-2">
             <label className="pl-1 text-sm font-bold text-fg-strong">방</label>
             <div className="flex flex-wrap gap-2">
               {ROOM_OPTIONS.map(r => (
-                <Chip
-                  key={r.id}
-                  label={r.label}
-                  active={form.roomId === r.id}
-                  onClick={() => setForm(prev => ({ ...prev, roomId: r.id }))}
-                />
+                <Chip key={r.id} label={r.label} active={form.roomId === r.id} onClick={() => setForm(prev => ({ ...prev, roomId: r.id }))} />
               ))}
             </div>
           </div>
 
-          {/* 모듈 선택 */}
           <div className="flex flex-col gap-2">
             <label className="pl-1 text-sm font-bold text-fg-strong">모듈</label>
             <div className="flex flex-wrap gap-2">
               {MODULE_OPTIONS.map(m => (
-                <Chip
-                  key={m.id}
-                  label={m.label}
-                  active={form.actionModuleType === m.id}
-                  onClick={() => setForm(prev => ({ ...prev, actionModuleType: m.id }))}
-                />
+                <Chip key={m.id} label={m.label} active={form.actionModuleType === m.id} onClick={() => setForm(prev => ({ ...prev, actionModuleType: m.id as ActionModuleType }))} />
               ))}
             </div>
           </div>
 
-          {/* 저장 */}
-          <Button
-            variant="brand"
-            size="xl"
-            className="mt-2 w-full"
-            onClick={handleSave}
-          >
+          <Button variant="brand" size="xl" className="mt-2 w-full" onClick={handleSave}>
             저장하기
           </Button>
         </div>
