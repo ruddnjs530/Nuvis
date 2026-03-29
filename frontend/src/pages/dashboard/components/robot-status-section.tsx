@@ -6,6 +6,8 @@ import Icon from '~/components/common/icon';
 import SectionHeader from '~/components/common/section-header';
 import Spinner from '~/components/common/spinner';
 
+import { useDemoStore } from '~/store/demo-store';
+
 import { useRobotStatusQuery } from '../api/queries';
 
 const MAP_NATURAL_W = 637;
@@ -90,13 +92,17 @@ function FloorMap({ position }: { position: { x: number; y: number } }) {
   );
 }
 
-// API에서 영어로 오는 모듈 이름을 한국어로 매핑하기 위한 객체 (원본 복구)
 const MODULE_NAME_MAP: Record<string, string> = {
-  AIR_PURIFIER: '공기청정기',
+  AIR_PURIFIER:  '공기청정기',
+  HUMIDIFIER:    '가습기',
+  DEHUMIDIFIER:  '제습기',
+  STERILIZER:    '살균기',
+  DIFFUSER:      '디퓨저',
 };
 
 export default function RobotStatusSection() {
   const { data: robotStatus, isLoading } = useRobotStatusQuery();
+  const fakeModule = useDemoStore((s) => s.fakeModule);
 
   if (isLoading) {
     return (
@@ -120,8 +126,12 @@ export default function RobotStatusSection() {
     ? convertToPercentage(robotStatus.poseX, robotStatus.poseY)
     : { x: 0, y: 0 };
 
-  const moduleName = robotStatus?.attachedModule?.name;
-  const attachedModule = moduleName ? MODULE_NAME_MAP[moduleName] || moduleName : '모듈 없음';
+  const resolvedModuleName = fakeModule !== undefined
+    ? (fakeModule?.type ?? null)
+    : (robotStatus?.attachedModule?.name ?? null);
+  const attachedModule = resolvedModuleName
+    ? (MODULE_NAME_MAP[resolvedModuleName] ?? resolvedModuleName)
+    : '모듈 없음';
 
   return (
     <section>
