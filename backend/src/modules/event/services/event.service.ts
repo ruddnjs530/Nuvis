@@ -5,6 +5,7 @@ import { RobotService } from '../../robot/services/robot.service';
 import { RoomService } from '../../room/services/room.service';
 import { keysToCamel } from 'src/common/utils/case.util';
 import { TaskType } from '../../robot/dto/robot.dto';
+import { MODULE_TYPE_TO_ID } from 'src/common/constants/module-type';
 
 @Injectable()
 export class EventService {
@@ -64,6 +65,12 @@ export class EventService {
                 modulePower: event.actionModulePower ?? true,
                 moduleLevel: event.actionModuleLevel ?? 1,
               });
+              
+              // 모듈 가동 성공 시 방의 센서 수치에 즉각 반영 (시뮬레이터 효과)
+              if (event.actionModulePower !== false) {
+                await this.roomService.applyDemoAction(event.roomId, event.actionModuleType.toLowerCase());
+              }
+
               this.logger.log(`[Event Automation] Robot command sent successfully.`);
             } catch (e) {
               this.logger.error(`[Event Automation] Failed to start robot task: ${e.message}`);
@@ -95,12 +102,7 @@ export class EventService {
   }
 
   private getModuleTypeId(name: string): number {
-    switch(name) {
-      case 'AIR_PURIFIER': return 1;
-      case 'HUMIDIFIER': return 2;
-      case 'DEHUMIDIFIER': return 3;
-      default: return 0;
-    }
+    return MODULE_TYPE_TO_ID[name] ?? 0;
   }
 
   async findAll(userId: number) {

@@ -6,6 +6,7 @@ import { Observable, Subject, lastValueFrom } from 'rxjs';
 import { ClientGrpc } from '@nestjs/microservices';
 import { ExecuteCommandDto, TaskType } from '../dto/request/execute-command.request.dto';
 import { ManualControlDto } from '../dto/request/manual-control.request.dto';
+import { MODULE_ID_TO_TYPE } from 'src/common/constants/module-type';
 
 interface RobotGatewayService {
   executeTask(data: any): Observable<any>;
@@ -157,8 +158,8 @@ export class RobotService implements OnModuleInit {
       poseYaw,
       stamp: status.stamp ?? new Date().toISOString(),
       attachedModule: status.attachedModule ?? status.attached_module ?? {
-        type: 1,
-        name: 'AIR_PURIFIER',
+        type: 0,
+        name: MODULE_ID_TO_TYPE[0] || 'NONE',
         isAvailable: true,
       },
     };

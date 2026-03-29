@@ -54,7 +54,29 @@ async function main() {
     }
   }
 
-  // 3. (Optional) Create a default registered Robot and Module
+  // 3. Seed Module Types
+  const modulesData = [
+    { moduleId: 1, type: 'AIR_PURIFIER', status: 'IDLE' },
+    { moduleId: 2, type: 'HUMIDIFIER', status: 'IDLE' },
+    { moduleId: 3, type: 'DEHUMIDIFIER', status: 'IDLE' },
+    { moduleId: 4, type: 'STERILIZER', status: 'IDLE' },
+    { moduleId: 5, type: 'DIFFUSER', status: 'IDLE' },
+  ];
+
+  for (const mod of modulesData) {
+    await prisma.module.upsert({
+      where: { moduleId: mod.moduleId },
+      update: {},
+      create: {
+        moduleId: mod.moduleId,
+        type: mod.type,
+        status: mod.status,
+      },
+    });
+  }
+  console.log(`✅ ${modulesData.length} Modules seeded.`);
+
+  // 4. (Optional) Create a default registered Robot and Module
   const existingRobot = await prisma.robot.findFirst({
     where: { userId: user.userId },
   });

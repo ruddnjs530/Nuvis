@@ -146,6 +146,12 @@ export class RoomService {
       case 'dehumidifier':
         condition.humidity = 35.0; // 건조함
         break;
+      case 'sterilizer':
+        condition.fineDust = 2.0; // 매우 깨끗함
+        break;
+      case 'diffuser':
+        condition.humidity = 50.0; // 쾌적함
+        break;
       case 'heater':
         condition.temperature = 28.0; // 따뜻함
         break;

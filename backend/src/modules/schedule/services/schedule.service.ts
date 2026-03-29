@@ -8,18 +8,10 @@ import { keysToCamel } from 'src/common/utils/case.util';
 // @ts-ignore
 import { CronJob } from 'cron';
 
-/**
- * actionModuleType(문자열) → gRPC module_type(정수) 매핑
- * proto에서 module_type은 int32이며 ROS2 측과 합의된 값입니다.
- */
-const MODULE_TYPE_MAP: Record<string, number> = {
-  AIR_PURIFIER:  1,
-  HUMIDIFIER:    2,
-  DEHUMIDIFIER:  3,
-};
+import { MODULE_TYPE_TO_ID } from 'src/common/constants/module-type';
 
 function toModuleType(actionModuleType: string): number {
-  return MODULE_TYPE_MAP[actionModuleType?.toUpperCase()] ?? 0;
+  return MODULE_TYPE_TO_ID[actionModuleType?.toUpperCase()] ?? 0;
 }
 
 @Injectable()
