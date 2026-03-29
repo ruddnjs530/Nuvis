@@ -2,6 +2,8 @@ import { Outlet, useLocation } from 'react-router';
 
 import PageHeader from '~/components/common/page-header';
 import BottomNav from '~/components/navigation/bottom-nav';
+import { ToastContainer } from '~/components/ui/toast';
+import { useDemoToast } from '~/hooks/use-demo-toast';
 
 const titles: Record<string, string> = {
   '/': '대시보드',
@@ -15,6 +17,8 @@ export default function AppLayout() {
 
   const title = titles[location.pathname] ?? 'Home IoT';
 
+  useDemoToast();
+
   return (
     <div className="bg-muted/30 min-h-dvh">
       <div className="bg-background mx-auto flex min-h-dvh max-w-md flex-col">
@@ -25,6 +29,7 @@ export default function AppLayout() {
         </main>
 
         <BottomNav />
+        <ToastContainer />
       </div>
     </div>
   );
