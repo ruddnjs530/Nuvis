@@ -1,22 +1,35 @@
 # 📝 오늘의 할 일 (Daily To-Do List)
 
 > **담당:** AI 서버 (`server_ai`) 개발 및 백엔드 연동 협업 기록  
-> **기준일:** 2026-03-27  
+> **기준일:** 2026-03-31  
 > 이 문서는 "지금 당장 남은 일"과 "최근 완료한 흐름"을 빠르게 확인하기 위한 작업 보드입니다.
 
 ---
 
 ## 🎯 현재 우선순위
 
+### 0. 2026-03-31 리포지토리 재검토 기준 메모
+- [x] 전체 모노레포 구조 및 `server_ai` 담당 범위 재확인
+  - 현재 기준 `server_ai`는 추천 API + STT API 전용 서비스
+  - 백엔드는 AI 호출선(`event`, `schedule`)과 `GET /api/room/name` 엔드포인트를 이미 보유
+- [x] 프론트 연동 현황 재확인
+  - `schedules` 화면은 방별 AI 스케줄 추천 응답을 소비하는 구조
+  - `events` 화면은 아직 수동 CRUD 중심이며 AI 이벤트 추천 UI는 미연결
+- [ ] 추천 입력 데이터의 실DB 연동 마감
+  - 현재 `backend/src/modules/robot/services/robot.service.ts`는 `backend/src/modules/robot/data/mock_payload.json`을 읽어 AI 페이로드를 구성
+  - `ROOM_CONDITIONS_HISTORY` / `MODULE_CONTROL_LOGS` 실쿼리 기반으로 교체 필요
+- [ ] STT 방 이름 동기화 실연동 재검증
+  - `GET /api/room/name` 라우트는 존재하지만 `RankGuard`가 걸려 있어 현재 코드 그대로는 fallback 맵으로 내려갈 가능성이 큼
+
 ### 1. 학습 운영 정리
 - [x] 20GB 학습 산출물 1차 운영 문서화
-  - `docs/shared/stt_training_operations_guide.md`에 보존 대상 파일, GPU 서버 후속 절차, 브랜치 재정렬 순서 정리
+  - `docs/shared/stt/stt_training_operations_guide.md`에 보존 대상 파일, GPU 서버 후속 절차, 브랜치 재정렬 순서 정리
   - `v2_full`, `stt_train.log`, `metadata.csv`, 벤치마크 문서를 핵심 산출물로 정리
 - [x] GPU 서버 백업 패키징 스크립트 추가
-  - `stt/package_stt_artifacts.sh`로 모델/로그/메타데이터/문서를 tarball로 묶을 수 있게 정리
+  - `stt/scripts/package_stt_artifacts.sh`로 모델/로그/메타데이터/문서를 tarball로 묶을 수 있게 정리
 - [x] GPU 서버 최신 브랜치 기준 서비스 재검증 및 로컬 백업 패키지 재생성
-  - `curl /api/stt/health`, `python test_client.py` 재실행으로 최신 브랜치 반영 후 정상 동작 확인
-  - `stt/artifacts/stt_backup_20260323_111736.tar.gz` 생성 완료
+  - `curl /api/stt/health`, `python tests/test_client.py` 재실행으로 최신 브랜치 반영 후 정상 동작 확인
+  - `stt/artifacts/stt_backup_20260323_111736.tar.gz` 생성 완료 (GPU 서버 로컬 산출물)
 - [x] 파인튜닝 모델 외부 백업 전략 확정
   - 개인 구글 드라이브 업로드 및 팀원 공유 완료
   - `v2_full` 최종 보존 위치 확정 (개인 구글 드라이브)
@@ -26,10 +39,14 @@
   - 데이터 로딩/검증 병목 분석
 
 ### 2. 백엔드 실제 연동
-- [x] 백엔드 MR(`be/ai-connect` -> `be-main`) 구현 범위 코드 1차 확인 완료
-- [x] 백엔드 API 미연동 시 `stt/main.py`의 Fallback 매핑 방어 로직 작동 검증 완료 (Crash 방지)
-- [x] 서버 9000/9001 분리 후 `test_client.py` 활용 E2E(End-To-End) 클라이언트 통신 응답 테스트 완수
-- [x] 추후 백엔드 `GET /api/room/name` 본코드(`master`) 병합 시 라이브 데이터 연결 최종 모니터링 (연동 전구조/Fallback 점검 완수)
+- [x] 백엔드 코드베이스 내 AI 호출선 및 `GET /api/room/name` 존재 여부 확인 완료
+- [x] 백엔드 API 미연동 시 `stt/api/main.py`의 Fallback 매핑 방어 로직 작동 검증 완료 (Crash 방지)
+- [x] 서버 9000/9001 분리 후 `tests/test_client.py` 활용 E2E(End-To-End) 클라이언트 통신 응답 테스트 완수
+- [ ] 추천 입력 데이터 실연동
+  - 현재 추천 요청은 `RobotService.getAiDataset()`에서 mock JSON을 읽어 전송 중
+  - `ROOM_CONDITIONS_HISTORY` / `MODULE_CONTROL_LOGS` 실데이터 조합으로 교체 필요
+- [ ] STT 방 이름 동기화 실연동
+  - `GET /api/room/name` 경로는 존재하지만 인증/화이트리스트까지 포함한 실호출 재검증 필요
 
 ### 3. STT 운영 안정화
 - [x] FastAPI `startup` -> `lifespan` 전환
@@ -51,7 +68,7 @@
   - 현재는 Whisper generation config 기반 중복 suppress processor 경고로 보고, 정확도 영향이 없어 보류
   - decoding 정책 변경으로 경고를 없애는 것은 정확도 리스크가 있어 당장 적용하지 않음
 - [x] 헬스체크 응답을 운영 문서/배포 스크립트에 연결할지 검토
-  - `README.md`, `deployment_strategy_for_backend_and_infra.md`에 `curl /api/stt/health` 점검 흐름 반영
+  - `README.md`, `docs/shared/infra/deployment_strategy_for_backend_and_infra.md`에 `curl /api/stt/health` 점검 흐름 반영
 
 ### 4. 추천 시스템 후속
 - [x] LSTM 리트레이닝 Cron Job GPU 서버 등록 및 테스트 (컨테이너 제약으로 Daemon 봇 형태 스크립트로 구축 완료)
@@ -140,7 +157,7 @@
   - `origin/master`에는 아직 미반영이라 실제 공통 기준 브랜치는 아님
 
 ### 2026-03-20
-- [x] `stt/main.py` 리팩토링 및 `v2_full` 자동 로드 구조 반영
+- [x] `stt/api/main.py` 리팩토링 및 `v2_full` 자동 로드 구조 반영
 - [x] 20GB 학습 설정 적용
   - `MAX_STEPS=10000`
   - 저장 경로 `stt/model/v2_full`
@@ -152,7 +169,7 @@
 - [x] 1GB Whisper 파인튜닝 완료
   - `eval_cer: 1.48%`
   - 벤치마크 `9/9`
-- [x] `preprocess_data.py`, `finetune_whisper.py`, `stt_benchmark.py` 파이프라인 구축
+- [x] `stt/scripts/preprocess_data.py`, `stt/scripts/finetune_whisper.py`, `stt/tests/stt_benchmark.py` 파이프라인 구축
 - [x] 추천 시스템 RandomForest / LSTM 프로토타입 고도화
 
 ---
@@ -188,6 +205,6 @@
 - 현재 STT 시연 기준 조합은 `v2_full + parser 보정 + roomId 변환`
 - 현재 추천 mock payload는 AI 서버 기준 9개 방 멀티룸 데이터로 갱신됨
 - 실서버 API와 벤치마크 기준 모두 정상 확인 완료
-- 학습 운영 기준 문서는 `docs/shared/stt_training_operations_guide.md`를 기준으로 관리
-- 다음 핵심 병목은 "백엔드 실제 연동"과 "모델 외부 백업" 쪽
-- 백엔드 MR 구현은 `be-main`에서 확인했지만, `master` 기준 재확인 전까지는 연동 완료로 판단하지 않음
+- 학습 운영 기준 문서는 `docs/shared/stt/stt_training_operations_guide.md`를 기준으로 관리
+- 다음 핵심 병목은 "추천 입력 데이터의 실DB 연동"과 "STT 방 이름 동기화 실연동" 쪽
+- 백엔드는 AI 호출선이 이미 들어와 있지만, 현재 리포지토리 기준 추천 입력은 아직 mock payload 단계로 판단

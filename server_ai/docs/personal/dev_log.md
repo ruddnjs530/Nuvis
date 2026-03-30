@@ -9,6 +9,13 @@
 - 테스트는 명령, 결과, 제약을 함께 기록합니다.
 - 시연 단계의 임시 선택과 장기적으로 바꿔야 할 구조를 분리해서 적습니다.
 
+## 현재 스냅샷 정정 메모 (2026-03-31)
+- 아래 날짜별 기록은 당시 작업 시점의 파일 경로와 판단을 그대로 보존합니다.
+- 현재 활성 엔트리포인트는 `recommendation/api/main.py`, `stt/api/main.py`, `stt/api/stt_parser.py`, `tests/test_client.py` 기준입니다.
+- 공용 문서는 현재 `docs/shared/infra/`, `docs/shared/integration/`, `docs/shared/stt/` 하위로 재정리되어 있습니다.
+- 백엔드는 AI 호출선과 `GET /api/room/name` 라우트를 갖고 있지만, 추천 입력 데이터는 아직 `RobotService.getAiDataset()`에서 mock JSON을 읽고 있습니다.
+- STT의 방 이름 동기화는 현재 코드 기준 `GET /api/room/name`를 호출하도록 되어 있으나, 백엔드 `RankGuard` / 인증 조건 때문에 fallback 맵으로 내려갈 여지가 있습니다.
+
 ---
 
 ## Week 1

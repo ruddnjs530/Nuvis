@@ -6,6 +6,13 @@
 - `server_ai`: 추천 AI + STT 전용 서비스로 운영
 - 배포 기준은 **일반 서버(Docker / Jenkins)** 와 **GPU 서버(`server_ai` 단독 운영)** 로 분리하는 방향을 우선 채택
 
+## 🔎 현재 리포지토리 기준 확인 메모 (2026-03-31)
+- 추천 API 현재 엔트리포인트는 `server_ai/recommendation/api/main.py` 입니다.
+- STT API / 파서는 각각 `server_ai/stt/api/main.py`, `server_ai/stt/api/stt_parser.py` 기준으로 운영됩니다.
+- 공용 문서는 `docs/shared/infra/`, `docs/shared/integration/`, `docs/shared/stt/` 하위로 재정리된 상태입니다.
+- 백엔드는 AI 호출선(`event`, `schedule`)과 `GET /api/room/name` 엔드포인트를 이미 가지고 있습니다.
+- 다만 추천 입력 데이터는 아직 `backend/src/modules/robot/services/robot.service.ts`에서 `mock_payload.json`을 읽고 있어, `ROOM_CONDITIONS_HISTORY` / `MODULE_CONTROL_LOGS` 실쿼리 전환은 후속 과제입니다.
+
 ## 🏁 Phase 0: 프로젝트 기획 및 환경 세팅 (현재 완료)
 - [x] 요구사항(MVP/API) 분석 및 AI 역할 정의
 - [x] 각 기능별(데이터분석, STT) 아키텍처 및 기술 스택 확정
@@ -19,16 +26,17 @@
 *목표: 수집된 센서 데이터를 바탕으로 스마트 홈 자동화 규칙 추천하기*
 *배치 원칙: `server_ai` 독립 서비스에서 백엔드 호출 기반으로 운영*
 - [x] 메인 서버 DB와 AI 전용 서버(`FastAPI`) 간 데이터 통신망(Stateless API) 요구사항/규격 구축 완료
-- [x] 백엔드 환경변수 / HTTP 클라이언트 기준으로 GPU 서버 AI 주소 연동(`backend_integration_proposal.md`) 방안 수립 완료
-- [x] 통계/Rule/패턴 기반 모델로 1차 추천 (`api/event/ai-suggestions`, `api/schedule`) 시스템 납품 및 0.2초 내 응답 E2E 점검 완료
+- [x] 백엔드 환경변수 / HTTP 클라이언트 기준으로 GPU 서버 AI 주소 연동(`docs/shared/integration/backend_integration_proposal.md`) 방안 수립 완료
+- [x] 통계/Rule/패턴 기반 모델로 1차 추천 (`/api/event/ai-suggestions`, `/api/schedule/ai-suggestions`) 시스템 납품 및 0.2초 내 응답 E2E 점검 완료
 - [x] **[완료]** 기존 요청 형식 유지 기반 `room_id`별 다중 방 추천 응답 구조 확장
   - 추천 서버가 단일 사용자 전체 이력을 `room_id`별로 분리 분석하도록 변경
   - 이벤트/스케줄 추천 응답을 `room_id`별 결과 맵으로 반환하도록 정리
 - [x] **[완료]** 다중 방 시뮬레이션용 mock payload 생성기 고도화
-  - `generate_mock_data.py`를 9개 방 패턴 기반 멀티룸 생성기로 확장
+  - `recommendation/scripts/generate_mock_data.py`를 9개 방 패턴 기반 멀티룸 생성기로 확장
   - `server_ai/recommendation/data/mock_payload.json` 기준으로 총 `1521`건 생성 검증 완료
 - [x] *(고도화)* Scikit-learn / LSTM(딥러닝) 활용 다중 머신러닝 이상 탐지 및 시계열 스케줄 예측 백그라운드 자동화(MLOps) 구축 완료
-- [ ] 로봇 대시보드(FrontEnd) 화면에 AI 추천 결과가 최종적으로 올바르게 렌더링되는지 연동 확인 모니터링
+- [ ] 추천 입력 데이터를 백엔드 mock payload가 아닌 `ROOM_CONDITIONS_HISTORY` / `MODULE_CONTROL_LOGS` 실쿼리로 교체
+- [ ] 이벤트 추천 UI는 현재 프론트 수동 CRUD 중심이므로, `/api/event/ai-suggestions` 소비 화면까지 최종 연결 확인
 
 ---
 
@@ -36,18 +44,18 @@
 *목표: "거실로 와서 공기청정기 틀어" 라는 사람의 말을 로봇이 이해하도록 만들기*
 *배치 원칙: `server_ai` 독립 서비스에서 STT / 파서 API로 운영*
 - [x] OpenAI `Whisper` 모델 작동 및 정확도 테스트 (완료)
-- [x] 전송 측(웹/클라이언트)의 오디오 입력을 AI 파서 엔진까지 전달하고 JSON 로직으로 가공 반환하는 Multipart E2E 테스트 통과 (`test_client.py`)
-- [x] `stt_parser.py` 고도화 (부정어/복합 명령/공백 변이 예외 처리 완료)
+- [x] 전송 측(웹/클라이언트)의 오디오 입력을 AI 파서 엔진까지 전달하고 JSON 로직으로 가공 반환하는 Multipart E2E 테스트 통과 (`tests/test_client.py`)
+- [x] `stt/api/stt_parser.py` 고도화 (부정어/복합 명령/공백 변이 예외 처리 완료)
 - [x] **[완료]** AI Hub 카투홈 데이터 1GB 기반 Whisper-small 파인튜닝 완료
   - `eval_cer 1.48%`, 벤치마크 정확도 **9/9 (100%)** 달성 (2026-03-19)
-  - `stt/preprocess_data.py`, `stt/finetune_whisper.py` 스크립트 완성
-  - 결과: `docs/shared/stt_benchmark_results.md` 문서화
-- [x] **[완료]** `stt/main.py`에서 파인튜닝 모델(`v2_full`) 자동 로드 지원
+  - `stt/scripts/preprocess_data.py`, `stt/scripts/finetune_whisper.py` 스크립트 완성
+  - 결과: `docs/shared/stt/stt_benchmark_results.md` 문서화
+- [x] **[완료]** `stt/api/main.py`에서 파인튜닝 모델(`v2_full`) 자동 로드 지원
 - [x] **[완료]** STT 응답을 백엔드 계약에 맞춰 `roomId` 기반으로 변환하는 구조 구현
   - startup 시 `GET /api/room/name` 호출 → 방 이름 맵 캐싱
   - 백엔드 미연동 시 backend seed 기준 fallback 맵 유지 (`스테이션(HQ)=1`, `거실=2`, `침실=3`, `주방=4`)
 - [x] **[완료]** GPU 서버에서 실제 `/api/stt/transcribe` 응답 검증
-  - `test_client.py` 기준 샘플 음성 업로드 결과 `roomId=2`, `module=air_purifier`, `state=on` 기준으로 정렬
+  - `tests/test_client.py` 기준 샘플 음성 업로드 결과 `roomId=2`, `module=air_purifier`, `state=on` 기준으로 정렬
 - [x] **[완료]** STT 운영 점검용 헬스체크 추가
   - `GET /api/stt/health`에서 `device`, `model_path`, `room_map_source` 확인 가능
 - [x] **[완료]** FastAPI `startup` -> `lifespan` 전환 및 임시 파일 처리 안정화

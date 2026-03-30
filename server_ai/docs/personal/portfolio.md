@@ -1,7 +1,7 @@
 # 🏆 포트폴리오 (Portfolio)
 
 **프로젝트 명:** 스마트 홈 로봇 (자율 주행 및 홈 IoT 통합 관제 시스템)
-**담당 역할:** AI Engineer & ROS2 Vision Developer
+**담당 역할:** AI Engineer (`server_ai`: Recommendation / STT, 초기 Vision 프로토타입 참여)
 
 ---
 
@@ -21,21 +21,22 @@
 
 *   **해결 — 알고리즘:**
     `Pandas` 및 `Scikit-learn` 기반 데이터 과학 파이프라인 구축. 
-    - **컨텍스트 기반 동적 임계값 (Context-Aware):** 유저의 생활 패턴(취침/활동/귀가 등)을 시간대별로 분리 분석하여 상황에 최적화된 임계값 추천 로직 구현. (`main.py`)
-    - **머신러닝 행동 예측 (Predictive Modeling):** `RandomForestClassifier`를 도입하여 `[시간, 요일, 온/습도, 미세먼지]` 기반의 기기 작동 확률을 분석합니다. (`ml_model.py`)
-    - **GPU 가속 시계열 예측 (Phase 3 Prototype):** PyTorch 기반 **LSTM(Long Short-Term Memory)** 모델을 구축하여 과거 흐름 기반의 연속적 행동 예측 파이프라인을 설계했습니다. (`gpu_lstm_model.py`)
+    - **컨텍스트 기반 동적 임계값 (Context-Aware):** 유저의 생활 패턴(취침/활동/귀가 등)을 시간대별로 분리 분석하여 상황에 최적화된 임계값 추천 로직 구현. (`recommendation/api/main.py`)
+    - **머신러닝 행동 예측 (Predictive Modeling):** `RandomForestClassifier`를 도입하여 `[시간, 요일, 온/습도, 미세먼지]` 기반의 기기 작동 확률을 분석합니다. (`recommendation/api/ml_model.py`)
+    - **GPU 가속 시계열 예측 (Phase 3 Prototype):** PyTorch 기반 **LSTM(Long Short-Term Memory)** 모델을 구축하여 과거 흐름 기반의 연속적 행동 예측 파이프라인을 설계했습니다. (`recommendation/scripts/gpu_lstm_model.py`)
 
 *   **해결 — 아키텍처 & GPU 전략:**
     - AI 서버가 DB에 직접 접근하지 않는 **Stateless API (Data Passing)** 설계.
-    - **데이터 푸시형 선제적 알림(Proactive Notification) 아키텍처:** 백엔드가 주기적으로 최신 센서 데이터를 AI 서버에 'Push'하고, AI가 이상치(`anomaly_warnings`)를 감지하면 백엔드가 즉시 사용자에게 푸시 알림을 보내는 **선제적 대응 시스템**을 구현했습니다.
+    - **데이터 푸시형 선제 대응 아키텍처 제안:** 백엔드가 최신 센서 데이터를 AI 서버에 'Push'하고, AI가 이상치(`anomaly_warnings`)를 감지했을 때 후속 알림/자동화에 연결할 수 있는 구조를 설계했습니다.
     - **GPU 기반 정밀 추천:** 대용량 시계열 이력 데이터를 GPU로 학습하여 정교한 행동 예측(LSTM)을 수행하는 구조를 확립했습니다. (LLM/Vision 연동은 향후 확장 가능성으로 열어두고 보류)
 
     AI 서버가 DB에 직접 접근하지 않고, 백엔드 서버가 필요한 데이터를 추출하여 API 페이로드로 전달하는 **Stateless API (Data Passing)** 방식을 직접 설계 및 문서화. 인터페이스 계약(Contract)을 명세화하여 백엔드 팀과 병렬 개발이 가능하도록 주도적인 기술 협의를 진행했습니다.
 
 *   **해결 — DB 설계 기여:**
-    백엔드 ERD를 검토하여 AI 패턴 분석에 필수적인 **시계열 이력 테이블 2개** 추가를 직접 설계 및 반영:
+    백엔드 ERD를 검토하여 AI 패턴 분석에 필수적인 **시계열 이력 테이블 2개** 추가를 직접 설계하고 Prisma 스키마 반영까지 연결:
     - `ROOM_CONDITIONS_HISTORY`: 센서 값을 덮어쓰지 않고 누적 저장하는 이력 테이블
     - `MODULE_CONTROL_LOGS`: 실제 기기 가동/정지 시각이 기록되는 조작 로그 테이블
+    - 현재 리포지토리 기준 추천 입력 데이터는 아직 `backend/src/modules/robot/data/mock_payload.json` 기반이며, 위 테이블을 직접 읽는 실쿼리 연동은 후속 과제로 남아 있습니다.
 
 *   **성과**:
     - 유저 과거 데이터 기반 5% 안전 마진(Safety Margin) 적용 최적 임계값 계산 → FastAPI 엔드포인트로 백엔드 서버에 제공.
@@ -66,14 +67,14 @@
 *   **문제**: 일반 Whisper 모델 사용 시 "안방 가습기 켜줘" 같은 특정 도메인 명령어에서 낮은 인식률이나 공백 오류 발생. 또한 600GB에 달하는 거대 데이터셋은 현실적인 학습이 불가능함.
 *   **해결 — 데이터 전략**: 
     - **Domain Adaptation 전략**: 전체 데이터를 포기하고 프로젝트 핵심 명령어와 일치하는 **AI Hub 카투홈(Car2Home) 데이터셋 1GB(3,978개)**를 전략적으로 추출.
-    - **전처리 파트**: 48kHz WAV를 Whisper 표준인 16kHz로 변환하고 JSON 라벨에서 전사 텍스트를 자동 매핑하는 `preprocess_data.py` 구축.
+    - **전처리 파트**: 48kHz WAV를 Whisper 표준인 16kHz로 변환하고 JSON 라벨에서 전사 텍스트를 자동 매핑하는 `stt/scripts/preprocess_data.py` 구축.
 *   **해결 — 파인튜닝**: 
-    - **Whisper-small 파인튜닝**: 파이썬 `datasets` 라이브러리의 데드락 이슈를 해결하기 위해 **PyTorch Custom Dataset** 기반 학습 엔진(`finetune_whisper.py`)을 직접 설계.
+    - **Whisper-small 파인튜닝**: 파이썬 `datasets` 라이브러리의 데드락 이슈를 해결하기 위해 **PyTorch Custom Dataset** 기반 학습 엔진(`stt/scripts/finetune_whisper.py`)을 직접 설계.
     - **트러블슈팅**: CUDA Peer Mapping 자원 고갈 오류를 해결하기 위해 `CUDA_VISIBLE_DEVICES`를 통한 단일 GPU 할당 최적화 적용.
 *   **성과**:
     - **정밀도**: **CER(문자 오류율) 1.48%** 달성 (업계 기준 5% 이하 우수).
     - **인식률**: 스마트홈 9개 핵심 명령어 벤치마크 테스트 결과 **9/9 (100%) 합격**.
-    - **강인성**: "보일락 켜" 같은 음성 오인식 상황에서도 파서(`stt_parser.py`)가 원래 명령어를 복원해내는 유사도 기반 예외 처리 로직 고도화.
+    - **강인성**: `"공기청소기"`, `"가스불"` 같은 음성 오인식 상황에서도 파서(`stt/api/stt_parser.py`)가 alias / 규칙 기반 후처리로 도메인 명령을 복원하도록 고도화.
     - **백엔드 연동성 강화**: STT 서버 startup 시 백엔드 방 목록(`GET /api/room/name`)을 캐싱하고, `"거실"` 같은 자연어 방 이름을 최종적으로 `roomId`로 변환하여 반환하는 구조를 구현. 백엔드 API 준비 전에도 시연이 가능하도록 backend seed 기준 fallback 방 맵과 alias 처리(`안방/침실/내방`, `부엌/주방`, `스테이션/HQ`)를 함께 설계.
     - **대규모 재학습 운영 확장**: 1GB 실험 성공 이후 20GB급 full raw 데이터셋 전처리 파이프라인을 확장하여 **128,468개 샘플 규모**의 재학습 환경을 GPU 서버에 구축하고, 최종적으로 `v2_full` 학습을 완료함.
     - **최종 시연 기준 성능 확보**: 20GB 재학습 모델의 최종 검증 수치 **`eval_cer 1.02%`, `eval_loss 0.0146`**를 확인했고, 동일 조건 비교 벤치마크에서 **`base 77.8% (7/9)` 대비 `v2_full 100.0% (9/9)`**를 달성하여 시연용 STT 파이프라인을 `v2_full + parser 보정` 조합으로 확정함.
@@ -88,6 +89,8 @@
     - AI 서버 HTTP 인터페이스 설계 (Timeout 30초, Fallback 정책 등 운영 시나리오 반영)
     - 백엔드 팀에 AI 추천 결과를 사용자에게 제안하고 수락 시 DB에 반영하는 **Human-in-the-loop 파이프라인 연동 규격** 제안
     - Jenkins를 포함한 **분리 배포 전략**을 수립하여, 개발 단계의 프로토타입을 실제 운영 가능한 배포 구조로 연결하는 기준 문서 구축
+    - 현재 리포지토리 기준 `event`, `schedule` 서비스에서 AI 호출선은 연결되었고, `room` 모듈에는 `GET /api/room/name`도 존재함
+    - 다만 추천 입력 데이터는 아직 mock payload 기반이며, STT 방 이름 동기화는 인증/화이트리스트 정리가 남아 있음
 *   **성과**: AI 서버의 인터페이스를 명확히 정의함으로써 백엔드 팀과의 개발 병렬성을 확보하고, 운영 상황에서의 예외 케이스(Timeout, Fallback)를 사전에 방어하는 설계 지침을 수립함.
 
 ---
@@ -111,11 +114,11 @@
 
 - **AI 라이브러리 제어 및 우회 역량**: 최신 `datasets` 라이브러리의 내부 엔진 충돌(Torchcodec/Deadlock)과 GPU 자원 할당 이슈를 직접 분석하고, PyTorch Low-level API를 활용한 커스텀 데이터셋 구조로 전환하여 문제를 정면 돌파함.
 
-- **STT-Parser 결합을 통한 강인한 시스템 설계**: AI 모델(Whisper)의 한계를 인정하고, 뒷단의 파서(`stt_parser.py`)에서 유사도 기반 키워드 매핑을 적용함으로써 음성 오인식 시에도 시스템은 정상 작동하게 하는 **실패 방지 설계(Fail-safe Design)** 경험 확보.
+- **STT-Parser 결합을 통한 강인한 시스템 설계**: AI 모델(Whisper)의 한계를 인정하고, 뒷단의 파서(`stt/api/stt_parser.py`)에서 alias / 정규식 기반 후처리를 적용함으로써 음성 오인식 시에도 시스템은 정상 작동하게 하는 **실패 방지 설계(Fail-safe Design)** 경험 확보.
 
 
 
-- **Cold Start 문제 해결 경험**: 프로젝트 초반 실 데이터가 없는 환경을 극복하기 위해 더미 데이터 모의 생성기(`generate_mock_data.py`)를 개발하여 메인 서버 및 알고리즘 검증을 블로킹 없이 병렬로 진행하는 능력을 기름.
+- **Cold Start 문제 해결 경험**: 프로젝트 초반 실 데이터가 없는 환경을 극복하기 위해 더미 데이터 모의 생성기(`recommendation/scripts/generate_mock_data.py`)를 개발하여 메인 서버 및 알고리즘 검증을 블로킹 없이 병렬로 진행하는 능력을 기름.
 
 - **시스템 설계 및 팀 간 기술 협의 경험**: AI 서버가 DB에 직접 접근하는 방식 대신, 백엔드 서버가 데이터를 추출하여 전달하는 Stateless API 방식의 장단점(응답 속도, 서버 부하 분산, 확장성)을 직접 분석하고 연동 표준으로 제안. 또한 **"AI가 능동적으로 알려줄 것인가(Push), 백엔드가 필요할 때만 물어볼 것인가(Polling)"**에 대한 기술적 논의를 주도하여, 실시간성과 독립성을 모두 챙길 수 있는 **데이터 푸시형 분석 구조**를 확립함. 단순 코딩을 넘어 **서버 간 인터페이스 계약 설계** 역량을 키움.
 
